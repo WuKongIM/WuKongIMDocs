@@ -6,7 +6,7 @@ order: 700
 title: 悟空IM协议
 ---
 
-## 悟空 IM 协议
+# 悟空 IM 协议
 
 ## 控制报文结构
 
@@ -651,9 +651,11 @@ Topic：消息是否包含 topic（如果为 1 则发送包和接受包都将包
 
 Reserved：保留位，暂未用到
 
-## Payload 推荐结构
+# Payload 推荐结构
 
-- 文本
+## 普通消息
+
+### 文本
 
 ```
 {
@@ -662,7 +664,7 @@ Reserved：保留位，暂未用到
 }
 ```
 
-- 文本(带@)
+### 文本(带@)
 
 ```
 {
@@ -675,7 +677,7 @@ Reserved：保留位，暂未用到
 }
 ```
 
-- 文本(带回复)
+### 文本(带回复)
 
 ```
 {
@@ -692,7 +694,7 @@ Reserved：保留位，暂未用到
 }
 ```
 
-- 图片
+### 图片
 
 ```
  {
@@ -703,7 +705,7 @@ Reserved：保留位，暂未用到
  }
 ```
 
-- GIF
+### GIF
 
 ```
  {
@@ -714,7 +716,7 @@ Reserved：保留位，暂未用到
  }
 ```
 
-- 语音
+### 语音
 
 ```
  {
@@ -724,7 +726,7 @@ Reserved：保留位，暂未用到
 }
 ```
 
-- 文件
+### 文件
 
 ```
  {
@@ -735,7 +737,7 @@ Reserved：保留位，暂未用到
 }
 ```
 
-- 命令消息
+### 命令消息
 
 ```
  {
@@ -749,7 +751,7 @@ Reserved：保留位，暂未用到
 
 系统消息的 type 必须大于 1000
 
-- 创建群聊 (NoPersist:0,RedDot:0,SyncOnce:1)
+### 创建群聊 (NoPersist:0,RedDot:0,SyncOnce:1)
 
 张三邀请李四、王五加入群聊
 
@@ -763,7 +765,7 @@ Reserved：保留位，暂未用到
 }
 ```
 
-- 添加群成员 (NoPersist:0,RedDot:0,SyncOnce:1)
+### 添加群成员 (NoPersist:0,RedDot:0,SyncOnce:1)
 
 张三邀请李四、王五加入群聊
 
@@ -776,7 +778,7 @@ Reserved：保留位，暂未用到
 
 ```
 
-- 移除群成员 (NoPersist:0,RedDot:0,SyncOnce:1)
+### 移除群成员 (NoPersist:0,RedDot:0,SyncOnce:1)
 
 张三将李四移除群聊
 
@@ -788,7 +790,7 @@ Reserved：保留位，暂未用到
 }
 ```
 
-- 群成员被踢 (NoPersist:0,RedDot:1,SyncOnce:0)
+### 群成员被踢 (NoPersist:0,RedDot:1,SyncOnce:0)
 
 ```
 {
@@ -808,7 +810,7 @@ Reserved：保留位，暂未用到
 }
 ```
 
-- 更新群名称 (NoPersist:0,RedDot:0,SyncOnce:1)
+### 更新群名称 (NoPersist:0,RedDot:0,SyncOnce:1)
 
 张三修改群名称为"测试群"
 
@@ -820,7 +822,7 @@ Reserved：保留位，暂未用到
 }
 ```
 
-- 更新群公告 (NoPersist:0,RedDot:0,SyncOnce:1)
+### 更新群公告 (NoPersist:0,RedDot:0,SyncOnce:1)
 
 张三修改群公告为"这是一个群公告"
 
@@ -832,7 +834,7 @@ Reserved：保留位，暂未用到
 }
 ```
 
-- 撤回消息 (NoPersist:0,RedDot:0,SyncOnce:1)
+### 撤回消息 (NoPersist:0,RedDot:0,SyncOnce:1)
 
 张三撤回了一条消息
 
@@ -847,7 +849,7 @@ Reserved：保留位，暂未用到
 
 ## 命令类消息
 
-- 命令类消息 (SyncOnce:1)
+### 命令类消息 (SyncOnce:1)
 
 ```
 
@@ -859,7 +861,7 @@ Reserved：保留位，暂未用到
 
 ```
 
-- 群成员信息有更新（收到此消息客户端应该增量同步群成员信息）
+### 群成员信息有更新（收到此消息客户端应该增量同步群成员信息）
 
 ```
 {
@@ -871,7 +873,7 @@ Reserved：保留位，暂未用到
 }
 ```
 
-- 红点消除（收到此命令客户端应将对应的会话信息的红点消除）
+### 红点消除（收到此命令客户端应将对应的会话信息的红点消除）
 
 ```
 {
