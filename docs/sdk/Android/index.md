@@ -204,7 +204,7 @@ WKIM.getInstance().connectionManager.disconnect(isLogout)
         }
 ```
 
-- <font color='#999' size=2>更多连接状态请查看[状态码](/android/onlysdk.html#状态码)</font>
+- <font color='#999' size=2>更多连接状态请查看[状态码](/android#状态码)</font>
 
 ### 在线消息收发
 
