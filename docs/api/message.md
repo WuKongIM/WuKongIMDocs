@@ -86,6 +86,7 @@ http status为200
 ```
 
 ```
+
 以start_message_seq为基准 pull_mode控制拉取方向，end_message_seq和limit控制结束位置
 
 pull_mode为1 表示向上拉，逻辑如下：

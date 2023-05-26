@@ -12,7 +12,7 @@ order: 100
 
 ```shell
 
-sudo curl -L "https://github.com/WuKongIM/WuKongIMCli/releases/download/v1.0.0/wukongimcli-$(uname -s)-$(uname -m)" -o /usr/local/bin/wk
+sudo curl -L "https://github.com/WuKongIM/WuKongIMCli/releases/download/v1.0.1/wukongimcli-$(uname -s)-$(uname -m)" -o /usr/local/bin/wk
 sudo chmod +x /usr/local/bin/wk
 # 启动
 wk start
@@ -37,7 +37,7 @@ go build -o wkim main.go
 ## Docker 部署
 
 ```shell
-docker run -p 7676:7676 -p 2122:2122 -p 1516:1516  --name wukongim -v ./wukongimdata:/home/wukongimdata  wukongim/wukongim:latest
+docker run -p 5000:5000 -p 5100:5100 -p 5200:5200 -p 5300:5300  --name wukongim -v ./wukongimdata:/root/wukongimdata  wukongim/wukongim:latest
 ```
 
 ## Docker Compose 部署
@@ -59,17 +59,17 @@ docker-compose up -d
 ## 验证部署
 
 ```shell
-
-sudo curl -L "https://github.com/WuKongIM/WuKongIMCli/releases/download/v1.0.0/wukongimcli-$(uname -s)-$(uname -m)" -o /usr/local/bin/wk
+(更多版本进入https://github.com/WuKongIM/WuKongIMCli/releases/download下载)
+sudo curl -L "https://github.com/WuKongIM/WuKongIMCli/releases/download/v1.0.1/wukongimcli-$(uname -s)-$(uname -m)" -o /usr/local/bin/wk
 sudo chmod +x /usr/local/bin/wk
 wk doctor
 
 ```
 
 ```
-HTTP listener 1516 port is ok
-TCP listener 7676 port is ok
-Websocket listener 2122 port is ok
-MQTT listener 5255 port is ok
+HTTP listener 5000 port is ok
+TCP listener 5100 port is ok
+Websocket listener 5200 port is ok
+Monitor listener 5300 port is ok
 
 ```
