@@ -1667,8 +1667,6 @@ WKIM.getInstance().reminderManager.addOnNewReminderListener("key",object :INewRe
 
 <a href="https://github.com/WuKongIM/WuKongIMAndroidSDK" target="_blank">sdk源码</a>
 
-<a href="/resource/wk-release.aar" target="_blank">aar 下载</a>
-
 #### 说明
 
 #### 事件监听
