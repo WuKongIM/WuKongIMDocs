@@ -11,9 +11,7 @@ order: 100
 ## 一键部署（推荐）
 
 ```shell
-
-sudo curl -L "https://github.com/WuKongIM/WuKongIMCli/releases/download/v1.0.1/wukongimcli-$(uname -s)-$(uname -m)" -o /usr/local/bin/wk
-sudo chmod +x /usr/local/bin/wk
+curl -sSL https://raw.githubusercontent.com/WuKongIM/WuKongIMCli/main/install.sh | sh -s v1.0.1
 # 启动
 wk start
 
