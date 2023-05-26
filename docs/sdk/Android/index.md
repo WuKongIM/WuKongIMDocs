@@ -48,6 +48,31 @@ WKIM.getInstance().getRobotManager()
 
 ## 集成
 
+## 快速入门
+
+**Gradle**
+
+[![](https://jitpack.io/v/WuKongIM/WuKongIMAndroidSDK.svg)](https://jitpack.io/#WuKongIM/WuKongIMAndroidSDK)
+
+```
+implementation 'com.github.WuKongIM:WuKongIMAndroidSDK:1.0.1'
+```
+
+jitpack还需在主程序的`build.gradle`文件中添加：
+
+```
+allprojects {
+    repositories {
+        ...
+        maven { url 'https://jitpack.io' }
+    }
+}
+```
+**混淆**
+```
+-dontwarn com.wukong.im.**
+-keep class com.wukong.im.**{*;}
+```
 #### 通过 aar 文件集成
 
 1、在项目主模块新建 Module，命名为`MyLibs`
@@ -77,7 +102,7 @@ api project(path: ':MyLibs:im')
 
 ```java
 api "net.zetetic:android-database-sqlcipher:4.5.3"
-api "androidx.sqlite:sqlite-ktx:2.3.0"
+api "androidx.sqlite:sqlite-ktx:2.3.1"
 api 'org.whispersystems:curve25519-android:0.5.0'
 api 'org.whispersystems:signal-protocol-android:2.8.1'
 ```
