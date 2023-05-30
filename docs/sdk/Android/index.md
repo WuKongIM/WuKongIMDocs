@@ -158,7 +158,8 @@ WKIM.getInstance().init(context,uid,token)
 WKIM.getInstance().getConnectionManager().addOnGetIpAndPortListener(new IGetIpAndPort() {
             @Override
             public void getIP(IGetSocketIpAndPortListener iGetSocketIpAndPortListener) {
-                iGetSocketIpAndPortListener.onGetSocketIpAndPort("48.135.49.152",6666);
+                // 返回连接IP和端口
+                iGetSocketIpAndPortListener.onGetSocketIpAndPort("xxx",xxx);
             }
         });
 ```
