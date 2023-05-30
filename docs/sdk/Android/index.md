@@ -158,7 +158,8 @@ WKIM.getInstance().init(context,uid,token)
 WKIM.getInstance().getConnectionManager().addOnGetIpAndPortListener(new IGetIpAndPort() {
             @Override
             public void getIP(IGetSocketIpAndPortListener iGetSocketIpAndPortListener) {
-                iGetSocketIpAndPortListener.onGetSocketIpAndPort("48.135.49.152",6666);
+                // 返回连接IP和端口
+                iGetSocketIpAndPortListener.onGetSocketIpAndPort("xxx",xxx);
             }
         });
 ```
@@ -1663,32 +1664,9 @@ WKIM.getInstance().reminderManager.addOnNewReminderListener("key",object :INewRe
 
 ### 资源下载
 
-<a href="/resource/WKAndroidClientDemo.zip" target="_blank">demo 下载</a>
+<a href="https://github.com/WuKongIM/WuKongIMAndroidDemo" target="_blank">demo</a>
 
-<a href="https://github.com/WuKongIM/WuKongIMAndroidDemo" target="_blank">github 地址</a>
-
-<a href="/resource/wk-release.aar" target="_blank">aar 下载</a>
-
-### 混淆
-
-正式包开启混淆
-
-1、app 模块下 添加
-
-```java
-jniDebuggable true
-zipAlignEnabled true
-minifyEnabled true
-shrinkResources true
-proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
-```
-
-2、在混淆文件中 添加以下代码
-
-```java
--keep class com.wukong.im.**{*;}
--keep class com.wukong.im.entity.** { *; }
-```
+<a href="https://github.com/WuKongIM/WuKongIMAndroidSDK" target="_blank">sdk源码</a>
 
 #### 说明
 
