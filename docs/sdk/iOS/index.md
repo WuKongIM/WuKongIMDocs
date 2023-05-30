@@ -87,7 +87,7 @@ sdk 与已有 APP 交互的整体流程就是 已有 APP 调用 SDK 对应的方
 ### 通过 CocoaPods 集成
 
 ```objc
-pod 'WuKongIMiOSSDK'
+pod 'WuKongIMSDK'
 ```
 
 ### 通过二进制集成
@@ -98,7 +98,7 @@ pod 'WuKongIMiOSSDK'
 
 ```objc
 [WKSDK shared].options.host = @"xxx.xxx.xxx.xxx"; // IM通信端的IP
-[WKSDK shared].options.port = 7677; // IM通信端的TCP端口
+[WKSDK shared].options.port = 5100; // IM通信端的TCP端口
 
  // 设置IM连接认证信息
 [WKSDK shared].options.connectInfoCallback = ^WKConnectInfo * _Nonnull{

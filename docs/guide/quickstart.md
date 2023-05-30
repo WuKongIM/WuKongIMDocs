@@ -11,24 +11,15 @@ order: 100
 ## 一键部署（推荐）
 
 ```shell
-curl -sSL https://raw.githubusercontent.com/WuKongIM/WuKongIMCli/main/install.sh | sh -s v1.0.1
-# 启动
-wk start
+curl -sSL https://raw.githubusercontent.com/WuKongIM/WuKongIMCli/main/install.sh | sh -s v1.0.3
+# 运行
+wk run
+
+# 后台启动
+# wk start
 
 # 停止
 # wk stop
-
-```
-
-## 源码部署
-
-```shell
-
-git clone https://github.com/WuKongIM/WuKongIM.git
-cd WuKongIM
-go build -o wkim main.go
-# 启动
-./wkim
 
 ```
 
@@ -50,24 +41,19 @@ docker-compose up -d
 
 ## 配置
 
-配置文件为当前目录下的 wk.yaml（默认为~/wukongimdata/wk.yaml）文件，如果没有此文件，则使用系统的默认最优配置。
+配置文件为当前目录下的 wk.yaml（默认为~/wukongim/wk.yaml）文件，如果没有此文件，则使用系统的默认最优配置。
 
 完整配置请查看[完整配置](/guide/fullconfig)
 
 ## 验证部署
 
 ```shell
-(更多版本进入https://github.com/WuKongIM/WuKongIMCli/releases/download下载)
-sudo curl -L "https://github.com/WuKongIM/WuKongIMCli/releases/download/v1.0.1/wukongimcli-$(uname -s)-$(uname -m)" -o /usr/local/bin/wk
-sudo chmod +x /usr/local/bin/wk
 wk doctor
-
 ```
 
-```
-HTTP listener 5000 port is ok
-TCP listener 5100 port is ok
-Websocket listener 5200 port is ok
-Monitor listener 5300 port is ok
-
+```shell
+[✓] Http Service is running in 5000
+[✓] TCP Service is running in 5100
+[✓] Monitor Service is running in 5300
+• No issues found!
 ```

@@ -6,7 +6,7 @@ order: 1
 title: 什么是悟空IM
 nav:
   title: 指南
-  order: 1
+  order: -1
 ---
 
 # 什么是悟空 IM
