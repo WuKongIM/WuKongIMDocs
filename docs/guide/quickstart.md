@@ -26,7 +26,7 @@ wk run
 ## Docker 部署
 
 ```shell
-docker run -p 5000:5000 -p 5100:5100 -p 5200:5200 -p 5300:5300  --name wukongim -v ./wukongimdata:/root/wukongimdata  wukongim/wukongim:latest
+docker run -p 5000:5000 -p 5100:5100 -p 5200:5200 -p 5300:5300  --name wukongim -v ./wukongim:/root/wukongim  wukongim/wukongim:latest
 ```
 
 ## Docker Compose 部署

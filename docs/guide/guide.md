@@ -26,7 +26,7 @@ title: 文档阅读引导
 
 如果你只是想体验一下，可以直接使用我们的 Demo，Demo 中的 API 基地址也可以修改为你自己服务器的地址
 
-`Web在线演示：http://imdemo.githubim.com`
+Web 在线演示：http://imdemo.githubim.com
 
 ## 3. 详细的使用指南
 
@@ -57,6 +57,6 @@ title: 文档阅读引导
 ### Web 程序员
 
 第一步：Web Demo： [Javascript Demo 和 SDK 源码](https://github.com/WuKongIM/WuKongIMJSSDK)
-第二步：了解下 Javascript SDK 的使用：[Android SDK 使用指南](/sdk/javascript)
+第二步：了解下 Javascript SDK 的使用：[Javascript SDK 使用指南](/sdk/javascript)
 
 还有问题提[issue](https://github.com/WuKongIM/WuKongIMJSSDK/issues)
