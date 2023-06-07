@@ -26,8 +26,18 @@ wk run
 ## Docker 部署
 
 ```shell
-docker run -p 5000:5000 -p 5100:5100 -p 5200:5200 -p 5300:5300  --name wukongim -v ./wukongim:/root/wukongim  wukongim/wukongim:latest
+docker run -d -p 5000:5000 -p 5100:5100 -p 5200:5200 -p 5300:5300  --name wukongim -v ~/wukongim:/root/wukongim  wukongim/wukongim:latest
 ```
+
+端口解释：
+
+5000: http api 端口
+
+5100: app 长连接的 tcp 端口
+
+5200: websocket 端口，web 或 pc 长连接使用的
+
+5300: 监控端口，可以查看服务的运行状态
 
 ## Docker Compose 部署
 
