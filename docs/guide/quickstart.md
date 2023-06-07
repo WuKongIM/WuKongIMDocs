@@ -11,7 +11,7 @@ order: 100
 ## 一键部署（推荐）
 
 ```shell
-curl -sSL https://raw.githubusercontent.com/WuKongIM/WuKongIMCli/main/install.sh | sh -s v1.0.3
+curl -sSL https://raw.githubusercontent.com/WuKongIM/WuKongIMCli/main/install.sh | sh -s v1.0.5
 # 运行
 wk run
 
@@ -23,11 +23,18 @@ wk run
 
 ```
 
+`-s后的版本号可以视情况设置`
+
 ## Docker 部署
 
 ```shell
-docker run -d -p 5000:5000 -p 5100:5100 -p 5200:5200 -p 5300:5300  --name wukongim -v ~/wukongim:/root/wukongim  wukongim/wukongim:latest
+docker run -d -p 5000:5000 -p 5100:5100 -p 5200:5200 -p 5300:5300 -e WK_EXTERNAL_IP=xxx.xxx.xxx.xx  --name wukongim -v ~/wukongim:/root/wukongim  wukongim/wukongim:latest
+
 ```
+
+`WK_EXTERNAL_IP：为服务器外网IP，用于客户端连接，如果仅测试，客户端和服务器都在一个局域网内，这里可以填部署服务器的局域网IP`
+
+查看服务器信息： http://127.0.0.1:5000/varz
 
 端口解释：
 

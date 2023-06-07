@@ -60,3 +60,7 @@ Web 在线演示：http://imdemo.githubim.com
 第二步：了解下 Javascript SDK 的使用：[Javascript SDK 使用指南](/sdk/javascript)
 
 还有问题提[issue](https://github.com/WuKongIM/WuKongIMJSSDK/issues)
+
+有需要加微信群交流：
+
+![悟空开源社区](./wukongwechat.png)

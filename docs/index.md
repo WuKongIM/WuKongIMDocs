@@ -5,7 +5,7 @@ hero:
   description: 让信息传递更简单
   actions:
     - text: 立即上手
-      link: /guide
+      link: /guide/guide
     - text: Github
       link: https://github.com/WuKongIM/WuKongIM
 # features:
