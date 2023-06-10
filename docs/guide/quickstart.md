@@ -11,28 +11,32 @@ order: 100
 ## 一键部署（推荐）
 
 ```shell
-curl -sSL https://raw.githubusercontent.com/WuKongIM/WuKongIMCli/main/install.sh | sh -s v1.0.5
-```
-
-或国内
-
-```shell
-curl -sSL https://raw.githubusercontent.com/install.sh | sh -s v1.0.5
+curl -sSL https://gitee.com/WuKongDev/WuKongIMCli/raw/main/install.sh | sudo bash
 ```
 
 ```shell
-# 运行
+
+# 前台运行
 wk run
+
 
 # 后台启动
 # wk start
+
 
 # 停止
 # wk stop
 
 ```
 
-`-s后的版本号可以视情况设置`
+配置文件在 `~/wukongim/wk.yaml` .
+
+默认是局域网地址，如果需要外网访问，需要修改配置文件中的 `WK_EXTERNAL_IP` 为服务器外网 IP。
+
+```yaml
+external:
+  ip: 'xxx.xxx.xxxx.xxx'
+```
 
 ## Docker 部署
 
@@ -42,18 +46,6 @@ docker run -d -p 5000:5000 -p 5100:5100 -p 5200:5200 -p 5300:5300 -e WK_EXTERNAL
 ```
 
 `WK_EXTERNAL_IP：为服务器外网IP，用于客户端连接，如果仅测试，客户端和服务器都在一个局域网内，这里可以填部署服务器的局域网IP`
-
-查看服务器信息： http://127.0.0.1:5000/varz
-
-端口解释：
-
-5000: http api 端口
-
-5100: app 长连接的 tcp 端口
-
-5200: websocket 端口，web 或 pc 长连接使用的
-
-5300: 监控端口，可以查看服务的运行状态
 
 ## Docker Compose 部署
 
@@ -65,11 +57,25 @@ docker-compose up -d
 
 ```
 
+`WK_EXTERNAL_IP：为服务器外网IP，用于客户端连接，如果仅测试，客户端和服务器都在一个局域网内，这里可以填部署服务器的局域网IP`
+
 ## 配置
 
 配置文件为当前目录下的 wk.yaml（默认为~/wukongim/wk.yaml）文件，如果没有此文件，则使用系统的默认最优配置。
 
 完整配置请查看[完整配置](/guide/fullconfig)
+
+## 端口说明
+
+5000: http api 端口
+
+5100: app 长连接的 tcp 端口
+
+5200: websocket 端口，web 或 pc 长连接使用的
+
+5300: 监控端口，可以查看服务的运行状态（待完善）
+
+查看服务器信息： http://127.0.0.1:5000/varz
 
 ## 验证部署
 
