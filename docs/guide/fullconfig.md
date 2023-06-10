@@ -6,7 +6,11 @@ group:
 order: 200
 ---
 
-wk.yaml
+# 配置说明
+
+## 配置文件
+
+配置文件默认在此目录下（如果没有就创建一个）： ～/wukongim/wk.yaml
 
 ```yaml
 mode: 'debug' # 运行模式 模式 debug 测试 release 正式 bench 压力测试
@@ -55,5 +59,29 @@ external:
 #   scanInterval: 5s  # 每隔多久扫描一次超时队列，看超时队列里是否有需要重试的消息
 #   maxCount: 5    # 消息最大重试次数, 服务端持有用户的连接但是给此用户发送消息后在指定的间隔内没有收到ack，将会重新发送，直到超过maxCount配置的数量后将不再发送（这种情况很少出现，如果出现这种情况此消息只能去离线接口去拉取）
 # userMsgQueueMaxSize: 0 #  用户消息队列最大大小，超过此大小此用户将被限速，0为不限制
+```
+
+## 环境变量
+
+**_悟空 IM_**可以通过配置环境变量来覆盖配置文件的配置。
+
+比如配置文件里的 webhook 地址配置
+
+文件的格式：
+
+```yaml
+...
+
+webhook
+  httpAddr: "http://xxxxxx"
+...
 
 ```
+
+环境变量的格式：
+
+```
+WK_WEBHOOK_HTTPADDR: http://xxxxxx
+```
+
+规则 WK*为固定前缀，层级关系通过 "*"符号隔开，全都大写

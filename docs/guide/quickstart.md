@@ -12,6 +12,15 @@ order: 100
 
 ```shell
 curl -sSL https://raw.githubusercontent.com/WuKongIM/WuKongIMCli/main/install.sh | sh -s v1.0.5
+```
+
+或国内
+
+```shell
+curl -sSL https://raw.githubusercontent.com/install.sh | sh -s v1.0.5
+```
+
+```shell
 # 运行
 wk run
 
