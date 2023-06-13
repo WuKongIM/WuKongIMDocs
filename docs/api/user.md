@@ -15,8 +15,8 @@ order: 1
 
 ```json
 {
-  "uid": "xxxx", // 第三方服务端的用户唯一uid
-  "token": "xxxxx", // 第三方服务端的用户的token
+  "uid": "xxxx", // 通信的用户唯一ID，可以随机uuid （建议自己服务端的用户唯一uid） （WuKongIMSDK需要）
+  "token": "xxxxx", // 校验的token，随机uuid（建议使用自己服务端的用户的token）（WuKongIMSDK需要）
   "device_flag": 0, // 设备标识  0.app 1.web （相同用户相同设备标记的主设备登录会互相踢，从设备将共存）
   "device_level": 1 // 设备等级 0.为从设备 1.为主设备
 }
@@ -92,12 +92,14 @@ http status 200
 
 将用户的设备踢出登录，（可以实现类似微信的 app 可以踢出 pc 登录）
 
+> POST /user/device_quit
+
 请求参数:
 
 ```json
 {
   "uid": "xxxx", // 需要踢出的用户uid
-  "device_flag": 1 // 需要踢出的设备标记 -1: 当前用户下所有设备 0. 当前用户下的app 1. 当前用户下的web 2. 当前用户下的pc
+  "device_flag": 1 // 需要踢出的设备标记 -1: 当前用户下所有设备 0： 当前用户下的app 1： 当前用户下的web 2： 当前用户下的pc
 }
 ```
 

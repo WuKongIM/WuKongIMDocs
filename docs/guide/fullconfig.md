@@ -15,7 +15,7 @@ order: 200
 ```yaml
 mode: 'debug' # 运行模式 模式 debug 测试 release 正式 bench 压力测试
 # Addr: "tcp://0.0.0.0:5100" # tcp监听地址
-# httpAddr: "0.0.0.0:5000" #  http api的监听地址  默认：0.0.0.0:5000
+# httpAddr: "0.0.0.0:5001" #  http api的监听地址  默认：0.0.0.0:5001
 # dataDir: ~/wukongimdata # 数据存储目录
 # tokenAuthOn: true # 是否开启token验证 不配置将根据mode属性判断 debug模式下默认为false release模式为true
 # wsAddr: ""  # websocket 监听地址 例如：ws://0.0.0.0:5200 或wss://0.0.0.0:5200 wss表示开启wss模式

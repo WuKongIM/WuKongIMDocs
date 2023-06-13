@@ -65,7 +65,7 @@ import { WKSDK } from "wukongimjssdk/lib/sdk"
 // }
 
 // 单机模式可以直接设置地址
-WKSDK.shared().config.addr = 'IP:PORT'; // 默认端口为2122
+WKSDK.shared().config.addr = 'ws://IP:PORT'; // 默认端口为5200
 // 认证信息
 WKSDK.shared().config.uid = 'xxxx'; // 用户uid（需要在悟空通讯端注册过）
 WKSDK.shared().config.token = 'xxxx'; // 用户token （需要在悟空通讯端注册过）

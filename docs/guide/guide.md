@@ -14,7 +14,7 @@ title: 文档阅读引导
 
 ## 2. 运行客户端 Demo
 
-下载以下任意源码跑起来 Demo，API 基地址填写自己服务器地址即可。（`格式：http://xxx.xxx.xxx.xx:5000`）
+下载以下任意源码跑起来 Demo，API 基地址填写自己服务器地址即可。（`格式：http://xxx.xxx.xxx.xx:5001`）
 
 [iOS Demo 和 SDK 源码](https://github.com/WuKongIM/WuKongIMiOSSDK)
 
