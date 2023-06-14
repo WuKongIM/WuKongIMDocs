@@ -6,12 +6,24 @@ const Home: any = () => {
     document.title = '悟空IM';
     const ref = useRef<HTMLDivElement>(null);
     const [color] = usePrefersColor();
+
+    // mount
+    React.useEffect(() => {
+        const element = document.getElementById('root')
+        element?.setAttribute('home', 'true')
+        return () => {
+            const element = document.getElementById('root')
+            element?.removeAttribute('home')
+        };
+    }, []);
+
+
     return (
         <section className="home-page">
             <div className="banner">
-              
-                <div className={`content ${color}`} style={{backgroundImage:'url(./././imgs/ic_bg.png)'}}>
-               
+
+                <div className={`content ${color}`} style={{ backgroundImage: 'url(./././imgs/ic_bg.png)' }}>
+
                     <label className="center-title">悟空IM</label>
                     <label className="center-small-text">让信息传递更简单</label>
                     <div className={`btn-view ${color}`}>
@@ -67,7 +79,6 @@ const Home: any = () => {
                     </div>
                 </div>
             </div>
-
         </section>
     );
 };
