@@ -38,7 +38,7 @@ const Home: any = () => {
                     <div className={`card ${color}`}>
                         <div className='bg'>
                             <label className="big-font">特性</label>
-                            <div style={{ marginTop: '37px', marginLeft: '50px', marginRight: '50px' }}>
+                            <div style={{ marginTop: '37px'}}>
                                 <div style={{ display: 'flex' }}>
                                     <div className='card-item'>
                                         <img className="img" src='./././imgs/ic_no_dependency.png' />
