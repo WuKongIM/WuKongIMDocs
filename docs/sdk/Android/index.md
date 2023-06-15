@@ -5,14 +5,14 @@ order: 200
 
 ## 设计理念
 
-为了让开发者更快更方便的使用 SDK，悟空 SDK 提供了一个唯一的入口来访问 SDK 中的所有功能。就像书籍的目录一样可以通过目录查找对应的内容。如连接IM `WKIM.getInstance().getConnectionManager().connection()`
+为了让开发者更快更方便的使用 SDK，悟空 SDK 提供了一个唯一的入口来访问 SDK 中的所有功能。就像书籍的目录一样可以通过目录查找对应的内容。如连接 IM `WKIM.getInstance().getConnectionManager().connection()`
 
 ## 结构说明
 
 ![sdk结构图](./sdk.png) SDK 常用功能介绍
-```
 
 ```java
+
 // 消息管理器
 // 负责消息的增删改查、新消息监听、刷新消息监听、消息入库、发送消息回执监听、监听同步某个聊天数据等
 WKIM.getInstance().getMsgManager()
@@ -58,7 +58,7 @@ WKIM.getInstance().getRobotManager()
 implementation 'com.github.WuKongIM:WuKongIMAndroidSDK:1.0.1'
 ```
 
-jitpack还需在主程序的`build.gradle`文件中添加：
+jitpack 还需在主程序的`build.gradle`文件中添加：
 
 ```
 allprojects {
@@ -68,11 +68,14 @@ allprojects {
     }
 }
 ```
+
 **混淆**
+
 ```
 -dontwarn com.wukong.im.**
 -keep class com.wukong.im.**{*;}
 ```
+
 #### 通过 aar 文件集成
 
 1、在项目主模块新建 Module，命名为`MyLibs`
@@ -169,7 +172,7 @@ WKIM.getInstance().getConnectionManager().addOnGetIpAndPortListener(new IGetIpAn
 ```kotlin
 WKIM.getInstance().connectionManager.addOnGetIpAndPortListener { p0 ->
     p0!!.onGetSocketIpAndPort(
-        "48.135.49.152",
+        "172.0.0.0",
         6666
     )
 }
@@ -230,7 +233,7 @@ WKIM.getInstance().connectionManager.disconnect(isLogout)
         }
 ```
 
-- <font color='#999' size=2>更多连接状态请查看[状态码](/android#状态码)</font>
+- <font color='#999' size=2>更多连接状态请查看[状态码](/sdk/android#状态码)</font>
 
 ### 在线消息收发
 
@@ -444,49 +447,6 @@ WKIM.getInstance().conversationManager.addOnSyncConversationListener { last_msg_
 }
 ```
 
-当进入某个聊天时，如果本地没有该 channel 的聊天记录需同步服务器聊天记录。
-
-#### 监听同步某个频道的消息
-
-`Java`
-
-```java
-WKIM.getInstance().getMsgManager().addOnSyncChannelMsgListener(new ISyncChannelMsgListener() {
-            @Override
-            public void syncChannelMsgs(String channelID, byte channelType, long minMessageSeq, long maxMessageSeq, int limit, boolean reverse,  ISyncChannelMsgBack iSyncChannelMsgBack) {
-                /**
-                * 同步某个频道的消息
-                *
-                * @param channelID           频道ID
-                * @param channelType         频道类型
-                * @param minMessageSeq       最小messageSeq
-                * @param maxMessageSeq       最大messageSeq
-                * @param limit               获取条数
-                * @param reverse             true：从maxMessageSeq往前获取。false：从minMessageSeq往后获取。
-                * @param iSyncChannelMsgBack 请求返回
-                */
-            }
-        });
-```
-
-`Kotlin`
-
-```kotlin
-WKIM.getInstance().msgManager.addOnSyncChannelMsgListener { channelID, channelType, minMessageSeq, maxMessageSeq, limit, reverse, iSyncChannelMsgBack ->
-     /**
-        * 同步某个频道的消息
-        *
-        * @param channelID           频道ID
-        * @param channelType         频道类型
-        * @param minMessageSeq       最小messageSeq
-        * @param maxMessageSeq       最大messageSeq
-        * @param limit               获取条数
-        * @param reverse             true：从maxMessageSeq往前获取。false：从minMessageSeq往后获取。
-        * @param iSyncChannelMsgBack 请求返回
-        */
-}
-```
-
 当在聊天页面中时用户可以上拉下拉，或者搜索查看聊天数据，对此悟空 sdk 提供了如下方法
 
 #### 查看某个频道的聊天信息
@@ -516,12 +476,46 @@ WKIM.getInstance().getMsgManager().getOrSyncHistoryMessages(String channelId, by
 ```kotlin
 WKIM.getInstance().msgManager.getOrSyncHistoryMessages(channelId,channelType,oldestOrderSeq,contain,dropDown,limit,aroundMsgOrderSeq,object :IGetOrSyncHistoryMsgBack{
             override fun onResult(list: MutableList<WKMsg>?) {
-                // list 获取到的消息
+                // list 获取到的消息 展示到UI
             }
         })
 ```
 
 - <font color='#999' size=2>获取历史消息并不是同步方法，因为有可能存在非连续性时会往服务器同步数据</font>
+
+如果本地没有该 channel 的聊天记录需同步服务器聊天记录，这时需监听获取 channel 消息事件
+
+#### 监听同步某个频道的消息
+
+`Java`
+
+```java
+WKIM.getInstance().getMsgManager().addOnSyncChannelMsgListener(new ISyncChannelMsgListener() {
+            @Override
+            public void syncChannelMsgs(String channelID, byte channelType,long startMessageSeq, long endMessageSeq, int limit, int pullMode, ISyncChannelMsgBack iSyncChannelMsgBack) {
+                /**
+                * 同步某个频道的消息
+                *
+                * @param channelID           频道ID
+                * @param channelType         频道类型
+                * @param startMessageSeq     开始消息列号（结果包含start_message_seq的消息）
+                * @param endMessageSeq       结束消息列号（结果不包含end_message_seq的消息）
+                * @param limit               消息数量限制
+                * @param pullMode            拉取模式 0:向下拉取 1:向上拉取
+                * @param iSyncChannelMsgBack 请求返回
+                */
+            }
+        });
+```
+
+`Kotlin`
+
+```kotlin
+WKIM.getInstance().msgManager.addOnSyncChannelMsgListener { channelID, channelType, startMessageSeq, endMessageSeq, limit, pullMode, iSyncChannelMsgBack ->
+     // 调用接口获取channel历史消息
+     // do ...
+}
+```
 
 ### 文本消息
 
@@ -529,7 +523,7 @@ WKIM.getInstance().msgManager.getOrSyncHistoryMessages(channelId,channelType,old
 
 ```java
 public class WKTextContent extends WKMessageContent {
-   
+
     public WKTextContent(String content) {
         this.content = content;
         this.type = WKMsgContentType.WK_TEXT;
@@ -1565,6 +1559,7 @@ public class WKReminder {
     public int needUpload;
 }
 ```
+
 #### 操作数据
 
 `Java`
@@ -1666,7 +1661,7 @@ WKIM.getInstance().reminderManager.addOnNewReminderListener("key",object :INewRe
 
 <a href="https://github.com/WuKongIM/WuKongIMAndroidDemo" target="_blank">demo</a>
 
-<a href="https://github.com/WuKongIM/WuKongIMAndroidSDK" target="_blank">sdk源码</a>
+<a href="https://github.com/WuKongIM/WuKongIMAndroidSDK" target="_blank">sdk 源码</a>
 
 #### 说明
 
