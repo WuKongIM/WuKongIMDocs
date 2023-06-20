@@ -100,7 +100,7 @@ wk top
 压力测试命令
 
 ```
-wk bench [ChannelID] --pub 10 --msgs 10000
+wk bench [ChannelID] --pub 1 --msgs 100000
 ```
 
 ChannelID: 频道 ID（类型默认为群组）
@@ -112,10 +112,10 @@ ChannelID: 频道 ID（类型默认为群组）
 参考结果：
 
 ```
-2023/06/18 17:56:24 Get the tcp address of a test user
-2023/06/18 17:56:24 Starting WuKongIM  pub/sub benchmark [msgSize=128 B]
-2023/06/18 17:56:24 Starting pub, sending 10 messages
-Finished      0s [========================================================================================================================================================] 100%
+2023/06/19 12:58:42 Get the tcp address of a test user
+2023/06/19 12:58:42 Starting WuKongIM  pub/sub benchmark [msgSize=128 B]
+2023/06/19 12:58:42 Starting pub, sending 100,000 messages
+Finished      0s [=======================================================================================================================] 100%
 
-Pub stats: 412 msgs/sec ~ 51.62 KB/sec
+Pub stats: 163,936 msgs/sec ~ 20.01 MB/sec
 ```
