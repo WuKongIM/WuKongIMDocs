@@ -4,17 +4,22 @@ import './style.scss';
 import { usePrefersColor } from 'dumi/dist/client/theme-api/usePrefersColor';
 
 const Home: any = () => {
-    document.title = '悟空IM';
     const ref = useRef<HTMLDivElement>(null);
     const [color] = usePrefersColor();
 
     // mount
     React.useEffect(() => {
+        document.title = '悟空IM';
         const element = document.getElementById('root')
         element?.setAttribute('home', 'true')
+
+        const logoElement = document.querySelector('.dumi-default-logo img');
+        logoElement?.setAttribute('src', '/logo_white.png')
         return () => {
             const element = document.getElementById('root')
             element?.removeAttribute('home')
+
+            logoElement?.setAttribute('src', '/logo.png')
         };
     }, []);
 
@@ -85,7 +90,7 @@ const Home: any = () => {
                     <label className="center-title">悟空IM</label>
                     <label className="center-small-text">让信息传递更简单</label>
                     <div className={`btn-view ${color}`}>
-                        <a href="/guide" className="btn">立即上手</a>
+                        <a href="/guide/guide" className="btn">立即上手</a>
                         <a style={{ marginLeft: '30px' }} target="_blank" href="https://github.com/WuKongIM/WuKongIM"
                             className="btn">Github</a>
                     </div>
