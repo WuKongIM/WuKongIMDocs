@@ -55,7 +55,7 @@ WKIM.getInstance().getRobotManager()
 [![](https://jitpack.io/v/WuKongIM/WuKongIMAndroidSDK.svg)](https://jitpack.io/#WuKongIM/WuKongIMAndroidSDK)
 
 ```
-implementation 'com.github.WuKongIM:WuKongIMAndroidSDK:1.0.1'
+implementation 'com.github.WuKongIM:WuKongIMAndroidSDK:1.0.2'
 ```
 
 jitpack 还需在主程序的`build.gradle`文件中添加：
@@ -69,45 +69,29 @@ allprojects {
 }
 ```
 
+由于 sdk 内使用了 sqlcipher 加密数据库和 curve25519 加密算法，需将库添加到项目中
+
+```
+implementation "net.zetetic:android-database-sqlcipher:4.5.3"
+implementation "androidx.sqlite:sqlite-ktx:2.3.1"
+implementation 'org.whispersystems:curve25519-android:0.5.0'
+implementation 'org.whispersystems:signal-protocol-android:2.8.1'
+```
+
 **混淆**
 
 ```
--dontwarn com.wukong.im.**
--keep class com.wukong.im.**{*;}
-```
+-dontwarn com.xinbida.wukongim.**
+-keep class com.xinbida.wukongim.**{*;}
 
-#### 通过 aar 文件集成
+#数据库加密
+-keep,includedescriptorclasses class net.sqlcipher.** { *; }
+-keep,includedescriptorclasses interface net.sqlcipher.** { *; }
 
-1、在项目主模块新建 Module，命名为`MyLibs`
-
-2、在模块`MyLibs`中新建文件夹，命名为`im`然后将`aar`文件添加到该文件夹中
-
-3、在`im`文件夹中新建`build.gradle`文件并在该文件填入以下代码
-
-```java
-configurations.maybeCreate("default")
-artifacts.add("default", file('wkim-release.aar'))
-```
-
-4、在主项目的`settings.gradle`中添加`
-
-```java
-include ':MyLibs:im'`
-```
-
-5、在主模块中引入`aar`文件，并 sync project 即可完成
-
-```java
-api project(path: ':MyLibs:im')
-```
-
-6、sdk 内涉及到数据库加密和消息加密需导入以下库
-
-```java
-api "net.zetetic:android-database-sqlcipher:4.5.3"
-api "androidx.sqlite:sqlite-ktx:2.3.1"
-api 'org.whispersystems:curve25519-android:0.5.0'
-api 'org.whispersystems:signal-protocol-android:2.8.1'
+#--------- 混淆dh curve25519-------
+-keep class org.whispersystems.curve25519.**{*;}
+-keep class org.whispersystems.** { *; }
+-keep class org.thoughtcrime.securesms.** { *; }
 ```
 
 ### SDK 与 APP 交互原则
@@ -129,7 +113,7 @@ WKIM.getInstance().getMsgManager().addOnSendMsgCallback("key", new ISendMsgCallB
 
 ## 基础使用
 
-事件监听说明[事件监听](/android/onlysdk.html#说明)
+事件监听说明[事件监听](/sdk/android#说明)
 
 ### 初始化
 
@@ -311,7 +295,7 @@ WKIM.getInstance().msgManager.addOnSendMsgCallback("key") { wkMsg ->
     }
 ```
 
-- <font color='#999' size=2>关于事件是否传入唯一 key 说明请查看[事件监听](/android/onlysdk.html#说明)</font>
+- <font color='#999' size=2>关于事件是否传入唯一 key 说明请查看[事件监听](/sdk/android#说明)</font>
 
 #### 收到新消息监听
 
@@ -361,7 +345,7 @@ WKIM.getInstance().msgManager.addOnRefreshMsgListener("") { wkMsg, isEnd ->
 }
 ```
 
-- <font color='#999'>更多消息发送状态请查看[状态码](/android/onlysdk.html#状态码)</font>
+- <font color='#999'>更多消息发送状态请查看[状态码](/sdk/android/#状态码)</font>
 
 ##### 消息类核心属性
 
@@ -1663,7 +1647,7 @@ WKIM.getInstance().reminderManager.addOnNewReminderListener("key",object :INewRe
 
 <a href="https://github.com/WuKongIM/WuKongIMAndroidSDK" target="_blank">sdk 源码</a>
 
-#### 说明
+### 说明
 
 #### 事件监听
 
