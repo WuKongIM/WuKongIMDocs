@@ -417,6 +417,86 @@ CONNACK 报文由服务端所发送，作为对来自客户端的 CONNECT 报文
   
 </table>
 
+## SUB 订阅消息
+
+<table>
+  <tr>
+    <th>参数名</th>
+    <th>类型</th>
+    <th>说明</th>
+  </tr>
+  <tr>
+    <td>Packet Type</td>
+    <td >0.5 byte</td>
+    <td>报文类型(5)</td>
+  </tr>
+  <tr>
+    <td>Flag</td>
+    <td >0.5 byte</td>
+    <td> 标示位</td>
+  </tr>
+  <tr>
+    <td>Remaining Length</td>
+    <td >... byte</td>
+    <td>报文剩余长度</td>
+  </tr>
+   <tr>
+    <td>Setting</td>
+    <td>1 byte</td>
+    <td>频道设置</td>
+  </tr>
+  <tr>
+    <td>Channel ID</td>
+    <td>string</td>
+    <td>频道ID</td>
+  </tr>
+  <tr>
+    <td>Channel Type</td>
+    <td>int8</td>
+    <td>频道类型</td>
+  </tr>
+</table>
+
+## SUBACK 订阅消息回执
+
+<table>
+  <tr>
+    <th>参数名</th>
+    <th>类型</th>
+    <th>说明</th>
+  </tr>
+  <tr>
+    <td>Packet Type</td>
+    <td >0.5 byte</td>
+    <td>报文类型(5)</td>
+  </tr>
+  <tr>
+    <td>Flag</td>
+    <td >0.5 byte</td>
+    <td> 标示位</td>
+  </tr>
+  <tr>
+    <td>Remaining Length</td>
+    <td >... byte</td>
+    <td>报文剩余长度</td>
+  </tr>
+  <tr>
+    <td>Channel ID</td>
+    <td>string</td>
+    <td>频道ID</td>
+  </tr>
+  <tr>
+    <td>Channel Type</td>
+    <td>int8</td>
+    <td>频道类型</td>
+  </tr>
+   <tr>
+    <td>Reason Code</td>
+    <td>uint8</td>
+    <td>订阅状态 1表示成功，其他代码见文档</td>
+  </tr>
+</table>
+
 ## RECV 收消息
 
 <table>

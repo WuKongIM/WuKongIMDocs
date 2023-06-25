@@ -5,7 +5,7 @@ order: 400
 
 ## 集成
 
-### npm 或 yarn 引入
+### npm 或 yarn 安装
 
 ```
 $ npm i wukongimuniappsdk
@@ -16,6 +16,10 @@ $ npm i wukongimuniappsdk
 ```
 $ yarn add wukongimuniappsdk
 ```
+
+### 引入
+
+import { WKSDK } from "wukongimuniappsdk/lib/sdk"
 
 ## 使用
 

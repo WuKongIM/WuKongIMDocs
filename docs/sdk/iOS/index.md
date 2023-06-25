@@ -1153,7 +1153,7 @@ WKMessage *messageEditAfter = [[WKSDK shared].chatManager editMessage:(WKMessage
  添加或取消回应,如果同一个用户存在reactionName的回应则取消回应
  @param reactionName 回应的名称，一般是emoji或本地emoji图片的名称
  @param messageID 回应消息的ID
- @param complete 结果回掉
+ @param complete 结果回调
  */
 [[WKSDK shared].reactionManager addOrCancelReaction:(NSString*)reactionName messageID:(uint64_t)messageID complete:(void(^_Nullable)(NSError  * _Nullable error))complete];
 

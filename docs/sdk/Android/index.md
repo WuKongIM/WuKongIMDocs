@@ -112,7 +112,7 @@ api 'org.whispersystems:signal-protocol-android:2.8.1'
 
 ### SDK 与 APP 交互原则
 
-![SDK与已有APP交互原则](./sdk_app.png) sdk 与 app 交互流程就是 app 调用 sdk 提供的方法，sdk 处理完数据后通过事件将数据回掉给 app。如发送消息流程：app 调用发送消息方法，sdk 将入库后的消息 push 给 app
+![SDK与已有APP交互原则](./sdk_app.png) sdk 与 app 交互流程就是 app 调用 sdk 提供的方法，sdk 处理完数据后通过事件将数据回调给 app。如发送消息流程：app 调用发送消息方法，sdk 将入库后的消息 push 给 app
 
 ```java
 // 发送消息
@@ -289,7 +289,7 @@ WKIM.getInstance().msgManager.sendMessage(textContent,"A",WKChannelType.PERSONAL
 
 #### 消息入库返回（并不是消息发送状态）
 
-在发送消息时，sdk 将消息保存在本地数据库后就会触发入库回掉。此时消息并未进行发送，可在此监听中将消息展示在 UI 上
+在发送消息时，sdk 将消息保存在本地数据库后就会触发入库回调。此时消息并未进行发送，可在此监听中将消息展示在 UI 上
 
 `Java`
 
@@ -338,7 +338,7 @@ WKIM.getInstance().msgManager.addOnNewMsgListener("key") { list ->
 
 #### 刷新消息监听
 
-在 sdk 更新过消息时，如：消息发送状态，有人点赞消息，消息已读回执，消息撤回，消息被编辑等等，sdk 都将回掉以下事件。UI 可通过消息对象`WKMsg`的`clientMsgNO`来判断具体是哪条消息发生了更改。
+在 sdk 更新过消息时，如：消息发送状态，有人点赞消息，消息已读回执，消息撤回，消息被编辑等等，sdk 都将回调以下事件。UI 可通过消息对象`WKMsg`的`clientMsgNO`来判断具体是哪条消息发生了更改。
 
 `Java`
 
@@ -415,7 +415,7 @@ public class WKMessageContent {
 
 ### 离线消息接收
 
-因为悟空 IM 是支持消息永久存储，所以会产生海量的离线消息。对此我们采用了按需拉取的机制，如 10 个会话一个会话 10 万条消息，悟空 IM 不会把这个 10\*10 万=100 万条消息都拉取到本地。 而是采用拉取这 10 个会话的信息和对应的最新 20 条消息，也就是实际只拉取了 200 条消息 相对 100 万条消息来说大大提高了离线拉取速度。用户点进对应的会话才会去按需拉取这个会话的消息。 这些机制 SDK 内部都已做好了封装，使用者其实不需要关心。使用者只需要关心最近会话的变化和监听获取数据的回掉即可。
+因为悟空 IM 是支持消息永久存储，所以会产生海量的离线消息。对此我们采用了按需拉取的机制，如 10 个会话一个会话 10 万条消息，悟空 IM 不会把这个 10\*10 万=100 万条消息都拉取到本地。 而是采用拉取这 10 个会话的信息和对应的最新 20 条消息，也就是实际只拉取了 200 条消息 相对 100 万条消息来说大大提高了离线拉取速度。用户点进对应的会话才会去按需拉取这个会话的消息。 这些机制 SDK 内部都已做好了封装，使用者其实不需要关心。使用者只需要关心最近会话的变化和监听获取数据的回调即可。
 
 ##### 监听同步最近会话
 
@@ -625,7 +625,7 @@ public class WKCMD {
 
 #### 监听移除最近会话
 
-在删除某个最近会话时会回掉此方法
+在删除某个最近会话时会回调此方法
 
 `Java`
 
@@ -1214,7 +1214,7 @@ WKIM.getInstance().getMsgManager().updateLocalExtraWithClientMsgNo(String client
 WKIM.getInstance().msgManager.updateLocalExtraWithClientMsgNo( clientMsgNo,hashExtra)
 ```
 
-- <font color='#999' size=2>更新成功后 sdk 会触发刷新消息回掉</font>
+- <font color='#999' size=2>更新成功后 sdk 会触发刷新消息回调</font>
 
 #### 远程扩展
 
@@ -1237,7 +1237,7 @@ WKIM.getInstance().getMsgManager().saveRemoteExtraMsg(WKChannel channel, List<WK
 WKIM.getInstance().msgManager.saveRemoteExtraMsg(channel,  list)
 ```
 
-- <font color='#999' size=2>更新成功后 sdk 会触发刷新消息回掉</font>
+- <font color='#999' size=2>更新成功后 sdk 会触发刷新消息回调</font>
 
 ### 消息编辑
 
@@ -1685,4 +1685,4 @@ WKIM.getInstance().getMsgManager().removeNewMsgListener("new_msg_key");
 
 - <font color='#999' size=2>一般在退出聊天页面时需移除新消息监听</font>
 
-2、不含`key`的监听。这类监听在应用内只能有一个监听，并且不能移除监听。多次调用会覆盖上一次监听回掉只会以最后一次监听为准。常见的有 获取 channel 资料、获取 ip port 等。
+2、不含`key`的监听。这类监听在应用内只能有一个监听，并且不能移除监听。多次调用会覆盖上一次监听回调只会以最后一次监听为准。常见的有 获取 channel 资料、获取 ip port 等。

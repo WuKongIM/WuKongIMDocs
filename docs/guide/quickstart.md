@@ -48,6 +48,8 @@ docker run -d -p 5001:5001 -p 5100:5100 -p 5200:5200 -p 5300:5300 -e WK_EXTERNAL
 
 ```
 
+（如果慢镜像可以替换为国内的： registry.cn-shanghai.aliyuncs.com/wukongim/wukongim:latest）
+
 `WK_EXTERNAL_IP：为服务器外网IP，用于客户端连接，如果仅测试，客户端和服务器都在一个局域网内，这里可以填部署服务器的局域网IP`
 
 ## Docker Compose 部署

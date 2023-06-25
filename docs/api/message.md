@@ -15,18 +15,21 @@ order: 200
 
 ```json
 {
-  "header": { // 消息头
-      "no_persist": 0, // 是否不存储消息 0.存储 1.不存储
-      "red_dot": 1, // 是否显示红点计数，0.不显示 1.显示
-      "sync_once": 0, // 是否是写扩散，这里一般是0，只有cmd消息才是1
+  "header": {
+    // 消息头
+    "no_persist": 0, // 是否不存储消息 0.存储 1.不存储
+    "red_dot": 1, // 是否显示红点计数，0.不显示 1.显示
+    "sync_once": 0 // 是否是写扩散，这里一般是0，只有cmd消息才是1
   },
   "from_uid": "xxxx", // 发送者uid
   "channel_id": "xxxx", // 接收频道ID 如果channel_type=1 channel_id为个人uid 如果channel_type=2 channel_id为群id
   "channel_type": 2, // 接收频道类型  1.个人频道 2.群聊频道
   "payload": "xxxxx", // 消息内容，base64编码
-  "subscribers": [uid123,uid234,...] // 订阅者 如果此字段有值，表示消息只发给指定的订阅者,没有值则发给频道内所有订阅者
+  "subscribers": ["uid123", "uid234", "..."] // 订阅者 如果此字段有值，表示消息只发给指定的订阅者,没有值则发给频道内所有订阅者
 }
 ```
+
+[payload 内容参考](/guide/proto#普通消息)
 
 成功响应
 

@@ -8,6 +8,12 @@ title: 命令行工具
 
 # 命令行工具
 
+## 安装命令行工具
+
+```shell
+curl -sSL https://gitee.com/WuKongDev/WuKongIMCli/raw/main/install.sh | sudo bash
+```
+
 ## context 命令
 
 配置服务端信息
@@ -18,12 +24,6 @@ wk context add demo --server http://127.0.0.1:5001 --token xxxx --description "W
 
 --server: 为部署的`悟空IM`服务器地址，默认端口 5001
 --token: 为`悟空IM`服务器的 token，默认为空
-
-## 安装命令行工具
-
-```shell
-curl -sSL https://gitee.com/WuKongDev/WuKongIMCli/raw/main/install.sh | sudo bash
-```
 
 ## run 命令
 

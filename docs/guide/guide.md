@@ -22,7 +22,9 @@ title: 文档阅读引导
 
 [Web Demo 和 SDK 源码](https://github.com/WuKongIM/WuKongIMJSSDK)
 
-[Flutter Demo 和 SDK 源码(待完善)](https://github.com/WuKongIM/WuKongIMFlutterSDK)
+[Uniapp Demo 和 SDK 源码](https://github.com/WuKongIM/WuKongIMUniappSDK)
+
+<!-- [Flutter Demo 和 SDK 源码(待完善)](https://github.com/WuKongIM/WuKongIMFlutterSDK) -->
 
 如果你只是想体验一下，可以直接使用我们的 Demo，Demo 中的 API 基地址也可以修改为你自己服务器的地址
 
@@ -53,6 +55,13 @@ Web 在线演示：http://imdemo.githubim.com
 第二步：了解下 Android SDK 的使用：[Android SDK 使用指南](/sdk/android)
 
 还有问题提[issue](https://github.com/WuKongIM/WuKongIMAndroidSDK/issues)
+
+### Uniapp 程序员
+
+第一步：Uniapp Demo： [Uniapp Demo 和 SDK 源码](https://github.com/WuKongIM/WuKongIMUniappSDK)
+第二步：了解下 Uniapp SDK 的使用：[Uniapp SDK 使用指南](/sdk/uniapp)
+
+还有问题提[issue](https://github.com/WuKongIM/WuKongIMUniappSDK/issues)
 
 ### Web 程序员
 
