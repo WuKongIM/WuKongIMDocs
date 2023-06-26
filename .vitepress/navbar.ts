@@ -13,15 +13,20 @@ export const navbar: DefaultTheme.NavItem[] = [
 	},
 	{
 		text: "SDK文档",
-		link: "/sdk/",
 		activeMatch: "^/sdk",
+		items: [
+			{ text: "IOS", link: "/sdk/ios" },
+			{ text: "Android", link: "/sdk/android" },
+			{ text: "Javascript", link: "/sdk/javascript" },
+			{ text: "Uniapp", link: "/sdk/uniapp" },
+		],
 	},
 	{
-		text: "相关链接",
+		text: "项目地址",
 		activeMatch: "^/im",
 		items: [
-			{ text: "Go", link: "https://pkg.go.dev/" },
-			{ text: "Node", link: "https://nodejs.org/" },
+			{ text: "Github", link: "https://github.com/WuKongIM/WuKongIM" },
+			{ text: "Gitee", link: "https://gitee.com/WuKongDev/WuKongIM" },
 		],
 	},
 ];
