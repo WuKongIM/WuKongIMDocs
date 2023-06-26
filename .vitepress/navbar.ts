@@ -22,6 +22,14 @@ export const navbar: DefaultTheme.NavItem[] = [
 		],
 	},
 	{
+		text: "Demo 演示",
+		activeMatch: "^/demo",
+		items: [
+			{ text: "前端聊天", link: "http://imdemo.githubim.com/" },
+			{ text: "后台监控", link: "http://monitor.githubim.com/web" }
+		],
+	},
+	{
 		text: "项目地址",
 		activeMatch: "^/im",
 		items: [
