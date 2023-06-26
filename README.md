@@ -1,20 +1,19 @@
-# WuKongIMDocs
+# 悟空IM
 
-A static site base on [dumi](https://d.umijs.org).
+## 本地开发
 
-## Development
-
-```bash
-# install dependencies
-$ yarn install
-
-# start dev server
-$ yarn start
-
-# build docs
-$ yarn run build
+``` sh
+pnpm run dev
 ```
 
-## LICENSE
+## 编译
 
-MIT
+``` sh
+pnpm run build
+```
+
+## 预览
+
+``` sh
+pnpm run serve
+```
