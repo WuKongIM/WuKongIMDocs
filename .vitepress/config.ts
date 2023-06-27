@@ -10,6 +10,7 @@ export default defineConfig({
 	title: "悟空IM",
 	description: "IM",
 	lang: "zh-CN",
+	ignoreDeadLinks: true,
 	head: [
 		["meta", { name: "keywords", content: "IM" }],
 		["link", { rel: "icon", type: "image/x-icon", href: "/favicon.ico" }],
@@ -48,7 +49,7 @@ export default defineConfig({
       { icon: 'github', link: 'https://github.com/WuKongIM/WuKongIM' }
     ],
 		footer: {
-			message: `本文档内容版权属于 悟空IM 作者，保留所有权利`,
+			message: `本文档内容版权属于 上海信必达网络科技有限公司，保留所有权利`,
 			copyright: "Copyright © 2023 | Powered by 悟空IM | ICP备案号：沪ICP备2021032718号-2",
 		},
 		search: {
