@@ -30,6 +30,10 @@ export const navbar: DefaultTheme.NavItem[] = [
 		],
 	},
 	{
+		text: "更新日志",
+		link: "https://gitee.com/WuKongDev/WuKongIM/releases",
+	},
+	{
 		text: "项目地址",
 		activeMatch: "^/im",
 		items: [
