@@ -1,36 +1,43 @@
 {
-  "name": "WuKongIMDocs",
-  "version": "0.0.1",
-  "description": "Docs For WuKongIM",
-  "license": "MIT",
+  "name": "wukongim-doc",
+  "version": "1.0.0",
+  "description": "wukongim文档",
+  "keywords": [
+    "悟空IM",
+    "IM"
+  ],
   "scripts": {
-    "build": "dumi build",
-    "dev": "dumi dev",
-    "prepare": "husky install && dumi setup",
-    "start": "npm run dev"
-  },
-  "commitlint": {
-    "extends": [
-      "@commitlint/config-conventional"
-    ]
-  },
-  "lint-staged": {
-    "*.{md,json}": [
-      "prettier --write --no-error-on-unmatched-pattern"
-    ]
+    "dev": "vitepress dev",
+    "build": "vitepress build",
+    "serve": "vitepress serve"
   },
   "dependencies": {
-    "prism-react-renderer": "^2.0.5"
+    "@iconify-json/carbon": "^1.1.18",
+    "@iconify-json/logos": "^1.1.33",
+    "@iconify-json/mdi": "^1.1.52",
+    "@iconify-json/ph": "^1.1.5",
+    "@iconify-json/twemoji": "^1.1.11",
+    "@iconify-json/vscode-icons": "^1.1.25",
+    "vitepress": "1.0.0-beta.3",
+    "vue": "^3.3.4"
   },
   "devDependencies": {
-    "@commitlint/cli": "^17.1.2",
-    "@commitlint/config-conventional": "^17.1.0",
-    "dumi": "^2.1.22",
-    "husky": "^8.0.1",
-    "lint-staged": "^13.0.3",
-    "prettier": "^2.7.1"
+    "@types/node": "^18.15.13",
+    "markdown-it-custom-attrs": "^1.0.2",
+    "typescript": "^5.0.4",
+    "unocss": "^0.53.3",
+    "vite": "^4.3.9"
   },
-  "authors": [
-    "tt@gmail.com"
-  ]
+  "pnpm": {
+    "peerDependencyRules": {
+      "ignoreMissing": [
+        "@algolia/client-search"
+      ]
+    }
+  },
+  "engines": {
+    "node": "^14.18.0 || >=16.0.0"
+  },
+  "packageManager": "pnpm@7.9.5",
+  "license": "ISC"
 }
