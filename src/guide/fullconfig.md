@@ -5,32 +5,37 @@
 配置文件默认在此目录下（如果没有就创建一个）： ～/wukongim/wk.yaml
 
 ```yaml
-mode: 'debug' # 运行模式 模式 debug 测试 release 正式 bench 压力测试
+
+
+mode: "debug" # 运行模式 模式 debug 测试 release 正式 bench 压力测试
 # Addr: "tcp://0.0.0.0:5100" # tcp监听地址
 # httpAddr: "0.0.0.0:5001" #  http api的监听地址  默认：0.0.0.0:5001
 # dataDir: ~/wukongimdata # 数据存储目录
 # tokenAuthOn: false # 是否开启token验证 默认为false，如果不开启任何人都可以连接到此节点，生产环境建议开启
 # managerToken: "" # 管理员token 如果此字段有值，则API接口需要在请求头中添加token字段，值为此字段的值
-# wsAddr: ""  # websocket ws 监听地址 例如：ws://0.0.0.0:5200
+# wsAddr: ""  # websocket ws 监听地址 例如：ws://0.0.0.0:5200 
 # wssAddr: ""  # websocket wss 监听地址 例如：wss://0.0.0.0:5210
 external:
-  ip: '' # 如果节点部署在内网，需要配置外网ip，否则外网的客户端无法连接到此节点
+  ip: "" # 如果节点部署在内网，需要配置外网ip，否则外网的客户端无法连接到此节点
 #   tcpAddr: "" #  默认自动获取， 节点的TCP地址 对外公开，APP端长连接通讯  格式： ip:port  （支持域名配置）
 #   wsAddr: "" # 默认自动获取， 节点的wsAdd地址 对外公开 WEB端长连接通讯 格式： ws://ip:port  （支持域名配置）
 #   wssAddr: "" # 配置wss地址，如果不配置则不开启wss，如果配置了wss则必须配置证书文件 格式：wss://ip:port （支持域名配置）
 #   monitorAddr: "" # 默认自动获取， 节点的monitor地址 对外公开 监控服务 格式： ip:port
 #   apiUrl: "" # 默认自动获取， 节点的http地址 对外公开 http api 格式： http://ip:port
 # wssConfig:
-# certFile: "" # wss证书文件路径
-# keyFile: "" # wss证书key文件路径
+  # certFile: "" # wss证书文件路径
+  # keyFile: "" # wss证书key文件路径
 # ginMode: "release" # gin框架的模式 debug 调试 release 正式 test 测试
-# logger:
+# logger: 
 #   level: 0 # 日志级别 0:未配置,将根据mode属性判断 1:debug 2:info 3:warn 4:error
 #   dir: "./logs" # 日志目录
 #   lineNum: false # 是否打印行号
-# monitor:
+# monitor: 
 #   on: true # 是否开启监控
 #   addr: "0.0.0.0:5300" # 监控监听地址 默认为 0.0.0.0:5300
+# demo: 
+#   on: true # 是否开启demo
+#   addr: "0.0.0.0:5172" # demo监听地址 默认为 0.0.0.0:5172
 # channel:
 #   cacheCount: 1000 # 频道缓存数量 频道被加载后会缓存到内存中，如果频道数量过多，会占用大量内存，可以通过此配置限制缓存数量
 #   createIfNoExist: true # 频道不存在时是否自动创建 默认为true
@@ -54,10 +59,11 @@ external:
 #   syncOnce: 100 # 最近会话同步保存一次的数量 超过指定未保存的数量 将进行保存 默认为100
 #   userMaxCount: 1000 # 用户最近会话最大数量，超过此数量的最近会话后最旧的那条将被覆盖掉 默认为1000
 # messageRetry: # 消息重试配置
-#   interval: 60s # 重试间隔 默认为60秒
+#   interval: 60s # 重试间隔 默认为60秒  
 #   scanInterval: 5s  # 每隔多久扫描一次超时队列，看超时队列里是否有需要重试的消息
 #   maxCount: 5    # 消息最大重试次数, 服务端持有用户的连接但是给此用户发送消息后在指定的间隔内没有收到ack，将会重新发送，直到超过maxCount配置的数量后将不再发送（这种情况很少出现，如果出现这种情况此消息只能去离线接口去拉取）
 # userMsgQueueMaxSize: 0 #  用户消息队列最大大小，超过此大小此用户将被限速，0为不限制
+ 
 
 ```
 

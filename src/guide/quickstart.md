@@ -1,6 +1,6 @@
 # 部署
 
-## 一键部署（推荐）
+## 第一种：一键部署（推荐）
 
 ```shell
 curl -sSL https://gitee.com/WuKongDev/WuKongIMCli/raw/main/install.sh | sudo bash
@@ -33,7 +33,7 @@ external:
   ip: 'xxx.xxx.xxxx.xxx'
 ```
 
-## Docker 部署
+## 第二种：Docker 部署
 
 ```shell
 docker run -d -p 5001:5001 -p 5100:5100 -p 5172:5172 -p 5200:5200 -p 5300:5300 -e WK_EXTERNAL_IP=xxx.xxx.xxx.xx  --name wukongim -v ~/wukongim:/root/wukongim  wukongim/wukongim:latest
@@ -44,7 +44,7 @@ docker run -d -p 5001:5001 -p 5100:5100 -p 5172:5172 -p 5200:5200 -p 5300:5300 -
 
 `WK_EXTERNAL_IP：为服务器外网IP，用于客户端连接，如果仅测试，客户端和服务器都在一个局域网内，这里可以填部署服务器的局域网IP`
 
-## Docker Compose 部署
+## 第三种： Docker Compose 部署
 
 ```shell
 
