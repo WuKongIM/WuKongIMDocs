@@ -5,7 +5,7 @@
 
 ## 结构说明
 
-![sdk结构图](./wksdk.png)
+![sdk结构图](./wkjssdk.png)
 
 ``` js
 // 聊天管理者

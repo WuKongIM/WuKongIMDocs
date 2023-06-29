@@ -36,7 +36,7 @@ external:
 ## Docker 部署
 
 ```shell
-docker run -d -p 5001:5001 -p 5100:5100 -p 5200:5200 -p 5300:5300 -e WK_EXTERNAL_IP=xxx.xxx.xxx.xx  --name wukongim -v ~/wukongim:/root/wukongim  wukongim/wukongim:latest
+docker run -d -p 5001:5001 -p 5100:5100 -p 5172:5172 -p 5200:5200 -p 5300:5300 -e WK_EXTERNAL_IP=xxx.xxx.xxx.xx  --name wukongim -v ~/wukongim:/root/wukongim  wukongim/wukongim:latest
 
 ```
 
@@ -68,12 +68,17 @@ docker-compose up -d
 
 5100: app 长连接的 tcp 端口
 
+5172: demo端口，用于测试
+
 5200: websocket 端口，web 或 pc 长连接使用的
 
 5300: 监控端口，可以查看服务的运行状态（待完善）
 
 查看服务器信息： http://127.0.0.1:5001/varz
+
 查看监控系统： http://127.0.0.1:5300/web
+
+chat demo： http://127.0.0.1:5172/chatdemo
 
 ## 验证部署
 
