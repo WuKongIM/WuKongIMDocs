@@ -15,6 +15,10 @@ body的数据类似为： [uid1-0-1,uid2-1-0]
 
 ```
 
+图解webhook
+
+![webhook](./webhook.png)	
+
 以下为具体 webhook 详情
 
 ## 用户在线状态通知

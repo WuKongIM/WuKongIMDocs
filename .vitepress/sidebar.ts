@@ -25,6 +25,7 @@ export const sidebar: DefaultTheme.Sidebar = {
 			text: "进阶",
 			collapsed: false,
 			items: [
+				{ text: "最佳实践", link: "/guide/practice" },
 				{ text: "配置说明", link: "/guide/fullconfig" },
 				{ text: "WSS 配置", link: "/guide/wss" },
 				{ text: "命令行工具", link: "/guide/cli" },
