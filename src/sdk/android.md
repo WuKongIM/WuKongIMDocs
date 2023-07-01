@@ -1671,3 +1671,31 @@ WKIM.getInstance().getMsgManager().removeNewMsgListener("new_msg_key");
 - <font color='#999' size=2>一般在退出聊天页面时需移除新消息监听</font>
 
 2、不含`key`的监听。这类监听在应用内只能有一个监听，并且不能移除监听。多次调用会覆盖上一次监听回调只会以最后一次监听为准。常见的有 获取 channel 资料、获取 ip port 等。
+
+
+### 其他
+
+#### 日志
+sdk在重要信息里输出了相关logcat，并将日志保存在手机的`sdcard/Android/data/包/files/WKLoggerV1.0.0.log`目录下，需开启debug模式才能查看日志信息。
+
+`java`
+```java
+WKIM.getInstance().setDebug(true);
+```
+
+`kotlin`
+```kotlin
+WKIM.getInstance().isDebug = true
+```
+sdk在处理附件消息时会将附件copy到sdcard中，这时app可指定缓存目录。如指定文件夹名为`wkIM`，则缓存目录为：`sdcard/Android/data/包/files/wkIM` 并且sdk会通过`channel`来划分附件保存位置
+
+`java`
+```java
+WKIM.getInstance().setFileCacheDir("wkIM");
+```
+
+`kotlin`
+```kotlin
+WKIM.getInstance().setFileCacheDir("wkIM")
+```
+
