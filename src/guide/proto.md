@@ -323,7 +323,7 @@ CONNACK 报文由服务端所发送，作为对来自客户端的 CONNECT 报文
   <tr>
     <td>Setting</td>
     <td>1 byte</td>
-    <td>消息设置（见下 版本4有效）</td>
+    <td>消息设置</td>
   </tr>
   <tr>
     <td>Client Seq</td>
@@ -333,7 +333,12 @@ CONNACK 报文由服务端所发送，作为对来自客户端的 CONNECT 报文
   <tr>
     <td>Client Msg No</td>
     <td>string</td>
-    <td>客户端唯一标示，用于客户端消息去重（version==2）</td>
+    <td>客户端唯一标示，用于客户端消息去重</td>
+  </tr>
+  <tr>
+    <td>StreamNo</td>
+    <td>string</td>
+    <td>流式消息编号（setting里需要开启Stream）</td>
   </tr>
    <tr>
     <td>Channel Id</td>
@@ -409,7 +414,7 @@ CONNACK 报文由服务端所发送，作为对来自客户端的 CONNECT 报文
   
 </table>
 
-## SUB 订阅消息
+## SUB 订阅消息（研发中）
 
 <table>
   <tr>
@@ -437,6 +442,11 @@ CONNACK 报文由服务端所发送，作为对来自客户端的 CONNECT 报文
     <td>1 byte</td>
     <td>频道设置</td>
   </tr>
+   <tr>
+    <td>SubNo</td>
+    <td>string</td>
+    <td>订阅编号</td>
+  </tr>
   <tr>
     <td>Channel ID</td>
     <td>string</td>
@@ -447,9 +457,19 @@ CONNACK 报文由服务端所发送，作为对来自客户端的 CONNECT 报文
     <td>int8</td>
     <td>频道类型</td>
   </tr>
+   <tr>
+    <td>Action</td>
+    <td>int8</td>
+    <td>0.订阅 1.取消</td>
+  </tr>
+  <tr>
+    <td>Param</td>
+    <td>string</td>
+    <td>订阅参数</td>
+  </tr>
 </table>
 
-## SUBACK 订阅消息回执
+## SUBACK 订阅消息回执（研发中）
 
 <table>
   <tr>
@@ -473,6 +493,11 @@ CONNACK 报文由服务端所发送，作为对来自客户端的 CONNECT 报文
     <td>报文剩余长度</td>
   </tr>
   <tr>
+    <td>SubNo</td>
+    <td>string</td>
+    <td>订阅编号</td>
+  </tr>
+  <tr>
     <td>Channel ID</td>
     <td>string</td>
     <td>频道ID</td>
@@ -481,6 +506,11 @@ CONNACK 报文由服务端所发送，作为对来自客户端的 CONNECT 报文
     <td>Channel Type</td>
     <td>int8</td>
     <td>频道类型</td>
+  </tr>
+   <tr>
+    <td>Action</td>
+    <td>int8</td>
+    <td>0.订阅 1.取消</td>
   </tr>
    <tr>
     <td>Reason Code</td>
@@ -540,7 +570,22 @@ CONNACK 报文由服务端所发送，作为对来自客户端的 CONNECT 报文
   <tr>
     <td>Client Msg No</td>
     <td>string</td>
-    <td>客户端唯一标示，用于客户端消息去重（version==2）</td>
+    <td>客户端唯一标示，用于客户端消息去重</td>
+  </tr>
+  <tr>
+    <td>StreamNo</td>
+    <td>string</td>
+    <td>流式消息编号，根据setting是否开启stream判断是否有此字段</td>
+  </tr>
+  <tr>
+    <td>StreamSeq</td>
+    <td>uint32</td>
+    <td>流序号，根据setting是否开启stream判断是否有此字段</td>
+  </tr>
+  <tr>
+    <td>StreamFlag</td>
+    <td>uint8</td>
+    <td>流标记（0.开始 1.进行中 2. 结束），根据setting是否开启stream判断是否有此字段</td>
   </tr>
    <tr>
     <td>Message ID</td>
@@ -704,7 +749,7 @@ CONNACK 报文由服务端所发送，作为对来自客户端的 CONNECT 报文
     <td>Signal</td>
     <td>NoEncrypt</td>
     <td>Topic</td>
-    <td>Reserved</td>
+    <td>Stream</td>
     <td>Reserved</td>
     <td>Reserved</td>
   </tr>
@@ -720,6 +765,8 @@ NoEncrypt: 消息是否不开启加密
 Signal： 消息是否开启了 signal 端对端加密
 
 Topic：消息是否包含 topic（如果为 1 则发送包和接受包都将包含 topic 字段）
+
+Stream: 流式消息
 
 Reserved：保留位，暂未用到
 
