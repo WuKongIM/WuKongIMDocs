@@ -963,7 +963,7 @@ WKIM.getInstance().getMsgManager().registerContentMsg(WKCardContent.class);
  WKIM.getInstance().msgManager.registerContentMsg(WKCardContent::class.java)
 ```
 
-对此通过这三步自定义普通消息就已完成
+对此通过这三步自定义普通消息就已完成。在收到消息时`WKMsg`中的type为3就表示该消息是名片消息，其中`baseContentMsgModel`则为自定义的`WKCardContent`，这时可将`baseContentMsgModel`强转为`WKCardContent`并渲染到UI上
 
 ### 自定义附件消息
 
@@ -1676,7 +1676,7 @@ WKIM.getInstance().getMsgManager().removeNewMsgListener("new_msg_key");
 ### 其他
 
 #### 日志
-sdk在重要信息里输出了相关logcat，并将日志保存在手机的`sdcard/Android/data/包/files/WKLoggerV1.0.0.log`目录下，需开启debug模式才能查看日志信息。
+sdk在重要信息里输出了相关logcat，并将日志保存在手机的`sdcard/Android/data/APP包名/files/WKLoggerV1.0.0.log`目录下，需开启debug模式才能查看日志信息。
 
 `java`
 ```java
@@ -1687,7 +1687,9 @@ WKIM.getInstance().setDebug(true);
 ```kotlin
 WKIM.getInstance().isDebug = true
 ```
-sdk在处理附件消息时会将附件copy到sdcard中，这时app可指定缓存目录。如指定文件夹名为`wkIM`，则缓存目录为：`sdcard/Android/data/包/files/wkIM` 并且sdk会通过`channel`来划分附件保存位置
+
+#### 附件缓存
+sdk在处理附件消息时会将附件copy到sdcard中，这时app可指定缓存目录。如指定文件夹名为`wkIM`，则缓存目录为：`sdcard/Android/data/APP包名/files/wkIM` 并且sdk会通过`channel`来划分附件保存位置
 
 `java`
 ```java
