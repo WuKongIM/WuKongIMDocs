@@ -22,6 +22,7 @@ order: 200
     "sync_once": 0 // 是否是写扩散，这里一般是0，只有cmd消息才是1
   },
   "from_uid": "xxxx", // 发送者uid
+  "stream_no": "", // 流式消息编号，如果是流式消息，需要指定，否则为空
   "channel_id": "xxxx", // 接收频道ID 如果channel_type=1 channel_id为个人uid 如果channel_type=2 channel_id为群id
   "channel_type": 2, // 接收频道类型  1.个人频道 2.群聊频道
   "payload": "xxxxx", // 消息内容，base64编码
