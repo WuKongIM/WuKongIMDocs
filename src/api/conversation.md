@@ -21,7 +21,7 @@ order: 300
 {
   "uid": "xxxx", // 当前登录用户uid
   "version": 1234, //  当前客户端的会话最大版本号(从保存的结果里取最大的version，如果本地没有数据则传0)，
-  "last_msg_seqs": "xxx:2:123|xxx:1:3434", //   客户端所有频道会话的最后一条消息序列号拼接出来的同步串 格式： channelID:channelType:last_msg_seq|channelID:channelType:last_msg_seq
+  "last_msg_seqs": "xxx:2:123|xxx:1:3434", //   客户端所有频道会话的最后一条消息序列号拼接出来的同步串 格式： channelID:channelType:last_msg_seq|channelID:channelType:last_msg_seq  （此字段非必填，如果不填就获取全量数据，填写了获取增量数据，看你自己的需求。）
   "msg_count": 20 // 每个会话获取最大的消息数量，一般为app点进去第一屏的数据
 }
 ```
