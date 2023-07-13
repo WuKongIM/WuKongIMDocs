@@ -3,23 +3,23 @@ title: Uniapp
 order: 400
 ---
 # Uniapp
-## 集成
+## 集成 (与JSSDK一样)
 
 ### npm 或 yarn 安装
 
 ```
-$ npm i wukongimuniappsdk
+$ npm i wukongimjssdk
 ```
 
 或者
 
 ```
-$ yarn add wukongimuniappsdk
+$ yarn add wukongimjssdk
 ```
 
 ### 引入
 
-import { WKSDK } from "wukongimuniappsdk/lib/sdk"
+import { WKSDK } from "wukongimjssdk/lib/sdk"
 
 ## 使用
 
