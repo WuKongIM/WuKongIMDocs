@@ -48,12 +48,29 @@ pnpm add wukongimjssdk
 :::
 
 
-
 ### 引入
 
-``` js
-import { WKSDK } from "wukongimjssdk/lib/sdk"
+::: code-group
+
+``` js [ES6]
+import WKSDK from "wukongimjssdk"
 ```
+
+
+``` js [AMD]
+const  WKSDK  = require("wukongimjssdk").default
+```
+
+``` js [浏览器]
+
+<script src="https://cdn.jsdelivr.net/npm/wukongimjssdk@1.0.7/lib/wukongimjssdk.umd.js"></script>
+
+```
+
+
+:::
+
+
 
 ### 初始化
 
