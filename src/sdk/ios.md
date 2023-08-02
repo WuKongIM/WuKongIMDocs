@@ -681,7 +681,7 @@ cmd 消息由服务端下发客户端解析。
 
 #### 数据监听
 
-```obkc
+```objc
 
 [[WKSDK shared].channelManager addDelegate:self] // WKChannelManagerDelegate
 

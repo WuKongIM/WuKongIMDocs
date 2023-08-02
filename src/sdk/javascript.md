@@ -63,15 +63,15 @@ const  WKSDK  = require("wukongimjssdk").default
 
 ``` js [浏览器]
 
-<script src="https://cdn.jsdelivr.net/npm/wukongimjssdk@1.0.9/lib/wukongimjssdk.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/wukongimjssdk@1.1.0/lib/wukongimjssdk.umd.js"></script>
 
-浏览器使用必须都加前缀 wk, 例如 wk.WKSDK.shared()
 
 ```
 
 
 :::
 
+`通过<script>标签引入使用必须都加前缀 wk, 例如 wk.WKSDK.shared()`
 
 
 ### 初始化
