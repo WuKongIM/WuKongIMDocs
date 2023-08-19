@@ -19,6 +19,7 @@ export const navbar: DefaultTheme.NavItem[] = [
 			{ text: "Android", link: "/sdk/android" },
 			{ text: "Javascript", link: "/sdk/javascript" },
 			{ text: "Uniapp", link: "/sdk/uniapp" },
+			{ text: "微信小程序", link: "/sdk/smallprogram" },
 		],
 	},
 	{

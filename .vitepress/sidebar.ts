@@ -17,14 +17,17 @@ export const sidebar: DefaultTheme.Sidebar = {
 			text: "快速开始",
 			collapsed: false,
 			items: [
-				{ text: "部署", link: "/guide/quickstart" },
-				{ text: "集成到自己系统", link: "/guide/integration" },
+				{ text: "一键部署（推荐）", link: "/guide/deploy-default" },
+				{ text: "Docker方式部署", link: "/guide/deploy-docker" },
+				{ text: "Docker Compose方式部署", link: "/guide/deploy-dockercompose" },
+				{ text: "部署配置", link: "/guide/deploy-config" },
 			],
 		},
 		{
 			text: "进阶",
 			collapsed: false,
 			items: [
+				{ text: "集成到自己系统", link: "/guide/integration" },
 				{ text: "最佳实践", link: "/guide/practice" },
 				{ text: "配置说明", link: "/guide/fullconfig" },
 				{ text: "WSS 配置", link: "/guide/wss" },
