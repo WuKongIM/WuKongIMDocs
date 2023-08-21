@@ -27,6 +27,7 @@ export const sidebar: DefaultTheme.Sidebar = {
 			text: "进阶",
 			collapsed: false,
 			items: [
+				{ text: "离线消息说明", link: "/guide/offlinemsg" },
 				{ text: "集成到自己系统", link: "/guide/integration" },
 				{ text: "最佳实践", link: "/guide/practice" },
 				{ text: "配置说明", link: "/guide/fullconfig" },
