@@ -35,7 +35,7 @@ WKIM.getInstance().getConversationManager()
 WKIM.getInstance().getChannelMembersManager()
 
 // 提醒管理
-// 获取某个会话的提醒如：[有人@我] [入群申请] 等。还可自定义提醒项，如像 红包未领取，转账和语音未读 等
+// 获取某个会话的提醒如：[有人@我] [入群申请] 等。还可自定义提醒项，如像 语音未读 等
 WKIM.getInstance().getReminderManager()
 
 // 命令管理
@@ -1563,7 +1563,7 @@ WKIM.getInstance().getReminderManager().saveReminders(result);
 WKIM.getInstance().reminderManager.saveReminders(result)
 ```
 
-当 sdk 更新了会话提醒会触发最近会话的刷新事件，此时需监听刷新最近会话事件
+当 sdk 更新了提醒项，会话提醒会触发最近会话的刷新事件，此时需监听刷新最近会话事件
 
 #### 监听刷新最近会话
 
