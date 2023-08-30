@@ -56,7 +56,7 @@ WKIM.getInstance().getRobotManager()
 [![](https://jitpack.io/v/WuKongIM/WuKongIMAndroidSDK.svg)](https://jitpack.io/#WuKongIM/WuKongIMAndroidSDK)
 
 ```
-implementation 'com.github.WuKongIM:WuKongIMAndroidSDK:1.0.2'
+implementation implementation 'com.github.WuKongIM:WuKongIMAndroidSDK:version' // 版本号请看上面
 ```
 
 jitpack 还需在主程序的`build.gradle`文件中添加：
