@@ -17,7 +17,8 @@ export const navbar: DefaultTheme.NavItem[] = [
 		items: [
 			{ text: "IOS", link: "/sdk/ios" },
 			{ text: "Android", link: "/sdk/android" },
-			{ text: "Javascript", link: "/sdk/javascript" },
+			{ text: "Javascript", link: "/sdk/jssdk/intro" },
+			{ text: "Flutter", link: "/sdk/flutter" },
 			{ text: "Uniapp", link: "/sdk/uniapp" },
 			{ text: "微信小程序", link: "/sdk/smallprogram" },
 		],

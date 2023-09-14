@@ -63,7 +63,7 @@ const  WKSDK  = require("wukongimjssdk").default
 
 ``` js [浏览器]
 
-<script src="https://cdn.jsdelivr.net/npm/wukongimjssdk@1.1.0/lib/wukongimjssdk.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/wukongimjssdk@1.1.3/lib/wukongimjssdk.umd.js"></script>
 
 
 ```
@@ -435,6 +435,7 @@ WKSDK.shared().config.provider.messageUploadTaskCallback = (
   return new MediaMessageUploadTask(message);
 };
 ```
+
 ### 自定义普通消息
 
 我们以自定义一个 gif 消息为例。
