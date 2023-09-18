@@ -20,6 +20,7 @@ export const sidebar: DefaultTheme.Sidebar = {
 				{ text: "一键部署（推荐）", link: "/guide/deploy-default" },
 				{ text: "Docker方式部署", link: "/guide/deploy-docker" },
 				{ text: "Docker Compose方式部署", link: "/guide/deploy-dockercompose" },
+				{ text: "1Panle部署", link: "/guide/1panle" },
 				{ text: "部署配置", link: "/guide/deploy-config" },
 			],
 		},
