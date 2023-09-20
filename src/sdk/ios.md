@@ -1114,7 +1114,7 @@ WKMessage *messageEditAfter = [[WKSDK shared].chatManager editMessage:(WKMessage
 
 ### 消息回应(点赞)
 
-如果你不理解消息回应请查看[什么是消息回应](/guide/unifying.html#什么是消息回应)
+<!-- 如果你不理解消息回应请查看[什么是消息回应](/guide/unifying.html#什么是消息回应) -->
 
 #### 操作数据
 

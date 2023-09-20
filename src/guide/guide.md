@@ -13,7 +13,7 @@ title: 介绍
 
 ## 部署服务端
 
-服务端部署：[一分钟部署](/guide/quickstart)
+服务端部署：[一分钟部署](/guide/deploy-binary)
 
 部署后打开  http://127.0.0.1:5172/chatdemo 即可体验
 

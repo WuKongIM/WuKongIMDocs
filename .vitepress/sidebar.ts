@@ -17,7 +17,7 @@ export const sidebar: DefaultTheme.Sidebar = {
 			text: "快速开始",
 			collapsed: false,
 			items: [
-				{ text: "一键部署（推荐）", link: "/guide/deploy-default" },
+				{ text: "执行文件部署（推荐）", link: "/guide/deploy-binary" },
 				{ text: "Docker方式部署", link: "/guide/deploy-docker" },
 				{ text: "Docker Compose方式部署", link: "/guide/deploy-dockercompose" },
 				{ text: "部署配置", link: "/guide/deploy-config" },

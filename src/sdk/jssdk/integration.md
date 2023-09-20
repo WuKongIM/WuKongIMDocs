@@ -34,7 +34,7 @@ const  WKSDK  = require("wukongimjssdk").default
 
 ``` js [浏览器]
 
-<script src="https://cdn.jsdelivr.net/npm/wukongimjssdk@1.1.3/lib/wukongimjssdk.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/wukongimjssdk@1.1.7/lib/wukongimjssdk.umd.js"></script>
 
 
 ```

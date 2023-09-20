@@ -44,7 +44,7 @@ class Subscriber {
 
 ### 请求频道资料
 
-`需要实现获取频道资料的数据源` [获取频道资料数据源](sdk/jssdk/datasource.html#获取频道资料数据源)
+`需要实现获取频道资料的数据源` [获取频道资料数据源](/sdk/jssdk/datasource.html#获取频道资料数据源)
 
 ```js
 // 强制从服务器获取频道资料并放入缓存
@@ -92,7 +92,7 @@ WKSDK.shared().channelManager.removeListener(listen)
 
 ### 同步频道的订阅者列表
 
-`需要实现同步频道订阅者数据源` [同步频道订阅者数据源](sdk/jssdk/datasource.html#同步频道订阅者数据源)
+`需要实现同步频道订阅者数据源` [同步频道订阅者数据源](/sdk/jssdk/datasource.html#同步频道订阅者数据源)
 
 ```js
 WKSDK.shared().channelManager.syncSubscribes(channel)

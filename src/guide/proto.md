@@ -351,6 +351,11 @@ CONNACK 报文由服务端所发送，作为对来自客户端的 CONNECT 报文
     <td>频道类型（1.个人 2.群组）</td>
   </tr>
    <tr>
+    <td>Expire</td>
+    <td>uint32</td>
+    <td>消息过期时间（单位秒） version>=3 </td>
+  </tr>
+   <tr>
     <td>Msg Key</td>
     <td>string</td>
     <td>用于验证此消息是否合法（仿中间人篡改）</td>
@@ -566,6 +571,11 @@ CONNACK 报文由服务端所发送，作为对来自客户端的 CONNECT 报文
     <td>Channel Type</td>
     <td>int8</td>
     <td>频道类型</td>
+  </tr>
+   <tr>
+    <td>Expire</td>
+    <td>uint32</td>
+    <td>消息过期时间（单位秒） version>=3 </td>
   </tr>
   <tr>
     <td>Client Msg No</td>
