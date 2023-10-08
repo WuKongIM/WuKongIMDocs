@@ -270,7 +270,12 @@ CONNACK 报文由服务端所发送，作为对来自客户端的 CONNECT 报文
     <td >... byte</td>
     <td>报文剩余长度</td>
   </tr>
-   <tr>
+  <tr>
+    <td>ServerVersion</td>
+    <td>uint8</td>
+    <td>服务器支持的最大版本 version>=4</td>
+  </tr>
+  <tr>
     <td>Time Diff</td>
     <td>int64</td>
     <td>客户端时间与服务器的差值，单位毫秒。
