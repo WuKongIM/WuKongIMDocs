@@ -5,7 +5,7 @@
 
 ## 结构说明
 
-![sdk结构图](./wkjssdk.png)
+![sdk结构图](./jssdk/wkjssdk.png)
 
 ``` js
 // 聊天管理者
@@ -63,7 +63,7 @@ const  WKSDK  = require("wukongimjssdk").default
 
 ``` js [浏览器]
 
-<script src="https://cdn.jsdelivr.net/npm/wukongimjssdk@1.1.0/lib/wukongimjssdk.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/wukongimjssdk@1.1.3/lib/wukongimjssdk.umd.js"></script>
 
 
 ```
@@ -435,6 +435,7 @@ WKSDK.shared().config.provider.messageUploadTaskCallback = (
   return new MediaMessageUploadTask(message);
 };
 ```
+
 ### 自定义普通消息
 
 我们以自定义一个 gif 消息为例。
@@ -485,7 +486,7 @@ WKSDK.shared().register(MessageContentTypeConst.gif, () => new GifContent()); //
 
 #### 第一步继承 MediaMessageContent
 
-注意这里是继承 MediaMessageContent 不是 MessageContent，当发送附件消息的时候，sdk 会调用[上传任务](/web/onlysdk.html#消息附件上传设置),将本地的文件上传到服务器，然后再进行消息的编码和发送
+注意这里是继承 MediaMessageContent 不是 MessageContent，当发送附件消息的时候，sdk 会调用上传任务,将本地的文件上传到服务器，然后再进行消息的编码和发送
 
 最终传递的消息内容为 ```{"type":4,"url":"xxxx","width":xxx,"height":xxx}```
 

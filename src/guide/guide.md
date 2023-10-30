@@ -5,77 +5,32 @@ title: 介绍
 
 # 文档阅读引导
 
-## 1. 部署服务端
+## 在线体验
 
-服务端部署：[一分钟部署](/guide/quickstart)
+聊天Demo：http://imdemo.githubim.com
 
-## 2. 运行客户端 Demo
+监控系统：http://monitor.githubim.com/web/
 
-下载以下任意源码跑起来 Demo，API 基地址填写自己服务器地址即可。（`格式：http://xxx.xxx.xxx.xx:5001`）
+## 部署服务端
 
-[iOS Demo 和 SDK 源码](https://github.com/WuKongIM/WuKongIMiOSSDK)
+服务端部署：[一分钟部署](/guide/deploy-binary)
 
-[Android Demo 和 SDK 源码](https://github.com/WuKongIM/WuKongIMAndroidSDK)
+部署后打开  http://127.0.0.1:5172/chatdemo 即可体验
 
-[Web Demo 和 SDK 源码](https://github.com/WuKongIM/WuKongIMJSSDK)
 
-[Uniapp Demo 和 SDK 源码](https://github.com/WuKongIM/WuKongIMUniappSDK)
 
-[React Native Demo 源码](https://github.com/wengqianshan/WuKongIMReactNative)
+## SDK源码（SDK源码内附有Demo）与文档
 
-`微信小程序还没有Demo，微信小程序SDK可以使用JS SDK，JS SDK做了微信小程序的兼容`
+| 项目名 | Github地址 | Gitee地址 | 文档 | 说明 |
+| ---- | ---------- | --------- | ---- |  ---- |
+|   WuKongIMAndroidSDK   |   [Github](https://github.com/WuKongIM/WuKongIMAndroidSDK)         |     [Gitee](https://gitee.com/WuKongDev/WuKongIMAndroidSDK) | [文档](/sdk/android)        |    悟空IM的Android SDK  |
+|   WuKongIMiOSSDK   |   [Github](https://github.com/WuKongIM/WuKongIMiOSSDK)         |     [Gitee](https://gitee.com/WuKongDev/WuKongIMiOSSDK)  | [文档](/sdk/ios)     |    悟空IM的iOS SDK  |
+|   WuKongIMUniappSDK   |   [Github](https://github.com/WuKongIM/WuKongIMUniappSDK)         |     [Gitee](https://gitee.com/WuKongDev/WuKongIMUniappSDK)  | [文档](/sdk/uniapp)      |    悟空IM的 Uniapp SDK  |
+|   WuKongIMJSSDK   |   [Github](https://github.com/WuKongIM/WuKongIMJSSDK)         |     [Gitee](https://gitee.com/WuKongDev/WuKongIMJSSDK)   | [文档](/sdk/javascript)     |    悟空IM的 JS SDK  |
+|   WuKongIMFlutterSDK   |    [Github](https://github.com/WuKongIM/WuKongIMFlutterSDK)        |    [Gitee](https://gitee.com/WuKongDev/WuKongIMFlutterSDK)   |[文档](/sdk/flutter)    |    悟空IM的 Flutter SDK |
+|   WuKongIMReactNativeDemo   |   [Github](https://github.com/wengqianshan/WuKongIMReactNative)         |     无  | Apache2.0    |    悟空IM的 React Native Demo(由贡献者 [wengqianshan](https://github.com/wengqianshan) 提供)  |
 
-<!-- [Flutter Demo 和 SDK 源码(待完善)](https://github.com/WuKongIM/WuKongIMFlutterSDK) -->
 
-如果你只是想体验一下，可以直接使用我们的 Demo，Demo 中的 API 基地址也可以修改为你自己服务器的地址
-
-Web 在线演示：http://imdemo.githubim.com
-
-## 3. 详细的使用指南
-
-### 后端程序员
-
-第一步：了解下服务端的配置文件：[配置说明](/guide/fullconfig)
-
-第二步：了解下服务端的 API：[API 文档](/api)
-
-第三步：了解下 webhook：[webhook 机制](/api/webhook)
-
-`上面三步做完，祝你玩的飞起。`
-
-还有问题提[issue](https://github.com/WuKongIM/WuKongIM/issues)
-
-### iOS 程序员
-
-第一步：跑通 Demo： [iOS Demo 和 SDK 源码](https://github.com/WuKongIM/WuKongIMiOSSDK)
-
-第二步：了解下 iOS SDK 的使用：[iOS SDK 使用指南](/sdk/i-os)
-
-还有问题提[issue](https://github.com/WuKongIM/WuKongIMiOSSDK/issues)
-
-### Android 程序员
-
-第一步：跑通 Demo： [Android Demo 和 SDK 源码](https://github.com/WuKongIM/WuKongIMAndroidSDK)
-
-第二步：了解下 Android SDK 的使用：[Android SDK 使用指南](/sdk/android)
-
-还有问题提[issue](https://github.com/WuKongIM/WuKongIMAndroidSDK/issues)
-
-### Uniapp 程序员
-
-第一步：Uniapp Demo： [Uniapp Demo 和 SDK 源码](https://github.com/WuKongIM/WuKongIMUniappSDK)
-
-第二步：了解下 Uniapp SDK 的使用：[Uniapp SDK 使用指南](/sdk/uniapp)
-
-还有问题提[issue](https://github.com/WuKongIM/WuKongIMUniappSDK/issues)
-
-### Web 程序员
-
-第一步：Web Demo： [Javascript Demo 和 SDK 源码](https://github.com/WuKongIM/WuKongIMJSSDK)
-
-第二步：了解下 Javascript SDK 的使用：[Javascript SDK 使用指南](/sdk/javascript)
-
-还有问题提[issue](https://github.com/WuKongIM/WuKongIMJSSDK/issues)
 
 有需要加微信群交流：
 

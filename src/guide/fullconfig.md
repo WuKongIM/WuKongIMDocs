@@ -89,4 +89,4 @@ webhook
 WK_WEBHOOK_HTTPADDR: http://xxxxxx
 ```
 
-规则 WK*为固定前缀，层级关系通过 "*"符号隔开，全都大写
+规则 WK为固定前缀，层级关系通过 "_"符号隔开，全都大写

@@ -1340,7 +1340,7 @@ public class WKReply {
 
 ### 消息回应(点赞)
 
-如果你不理解消息回应请查看[什么是消息回应](/unifying.html#什么是消息回应)
+<!-- 如果你不理解消息回应请查看[什么是消息回应](/unifying.html#什么是消息回应) -->
 
 当自己或者别人对消息回应(点赞)时，都会触发 cmd(命令)消息`syncMessageReaction`。app 需监听同步消息回应事件
 

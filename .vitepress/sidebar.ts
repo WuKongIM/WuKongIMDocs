@@ -17,7 +17,7 @@ export const sidebar: DefaultTheme.Sidebar = {
 			text: "快速开始",
 			collapsed: false,
 			items: [
-				{ text: "一键部署（推荐）", link: "/guide/deploy-default" },
+				{ text: "执行文件部署（推荐）", link: "/guide/deploy-binary" },
 				{ text: "Docker方式部署", link: "/guide/deploy-docker" },
 				{ text: "Docker Compose方式部署", link: "/guide/deploy-dockercompose" },
 				{ text: "部署配置", link: "/guide/deploy-config" },
@@ -27,6 +27,7 @@ export const sidebar: DefaultTheme.Sidebar = {
 			text: "进阶",
 			collapsed: false,
 			items: [
+				{ text: "离线消息说明", link: "/guide/offlinemsg" },
 				{ text: "集成到自己系统", link: "/guide/integration" },
 				{ text: "最佳实践", link: "/guide/practice" },
 				{ text: "配置说明", link: "/guide/fullconfig" },
@@ -52,12 +53,26 @@ export const sidebar: DefaultTheme.Sidebar = {
 		{ text: "最近会话", link: "/api/conversation" },
 		{ text: "Webhook", link: "/api/webhook" },
 		{ text: "Datasource", link: "/api/datasource" },
+		{ text: "API调用时机说明", link: "/api/instructions" },
 	],
 	"/sdk": [
 		{ text: "概述", link: "/sdk/" },
 		{ text: "IOS", link: "/sdk/ios" },
 		{ text: "Android", link: "/sdk/android" },
-		{ text: "Javascript", link: "/sdk/javascript" },
+		{
+			text: "Javascript",
+			collapsed: true,
+			items: [
+				{text:"说明",link:"/sdk/jssdk/intro"},
+				{text:"集成",link:"/sdk/jssdk/integration"},
+				{text:"基础",link:"/sdk/jssdk/base"},
+				{text:"聊天管理",link:"/sdk/jssdk/chat"},
+				{text:"最近会话管理",link:"/sdk/jssdk/conversation"},
+				{text:"频道管理",link:"/sdk/jssdk/channel"},
+				{text:"数据源管理",link:"/sdk/jssdk/datasource"},
+				{text:"高级功能",link:"/sdk/jssdk/advance"},
+			]
+		},
 		{ text: "Uniapp", link: "/sdk/uniapp" },
 		{ text: "Flutter", link: "/sdk/flutter" },
 		{ text: "c", link: "/sdk/c" },
