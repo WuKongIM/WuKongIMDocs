@@ -635,9 +635,7 @@ WKIM.shared.messageManager.registerMsgContent(WkMessageContentType.image,
 
 sdk 中不会主动下载消息的附件。在收到带有附件的消息时需要 应用 自己按需下载。在 应用 下载完成后可改文件本地地址，避免重复下载
 
-`Java`
-
-```java
+```dart
 /**
   * 修改消息内容体
   *
@@ -648,13 +646,51 @@ sdk 中不会主动下载消息的附件。在收到带有附件的消息时需�
 WKIM.shared.messageManager.updateContent(String clientMsgNo, WKMessageContent messageContent, boolean isRefreshUI);
 ```
 ### 消息扩展
-待开发
+
+随着业务的发展应用在聊天中的功能也日益增多，为了满足绝大部分的需求 悟空 IM 中增加了消息扩展功能。消息扩展分`本地扩展`和`远程扩展`，本地扩展只针对 app 本地使用卸载 app 后将丢失，远程扩展是服务器保存卸载重装后数据将恢复
+
+#### 本地扩展
+
+本地扩展就是消息对象`WKMsg`中的`localExtraMap`字段
+```dart
+// 修改消息本地扩展
+WKIM.shared.messageManager.updateLocalExtraWithClientMsgNo(String clientMsgNo,dynamic data);
+```
+- <font color='#999' size=2>更新成功后 sdk 会触发刷新消息回调</font>
+
+#### 远程扩展
+
+远程扩展就是消息对象`WKMsg`中的`wkMsgExtra`字段
+```dart
+// 修改消息远程扩展
+WKIM.shared.messageManager.saveRemoteExtraMsg(List<WKSyncExtraMsg> list);
+```
 ### 消息编辑
 待开发
-### 消息点赞
-待开发
+### 消息回应（点赞）
+
+如果你不理解消息回应请查看[什么是消息回应](/unifying.html#什么是消息回应)
+
+当自己或者别人对消息回应(点赞)时，都会触发 cmd(命令)消息通知到应用。应用在收到同步消息回应的cmd时获取可调用服务器同步接口将获取的回应数据更新到sdk
+```dart
+// 保存消息回应
+WKIM.shared.messageManager.saveMessageReactions(List<WKSyncMsgReaction> list);
+```
+
+- <font color='#999' size=2>同一个用户对同一条消息只能做出一条回应。重复进行消息不同 emoji 的回应会做为修改回应，重复进行相同 emoji 的回应则做为删除回应</font> sdk 更新消息回应后会触发消息刷新的事件。app 需监听此事件并对 UI 进行刷新
+
 ### 已读未读管理
-待开发
+
+消息的已读未读又称消息回执。消息回执功能可通过 setting 进行设置
+
+```dart
+var setting = Setting();
+setting.receipt = 1; // 开启回执
+// 发送带有回执的消息
+WKIM.shared.messageManager.sendMessageWithSetting(
+      WKMessageContent messageContent, WKChannel channel, Setting setting)
+```
+当用户浏览过对方发送的消息时，如果对方开启了消息回执这时需将查看过的消息上传到服务器标记该消息已读。当对方或者自己上传过已读消息这时服务器会下发同步消息扩展的 cmd(命令)消息,此时需同步最新消息扩展通过`WKIM.shared.messageManager.saveRemoteExtraMsg(List<WKSyncExtraMsg> list)`方法保存到 sdk 中
 
 ### 会话提醒管理
 
