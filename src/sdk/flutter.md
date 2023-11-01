@@ -666,7 +666,53 @@ WKIM.shared.messageManager.updateLocalExtraWithClientMsgNo(String clientMsgNo,dy
 WKIM.shared.messageManager.saveRemoteExtraMsg(List<WKSyncExtraMsg> list);
 ```
 ### 消息编辑
-待开发
+
+当我们给对方发送消息发现发送内容有错误时，这时无需撤回重发只需要将消息编辑即可
+
+#### 设置编辑内容
+```dart
+WKIM.shared.messageManager.updateMsgEdit(String messageID, String channelID, int channelType,
+      String content);
+```
+更改 sdk 消息编辑内容后需将编辑后的内容上传到服务器,则需要监听上传消息扩展
+
+#### 监听上传消息扩展
+```dart
+WKIM.shared.messageManager.addOnUploadMsgExtra((wkMsgExtra) => {
+        // 上传到自己的服务器
+    });
+```
+如果自己或者别人编辑了消息，都会触发 cmd(命令)消息，app根据cmd类型判断后去同步消息扩展即可 app 需监听消息更新的事件完成对 UI 的刷新
+### 消息回复
+在聊天中如果消息过多，发送消息回复就会显得消息很乱无章可循。这时就需要对某条消息进行特定的回复，即消息回复。 如以下效果
+
+<img src='./msg_reply.jpg' width=30%/>
+
+在发送消息时，只需将消息正文`WKMessageContent`中的`WKReply`对象赋值就能对达到消息回复效果
+
+`WKReply`核心字段
+```dart
+class WKReply {
+  // 被回复的消息根ID，多级回复时的第一次回复的消息ID
+  String rootMid = '';
+  // 被回复的消息ID
+  String messageId = '';
+  // 被回复的MessageSeq
+  int messageSeq = 0;
+  // 被回复者uid
+  String fromUID = '';
+  // 被回复者名称
+  String fromName = '';
+  // 被回复的消息体
+  WKMessageContent? payload;
+  // 被回复消息编辑后的内容
+  String contentEdit = '';
+  // 被回复消息编辑后的消息实体
+  WKMessageContent? contentEditMsgModel;
+  ...
+}
+```
+
 ### 消息回应（点赞）
 
 如果你不理解消息回应请查看[什么是消息回应](/unifying.html#什么是消息回应)
