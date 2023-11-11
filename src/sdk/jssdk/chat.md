@@ -24,6 +24,9 @@ WKSDK.shared().chatManager.send(content: MessageContent, channel: Channel)
 
 ``` js
 
+// 导入 对应的包
+import { MessageText,Channel,WKSDK,ChannelTypePerson,ChannelTypeGroup } from "wukongimjssdk";
+
 // 例如发送文本消息hello给用户u10001
 const text = new MessageText("hello") // 文本消息
 WKSDK.shared().chatManager.send(text,new Channel("u10001",ChannelTypePerson))

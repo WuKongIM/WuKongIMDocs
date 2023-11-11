@@ -23,7 +23,7 @@ chmod +x wukongim
 
 ```shell
 
-wukongim --config configs/config.yaml
+./wukongim --config configs/config.yaml
 
 
 ```
