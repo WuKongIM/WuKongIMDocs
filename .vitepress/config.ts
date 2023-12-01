@@ -10,7 +10,6 @@ export default defineConfig({
 	title: "悟空IM",
 	description: "IM",
 	lang: "zh-CN",
-	ignoreDeadLinks: false,
 	head: [
 		["meta", { name: "keywords", content: "IM" }],
 		["link", { rel: "icon", type: "image/x-icon", href: "/favicon.ico" }],
@@ -75,4 +74,5 @@ export default defineConfig({
 		},
 		plugins: [UnoCSS()],
 	},
+	ignoreDeadLinks: true
 });
