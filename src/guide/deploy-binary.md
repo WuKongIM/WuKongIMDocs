@@ -28,6 +28,23 @@ chmod +x wukongim
 
 ```
 
+后台启动
+
+```shell
+
+./wukongim --config configs/config.yaml -d
+
+```
+
+停止服务
+
+```shell
+
+./wukongim  stop
+
+```
+
+
 
 
 ## 3. 配置
