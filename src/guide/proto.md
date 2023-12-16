@@ -69,12 +69,12 @@
     <td>收到消息确认的报文(s2c)</td>
   </tr>
   <tr>
-    <td>RECVEIVED</td>
+    <td>RECV</td>
     <td >5</td>
     <td>收取消息(s2c)</td>
   </tr>
   <tr>
-    <td>REVACK</td>
+    <td>RECVACK</td>
     <td >6</td>
     <td>收取消息确认(c2s)</td>
   </tr>
