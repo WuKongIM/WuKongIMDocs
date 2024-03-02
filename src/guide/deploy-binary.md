@@ -3,9 +3,13 @@
 
 ## 1. 下载二进制包
 
-下载对应您系统的二进制包 [release](https://github.com/WuKongIM/WuKongIM/releases/latest)
+下载对应您系统的二进制包 [release](https://github.com/WuKongIM/WuKongIM/releases/latest) 
 
 (国内可以通过gitee下载 https://gitee.com/WuKongDev/WuKongIM/releases/latest)
+
+`
+amd架构的系统比较多，所以不清楚下载那个的话 先下载amd后缀的包试试,Windows系统的包仅测试使用，不建议在生产环境使用
+`
 
 ## 2. 执行
 

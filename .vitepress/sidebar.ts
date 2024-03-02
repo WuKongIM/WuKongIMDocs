@@ -57,7 +57,7 @@ export const sidebar: DefaultTheme.Sidebar = {
 	],
 	"/sdk": [
 		{ text: "概述", link: "/sdk/" },
-		{ text: "IOS", link: "/sdk/ios" },
+		{ text: "iOS", link: "/sdk/ios" },
 		{ text: "Android", link: "/sdk/android" },
 		{
 			text: "Javascript",

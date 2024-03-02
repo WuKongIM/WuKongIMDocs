@@ -15,7 +15,7 @@ export const navbar: DefaultTheme.NavItem[] = [
 		text: "SDK文档",
 		activeMatch: "^/sdk",
 		items: [
-			{ text: "IOS", link: "/sdk/ios" },
+			{ text: "iOS", link: "/sdk/ios" },
 			{ text: "Android", link: "/sdk/android" },
 			{ text: "Javascript", link: "/sdk/jssdk/intro" },
 			{ text: "Flutter", link: "/sdk/flutter" },
