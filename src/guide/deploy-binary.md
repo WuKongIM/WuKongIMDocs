@@ -27,8 +27,15 @@ chmod +x wukongim
 
 ```shell
 
-./wukongim --config configs/config.yaml
+./wukongim 
 
+```
+
+或者指定配置
+
+```shell
+
+./wukongim --config configs/config.yaml
 
 ```
 
@@ -36,7 +43,7 @@ chmod +x wukongim
 
 ```shell
 
-./wukongim --config configs/config.yaml -d
+./wukongim  -d
 
 ```
 

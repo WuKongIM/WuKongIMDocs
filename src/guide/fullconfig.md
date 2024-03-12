@@ -10,7 +10,9 @@
 
 ```yaml
 
-#mode: "debug" # 运行模式 模式 debug 测试 release 正式 bench 压力测试
+## 配置是yaml格式，请严格注意缩进.
+
+mode: "release" # 运行模式 模式 debug 测试 release 正式 bench 压力测试
 #addr: "tcp://0.0.0.0:5100" # tcp监听地址
 #httpAddr: "0.0.0.0:5001" #  http api的监听地址  默认：0.0.0.0:5001
 #dataDir: "~/wukongim" # 数据存储目录
@@ -18,10 +20,10 @@
 #managerUID: "" # 管理员UID  默认为 ____manager
 #managerToken: "" # 管理员token 如果此字段有值，则API接口需要在请求头中添加token字段，值为此字段的值
 #wsAddr: "ws://0.0.0.0:5200"  # websocket ws 监听地址 
-#wssAddr: "wss://0.0.0.0:5210"  # websocket wss 监听地址 
+#wssAddr: "wss://0.0.0.0:5210"  # websocket wss 监听地址 如果打开则需要进行 wssConfig相关的证书配置
 #whitelistOffOfPerson: true # 是否关闭个人白名单 默认为true表示关闭个人白名单的验证
-# external: # 公网配置
-# ip: "" # 如果节点部署在内网，需要配置外网ip，否则外网的客户端无法连接到此节点
+external: # 公网配置
+   ip: "" # 节点外网IP，客户端能够访问到的IP地址，如果客户端是内网使用，这里也可以填写内网IP
 #  tcpAddr: "" #  默认自动获取， 节点的TCP地址 对外公开，APP端长连接通讯  格式： ip:port  （支持域名配置）
 #  wsAddr: "" # 默认自动获取， 节点的wsAdd地址 对外公开 WEB端长连接通讯 格式： ws://ip:port  （支持域名配置）
 #  wssAddr: "" # 对外的wssAddr地址，也就是客户端真正连接的地址 格式：wss://ip:port （支持域名配置）
@@ -57,8 +59,8 @@
 #datasource: #  数据源配置，不填写则使用自身数据存储逻辑，如果填写则使用第三方数据源，数据格式请查看文档
 #  addr: "" #  数据源地址
 #  channelInfoOn: false #  是否开启频道信息数据源的获取
-#conversation: # 最近会话配置
-# on: true # 是否开启最近会话
+conversation: # 最近会话配置
+   on: true # 是否开启最近会话
 #  cacheExpire: 1d # 最近会话缓存过期时间 默认为1天，（注意：这里指清除内存里的最近会话缓存，并不表示清除最近会话）
 #  syncInterval: 5m # 最近会话保存间隔,每隔指定的时间进行保存一次 默认为5分钟
 #  syncOnce: 100 # 最近会话同步保存一次的数量 超过指定未保存的数量 将进行保存 默认为100
