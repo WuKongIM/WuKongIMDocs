@@ -29,7 +29,7 @@ export const sidebar: DefaultTheme.Sidebar = {
 			items: [
 				{ text: "离线消息说明", link: "/guide/offlinemsg" },
 				{ text: "集成到自己系统", link: "/guide/integration" },
-				{ text: "最佳实践", link: "/guide/practice" },
+				// { text: "最佳实践", link: "/guide/practice" },
 				{ text: "配置说明", link: "/guide/fullconfig" },
 				{ text: "WSS 配置", link: "/guide/wss" },
 				{ text: "命令行工具", link: "/guide/cli" },
