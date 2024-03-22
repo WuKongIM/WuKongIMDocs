@@ -327,6 +327,26 @@ class WKVideoContent extends WKMediaMessageContent {
 }
 ```
 
+### CMD消息
+
+CMD(命令)消息只能是服务器下发客户端进行解析
+```dart
+class WKCMD {
+  String cmd = ''; // 命令ID
+  dynamic param; // 对应命令参数
+}
+
+```
+#### 监听cmd消息
+```dart
+WKIM.shared.cmdManager.addOnCmdListener('chat', (cmdMsg) {
+    // todo 按需处理cmd消息
+});
+```
+#### 移除cmd消息
+```dart
+WKIM.shared.cmdManager.removeCmdListener('chat');
+```
 ### 最近会话
 
 在同步完最近会话或者修改过最近会话内容时，sdk 会将更新或新增的最近会话 push 给 UI。app 需监听以下方法
