@@ -25,7 +25,7 @@ order: 200
   "stream_no": "", // 流式消息编号，如果是流式消息，需要指定，否则为空
   "channel_id": "xxxx", // 接收频道ID 如果channel_type=1 channel_id为个人uid 如果channel_type=2 channel_id为群id
   "channel_type": 2, // 接收频道类型  1.个人频道 2.群聊频道
-  "payload": "xxxxx", // 消息内容，base64编码
+  "payload": "xxxxx", // 消息，base64编码，消息格式参考下面 【payload 内容参考】的链接
   "subscribers": ["uid123", "uid234", "..."] // 订阅者 如果此字段有值，表示消息只发给指定的订阅者,没有值则发给频道内所有订阅者
 }
 ```
