@@ -1,16 +1,15 @@
-import { h } from "vue";
 import Theme from "vitepress/theme";
+import type { EnhanceAppContext } from "vitepress";
+import Layout from "./Layout.vue";
+
 import "./styles/var.css";
 import "./styles/custom.css";
-import 'uno.css';
+import "uno.css";
 
 import HomePreview from "./components/HomePreview.vue";
 
 export default {
 	...Theme,
-	Layout() {
-		return h(Theme.Layout, null, {
-			"home-features-after": () => h(HomePreview),
-		});
-	},
+	Layout,
+	enhanceApp({ app }: EnhanceAppContext) {},
 };
