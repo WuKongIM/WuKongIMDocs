@@ -14,9 +14,7 @@ docker run -d -p 5001:5001 -p 5100:5100 -p 5172:5172 -p 5200:5200 -p 5210:5210 -
 重启服务
 
 ```shell
-
 docker stop wukongim
-
 ```
 
 ```shell
