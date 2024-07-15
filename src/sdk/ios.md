@@ -1205,14 +1205,6 @@ setting.receiptEnabled = true // 开启端消息回执
 
 ```
 
-### 端对端加密
-
-```objc
-WKSetting *setting = [WKSetting new];
-setting.signal = true // 开启端对端加密 （目前只有个人频道才有效，群频道暂不支持）
-[[WKSDK shared].chatManager sendMessage:(WKMessageContent*)content channel:(WKChannel*)channel setting:setting]
-
-```
 
 ### 会话提醒管理
 

@@ -121,7 +121,7 @@ WKSDK.shared().connectManager.addConnectStatusListener(
   *  发送消息
   * @param content  消息内容
   * @param channel 频道对象 个人频道，群频道
-  * @param setting  发送设置 比如：已读未读回执，端对端加密
+  * @param setting  发送设置 比如：已读未读回执
   * @returns 完整消息对象
 */
 WKSDK.shared().chatManager.send(content: MessageContent, channel: Channel, setting?: Setting)
@@ -553,9 +553,6 @@ WKSDK.shared().register(
 
 待开发
 
-### 端对端加密
-
-web 不支持端对端加密
 
 ### 会话提醒管理
 

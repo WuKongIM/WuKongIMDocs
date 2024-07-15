@@ -1487,40 +1487,7 @@ WKIM.getInstance().msgManager.addOnRefreshMsgListener(
         }
 ```
 
-### 端对端加密
 
-#### 开启端对端加密
-
-`Java`
-
-```java
-WKMsgSetting setting = new WKMsgSetting();
-setting.signal = 1; // 开启加密
-// 发送加密消息
-WKIM.getInstance().getMsgManager().sendMessage(wkBaseContentMsgModel, setting, channelID, channelType);
-```
-
-`Kotlin`
-
-```kotlin
-val setting = WKMsgSetting()
-setting.signal = 1 // 开启加密
-// 发送加密消息
-WKIM.getInstance().msgManager.sendMessage(
-    wkBaseContentMsgModel,
-    setting,
-    channelID,
-    channelType
-)
-```
-
-在收到消息时可通过`WKMsg`对象的`WKMsgSetting`中的`signal`判断该消息是否开启了加密
-
-```java
-if(wkMsg.setting.signal == 1){
-  // 开启了加密
-}
-```
 
 ### 会话提醒管理
 

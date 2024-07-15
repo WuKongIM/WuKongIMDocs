@@ -1,6 +1,7 @@
 import { DefaultTheme } from "vitepress";
+import { Versioned } from "vitepress-versioning-plugin";
 
-export const sidebar: DefaultTheme.Sidebar = {
+export const sidebar: Versioned.Sidebar = {
 	"/guide": [
 		{
 			text: "介绍",

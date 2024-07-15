@@ -4,5 +4,5 @@ export function fetchReleaseTag() {
 	const docsReleaseTagSpan = document.createElement("samp");
 	docsReleaseTagSpan.classList.add("docs-cn-github-release-tag");
 	docsReleaseTagSpan.innerText = releaseTag;
-	tagLineParagragh?.appendChild(docsReleaseTagSpan);
+	// tagLineParagragh?.appendChild(docsReleaseTagSpan);
 }

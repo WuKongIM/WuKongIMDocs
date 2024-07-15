@@ -4,7 +4,7 @@
 
 | 参数名          | 类型   | 说明     |
 | :-------------- | :----- | :------- |
-| Fixed header    | 2 byte | 固定报头 |
+| Fixed header    | 1 byte | 固定报头 |
 | Variable header | bytes  | 可变报头 |
 | Payload         | bytes  | 消息体   |
 
@@ -801,7 +801,7 @@ Receipt： 消息已读回执，此标记表示，此消息需要已读回执
 
 NoEncrypt: 消息是否不开启加密
 
-Signal： 消息是否开启了 signal 端对端加密
+Signal： 加密
 
 Topic：消息是否包含 topic（如果为 1 则发送包和接受包都将包含 topic 字段）
 

@@ -43,4 +43,10 @@ export const navbar: DefaultTheme.NavItem[] = [
 			{ text: "Gitee", link: "https://gitee.com/WuKongDev/WuKongIM" },
 		],
 	},
+	// {
+	// 	"text": "2.0.1 (beta)",
+	// 	items: [
+	// 		{text: "1.1.5 (stable)", link: "/1.0/"},
+	// 	],
+	// },
 ];
