@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "rootDir": ".",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "jsx": "preserve",
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "types": [
+      "vite/client",
+			"vitepress"
+    ],
+  },
+  "include": [
+    ".vitepress/**/*.ts",
+		".vitepress/**/*.vue",
+		"src/**/*.ts",
+  ],
+	"exclude": [
+		"node_modules",
+		".vitepress/dist"
+	]
+}

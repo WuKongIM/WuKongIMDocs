@@ -45,6 +45,10 @@ yarn add wukongimjssdk
 ``` sh [pnpm]
 pnpm add wukongimjssdk
 ```
+
+``` sh [bun]
+bun add wukongimjssdk
+```
 :::
 
 

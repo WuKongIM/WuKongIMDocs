@@ -26,9 +26,7 @@ vi ~/wukongim/wk.yaml
 重启服务
 
 ```shell
-
 docker stop wukongim
-
 ```
 
 ```shell
