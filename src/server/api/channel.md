@@ -33,7 +33,7 @@ http status为200
 
 ## 删除频道
 
-删除一个频道（注意：如果配置了[datasource](/api/datasource)记得不要返回删除了频道的数据，要不然重启又会恢复回来）
+删除一个频道（注意：如果配置了[datasource](/server/api/datasource)记得不要返回删除了频道的数据，要不然重启又会恢复回来）
 
 > /channel/delete
 

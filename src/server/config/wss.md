@@ -9,4 +9,3 @@ external:
   wssAddr: 'wss://xxx:5210' # 对外暴露的wss地址, 如果为空则默认为 wss://外网IP:5210
 ```
 
-如果使用的 docker 部署，参考 yaml 配置怎么转环境变量的配置 [链接](/guide/fullconfig#环境变量)

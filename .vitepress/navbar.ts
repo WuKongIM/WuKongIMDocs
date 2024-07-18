@@ -2,14 +2,19 @@ import { DefaultTheme } from "vitepress";
 
 export const navbar: DefaultTheme.NavItem[] = [
 	{
-		text: " 指南",
+		text: " 介绍",
 		link: "/guide/guide",
 		activeMatch: "^/guide",
 	},
 	{
-		text: "API文档",
-		link: "/api/",
-		activeMatch: "^/api",
+		text: " 安装",
+		link: "/install/",
+		activeMatch: "^/install",
+	},
+	{
+		text: " 服务端",
+		link: "/server/config/config",
+		activeMatch: "^/server",
 	},
 	{
 		text: "SDK文档",
@@ -31,22 +36,14 @@ export const navbar: DefaultTheme.NavItem[] = [
 			{ text: "后台监控", link: "http://monitor.githubim.com/web" }
 		],
 	},
+	// {
+	// 	text: "更新日志",
+	// 	link: "https://gitee.com/WuKongDev/WuKongIM/releases",
+	// },
 	{
-		text: "更新日志",
-		link: "https://gitee.com/WuKongDev/WuKongIM/releases",
-	},
-	{
-		text: "项目地址",
-		activeMatch: "^/im",
+		"text": "v2.0.1 (beta)",
 		items: [
-			{ text: "Github", link: "https://github.com/WuKongIM/WuKongIM" },
-			{ text: "Gitee", link: "https://gitee.com/WuKongDev/WuKongIM" },
+			{text: "v1.2.5 (stable)", link: "/1.0/"},
 		],
 	},
-	// {
-	// 	"text": "2.0.1 (beta)",
-	// 	items: [
-	// 		{text: "1.1.5 (stable)", link: "/1.0/"},
-	// 	],
-	// },
 ];

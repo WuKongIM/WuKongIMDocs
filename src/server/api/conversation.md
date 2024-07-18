@@ -7,7 +7,6 @@ order: 300
 
 如果不明白什么是最近会话，请查看[最近会话](/guide/initialize#最近会话)。
 
-`默认最近会话是关闭的，如果需要开启最近会话，请在配置里配置 conversation.on=true`详情查看[完整配置](/guide/fullconfig)
 
 ## 同步最近会话
 

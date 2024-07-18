@@ -1,7 +1,6 @@
 import { DefaultTheme } from "vitepress";
-import { Versioned } from "vitepress-versioning-plugin";
 
-export const sidebar: Versioned.Sidebar = {
+export const sidebar: DefaultTheme.Sidebar = {
 	"/guide": [
 		{
 			text: "介绍",
@@ -11,51 +10,122 @@ export const sidebar: Versioned.Sidebar = {
 				{ text: "什么是悟空 IM", link: "/guide/" },
 				{ text: "基础概念", link: "/guide/initialize" },
 				{ text: "适用场景", link: "/guide/scene" },
-				{ text: "Demo 演示", link: "/guide/demo" },
+			],
+		},
+	],
+	"/install/": [
+		{
+			text: "Dokcer Compose",
+			collapsed: true,
+			items: [
+				{
+					text: "部署",
+					items: [
+						{ text: "单节点模式", link: "/install/docker-compose/singlenode" },
+						{ text: "多节点模式", link: "/install/docker-compose/multinode" },
+					],
+
+				},
+				{
+					text: "扩容",
+					items: [
+						{ text: "单节点模式扩容", link: "/install/docker-compose/singlenode-scale" },
+						{ text: "多节点模式扩容", link: "/install/docker-compose/multinode-scale" },
+					],
+				},
+				{
+					text: "升级",
+					link: "/install/docker-compose/upgrade",
+				},
+			],
+
+		},
+		{
+			text: "Linux",
+			collapsed: true,
+			items: [
+				{
+					text: "部署",
+					items: [
+						{ text: "单节点模式", link: "/install/linux/singlenode" },
+						{ text: "多节点模式", link: "/install/linux/multinode" },
+					],
+
+				},
+				{
+					text: "扩容",
+					items: [
+						{ text: "单节点模式扩容", link: "/install/linux/singlenode-scale" },
+						{ text: "多节点模式扩容", link: "/install/linux/multinode-scale" },
+					],
+				},
+				{
+					text: "监控",
+					link: "/install/linux/mointor",
+				},
+				{
+					text: "升级",
+					link: "/install/linux/upgrade",
+				},
 			],
 		},
 		{
-			text: "快速开始",
-			collapsed: false,
+			text: "Kubernetes",
+			collapsed: true,
 			items: [
-				{ text: "执行文件部署（推荐）", link: "/guide/deploy-binary" },
-				{ text: "Docker方式部署", link: "/guide/deploy-docker" },
-				{ text: "Docker Compose方式部署", link: "/guide/deploy-dockercompose" },
-				{ text: "1Panle部署", link: "/guide/1panle" },
-				{ text: "部署配置", link: "/guide/deploy-config" },
+				{
+					text: "部署",
+					items: [
+						{ text: "单节点模式", link: "/install/k8s/singlenode" },
+						{ text: "多节点模式", link: "/install/k8s/multinode" },
+					],
+
+				},
+				{
+					text: "扩容",
+					items: [
+						{ text: "单节点模式扩容", link: "/install/k8s/singlenode-scale" },
+						{ text: "多节点模式扩容", link: "/install/k8s/multinode-scale" },
+					],
+				},
+				{
+					text: "升级",
+					link: "/install/k8s/upgrade",
+				},
+			],
+
+		},
+	],
+	"/server": [
+		{
+			text: "配置说明",
+			link: "/server/config/config",
+			items: [
+				{ text: "WSS 配置", link: "/server/config/wss" },
+				{ text: "认证配置", link: "/server/config/auth" },
+			],
+		},
+		{
+			text: "API文档",
+			items: [
+				{ text: "基础", link: "/server/api/" },
+				{ text: "用户", link: "/server/api/user" },
+				{ text: "频道", link: "/server/api/channel" },
+				{ text: "消息", link: "/server/api/message" },
+				{ text: "最近会话", link: "/server/api/conversation" },
+				{ text: "Webhook", link: "/server/api/webhook" },
+				{ text: "Datasource", link: "/server/api/datasource" },
+				{ text: "API调用时机说明", link: "/server/api/instructions" },
 			],
 		},
 		{
 			text: "进阶",
-			collapsed: false,
 			items: [
-				{ text: "离线消息说明", link: "/guide/offlinemsg" },
-				{ text: "集成到自己系统", link: "/guide/integration" },
-				// { text: "最佳实践", link: "/guide/practice" },
-				{ text: "配置说明", link: "/guide/fullconfig" },
-				{ text: "WSS 配置", link: "/guide/wss" },
-				{ text: "命令行工具", link: "/guide/cli" },
-				{ text: "测试", link: "/guide/stress" },
-				{ text: "悟空 IM 协议", link: "/guide/proto" },
+				{ text: "离线消息说明", link: "/server/advance/offlinemsg" },
+				{ text: "集成到自己系统", link: "/server/advance/integration" },
+				{ text: "悟空 IM 协议", link: "/server/advance/proto" },
 			],
 		},
-		{
-			text: "其他",
-			collapsed: false,
-			items: [
-				{ text: "常见问题", link: "/guide/others" },
-			],
-		}
-	],
-	"/api": [
-		{ text: "基础", link: "/api/" },
-		{ text: "用户", link: "/api/user" },
-		{ text: "频道", link: "/api/channel" },
-		{ text: "消息", link: "/api/message" },
-		{ text: "最近会话", link: "/api/conversation" },
-		{ text: "Webhook", link: "/api/webhook" },
-		{ text: "Datasource", link: "/api/datasource" },
-		{ text: "API调用时机说明", link: "/api/instructions" },
 	],
 	"/sdk": [
 		{ text: "概述", link: "/sdk/" },
@@ -65,14 +135,14 @@ export const sidebar: Versioned.Sidebar = {
 			text: "Javascript",
 			collapsed: true,
 			items: [
-				{text:"说明",link:"/sdk/jssdk/intro"},
-				{text:"集成",link:"/sdk/jssdk/integration"},
-				{text:"基础",link:"/sdk/jssdk/base"},
-				{text:"聊天管理",link:"/sdk/jssdk/chat"},
-				{text:"最近会话管理",link:"/sdk/jssdk/conversation"},
-				{text:"频道管理",link:"/sdk/jssdk/channel"},
-				{text:"数据源管理",link:"/sdk/jssdk/datasource"},
-				{text:"高级功能",link:"/sdk/jssdk/advance"},
+				{ text: "说明", link: "/sdk/jssdk/intro" },
+				{ text: "集成", link: "/sdk/jssdk/integration" },
+				{ text: "基础", link: "/sdk/jssdk/base" },
+				{ text: "聊天管理", link: "/sdk/jssdk/chat" },
+				{ text: "最近会话管理", link: "/sdk/jssdk/conversation" },
+				{ text: "频道管理", link: "/sdk/jssdk/channel" },
+				{ text: "数据源管理", link: "/sdk/jssdk/datasource" },
+				{ text: "高级功能", link: "/sdk/jssdk/advance" },
 			]
 		},
 		{ text: "Uniapp", link: "/sdk/uniapp" },
