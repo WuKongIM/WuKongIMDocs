@@ -1,11 +1,11 @@
 
 # API调用时机说明
 
-所有悟空IM的API应该都由业务后端调用，业务后端再将结果返回给app，不要将悟空IM的API暴露给app。
+所有WuKongIM的API应该都由业务后端调用，业务后端再将结果返回给app，不要将WuKongIM的API暴露给app。
 
 ## app用户注册/登录时
 
-业务后端需要调用悟空IM的接口，将用户注册到悟空IM。
+业务后端需要调用WuKongIM的接口，将用户注册到WuKongIM。
 
 
 [注册或登录](/server/api/user.html#注册或登录)

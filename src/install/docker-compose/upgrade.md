@@ -18,18 +18,18 @@ version: '3.7'
 services:
 ...
   wukongim: # WuKongIM服务
-    image: wukongim/wukongim:2.x.x # 新版本号
+    image: registry.cn-shanghai.aliyuncs.com/wukongim/wukongim:2.x.x # 新版本号
 
 ```
 
 使用如下命令获取最新镜像
 
 ```bash
-docker-compose pull wukongim
+sudo docker-compose pull wukongim
 ```
 
 重启
 
 ```bash
-docker-compose up -d
+sudo docker-compose up -d
 ```

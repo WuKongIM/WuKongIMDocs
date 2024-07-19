@@ -7,7 +7,7 @@ import { navbar } from "./navbar";
 import { sidebar } from "./sidebar";
 
 export default defineConfig({
-	title: "悟空IM",
+	title: "WuKongIM",
 	description: "IM",
 	lang: "zh-CN",
 	head: [
@@ -28,7 +28,7 @@ export default defineConfig({
 	srcDir: "./src",
 	themeConfig: {
 		logo: "/logo.png",
-		siteTitle: "悟空IM",
+		siteTitle: "WuKongIM",
 		nav: navbar,
 		sidebar: sidebar,
 		lastUpdatedText: "上次更新",

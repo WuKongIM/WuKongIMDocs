@@ -14,8 +14,8 @@ curl -sSL https://gitee.com/WuKongDev/WuKongIMCli/raw/main/install.sh | sudo bas
 wk context add demo --server http://127.0.0.1:5001 --token xxxx --description "WuKongIM Demo"
 ```
 
---server: 为部署的`悟空IM`服务器地址，默认端口 5001
---token: 为`悟空IM`服务器的 token，默认为空
+--server: 为部署的`WuKongIM`服务器地址，默认端口 5001
+--token: 为`WuKongIM`服务器的 token，默认为空
 
 ## run 命令
 
@@ -51,7 +51,7 @@ wk doctor
 
 ## upgrade 命令
 
-升级`悟空IM`端（在部署了服务器的机器上运行才有效）
+升级`WuKongIM`端（在部署了服务器的机器上运行才有效）
 
 ```shell
 wk upgrade

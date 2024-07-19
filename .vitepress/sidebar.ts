@@ -7,7 +7,7 @@ export const sidebar: DefaultTheme.Sidebar = {
 			collapsed: false,
 			items: [
 				{ text: "文档阅读引导", link: "/guide/guide" },
-				{ text: "什么是悟空 IM", link: "/guide/" },
+				{ text: "什么是WuKongIM", link: "/guide/" },
 				{ text: "基础概念", link: "/guide/initialize" },
 				{ text: "适用场景", link: "/guide/scene" },
 			],
@@ -15,8 +15,8 @@ export const sidebar: DefaultTheme.Sidebar = {
 	],
 	"/install/": [
 		{
-			text: "Dokcer Compose",
-			collapsed: true,
+			text: "Dokcer Compose（推荐）",
+			collapsed: false,
 			items: [
 				{
 					text: "部署",
@@ -123,7 +123,7 @@ export const sidebar: DefaultTheme.Sidebar = {
 			items: [
 				{ text: "离线消息说明", link: "/server/advance/offlinemsg" },
 				{ text: "集成到自己系统", link: "/server/advance/integration" },
-				{ text: "悟空 IM 协议", link: "/server/advance/proto" },
+				{ text: "WuKongIM 协议", link: "/server/advance/proto" },
 			],
 		},
 	],

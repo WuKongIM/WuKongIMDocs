@@ -26,7 +26,7 @@ API 规则：
 
 ## 长连接地址获取
 
-获取客户端连接**悟空 IM**的地址
+获取客户端连接**WuKongIM**的地址
 
 > GET /route?uid=xxxx // uid 为用户 ID
 

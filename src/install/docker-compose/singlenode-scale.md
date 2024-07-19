@@ -270,7 +270,7 @@ scrape_configs:
 
 ```bash
 
-docker-compose up -d
+sudo docker-compose up -d
 
 ```
 
@@ -278,7 +278,7 @@ docker-compose up -d
 
 ```bash 
 
-docker-compose stop
+sudo docker-compose stop
 
 ```
 

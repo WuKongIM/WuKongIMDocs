@@ -40,13 +40,17 @@ chmod +x wukongim
 
 ```yaml
 mode: "release"
+rootDir: "./wukongim_data"
 cluster:
   nodeId: 1001 # 节点id
+  serverAddr: "xx.xx.xx.xx:11110" # 节点内部通信请求地址
 external: # 公网配置
-  ip: "" # 节点外网IP，客户端能够访问到的IP地址。
+  ip: "xx.xx.xx.xx" # 节点外网IP，客户端能够访问到的IP地址。
 ```
 
 `ip修改为服务器的外网IP地址`
+
+`serverAddr的xx.xx.xx.xx修改为服务器的内网IP地址`
 
 4. 启动或停止
 

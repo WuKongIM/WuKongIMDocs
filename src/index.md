@@ -1,13 +1,13 @@
 ---
 layout: home
 
-title: 悟空IM
-titleTemplate: 悟空IM
+title: WuKongIM
+titleTemplate: WuKongIM
 
 hero:
-  name: 悟空IM
+  name: WuKongIM
   text: 让信息传递更简单
-  tagline: 悟空IM是高性能通用即时通讯服务，支持聊天应用，消息推送，物联网通讯，音视频信令，直播弹幕，客服系统，AI 通讯，即时社区等场景。
+  tagline: WuKongIM是高性能通用即时通讯服务，支持聊天应用，消息推送，物联网通讯，音视频信令，直播弹幕，客服系统，AI 通讯，即时社区等场景。
   image:
     src: /logo_white.png
     alt: logo

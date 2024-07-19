@@ -30,3 +30,20 @@ scrape_configs:
 
 
 ```
+
+`xx.xx.xx.xx` 替换为`WuKongIM`的`内网ip`地址
+
+`xxxx` 替换为`WuKongIM`的`nodeId`
+
+## 配置`WuKongIM`
+
+在各节点的`wk.yaml`文件中配置`prometheus`的地址
+
+```yaml
+
+trace:
+  prometheusApiUrl: "http://xx.xx.xx.xx:9090"
+
+```
+
+`xx.xx.xx.xx`替换为`prometheus`的`内网ip`地址

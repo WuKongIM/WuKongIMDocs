@@ -84,9 +84,15 @@ upstream wukongimws {
     ...
     server 192.168.12.4:5200;
 }
-upstream wukongimtcp {
-    ...
-    server 192.168.12.4:5100;
+
+stream {
+  ...
+  upstream wukongimtcp {
+      ...
+     server 192.168.12.4:5100;
+  }
+...
+
 }
 ```
 

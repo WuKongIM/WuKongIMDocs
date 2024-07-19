@@ -14,15 +14,15 @@
 
 ## 访问 安装WuKongIM
 
-1. 访问悟空IM监控系统
+1. 访问WuKongIM监控系统
 
-![悟空IM监控系统](./1panle2.png)
+![WuKongIM监控系统](./1panle2.png)
 
-2. 访问悟空IM Demo
+2. 访问WuKongIM Demo
 
-![悟空IM Demo](./1panle3.jpg)
+![WuKongIM Demo](./1panle3.jpg)
 
-![悟空IM Demo](./1panle4.jpg)
+![WuKongIM Demo](./1panle4.jpg)
 
-![悟空IM Demo](./1panle5.jpg)
+![WuKongIM Demo](./1panle5.jpg)
 

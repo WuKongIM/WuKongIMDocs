@@ -63,91 +63,127 @@ cluster:
 
 
 ## 配置`nginx`
+
 ```nginx
-# api负载均衡
-upstream wukongimapi {
-    server 192.168.1.10:5001;
-    server 192.168.1.20:5001;
+user  nginx;
+worker_processes  auto;
+
+error_log  /var/log/nginx/error.log notice;
+pid        /var/run/nginx.pid;
+
+
+events {
+    worker_connections  1024;
 }
-# demo负载均衡
-upstream wukongimdemo {
-    server 192.168.1.10:5172;
-    server 192.168.1.20:5172;
+
+
+http {
+    include       /etc/nginx/mime.types;
+    default_type  application/octet-stream;
+
+    log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+                      '$status $body_bytes_sent "$http_referer" '
+                      '"$http_user_agent" "$http_x_forwarded_for"';
+
+    access_log  /var/log/nginx/access.log  main;
+
+    sendfile        on;
+    #tcp_nopush     on;
+
+    keepalive_timeout  65;
+
+    #gzip  on;
+
+    include /etc/nginx/conf.d/*.conf;
+
+
+    # api负载均衡
+    upstream wukongimapi {
+        server 192.168.1.10:5001;
+        server 192.168.1.20:5001;
+    }
+    # demo负载均衡
+    upstream wukongimdemo {
+        server 192.168.1.10:5172;
+        server 192.168.1.20:5172;
+    }
+    # manager负载均衡
+    upstream wukongimanager {
+        server 192.168.1.10:5300;
+        server 192.168.1.20:5300;
+    }
+    # ws负载均衡
+    upstream wukongimws {
+        server 192.168.1.10:5200;
+        server 192.168.1.20:5200;
+    }
+    # http api转发
+    server {
+        listen 5001;
+        location / {
+            proxy_pass http://wukongimapi;
+            proxy_connect_timeout 20s;
+            proxy_read_timeout 60s;
+        }
+    }
+    # demo
+    server {
+        listen 5172;
+        location / {
+            proxy_pass http://wukongimdemo;
+            proxy_connect_timeout 20s;
+            proxy_read_timeout 60s;
+        }
+        location /login {
+            rewrite ^ /chatdemo?apiurl=http://221.123.68.10:15001;
+            proxy_pass http://wukongimdemo;
+            proxy_connect_timeout 20s;
+            proxy_read_timeout 60s;
+        }
+    }
+    # manager
+    server {
+        listen 5300;
+        location / {
+            proxy_pass http://wukongimanager;
+            proxy_connect_timeout 60s;
+            proxy_read_timeout 60s;
+        }
+    }
+    # ws
+    server {
+        listen 5200;
+        location / {
+            proxy_pass http://wukongimws;
+            proxy_redirect off;
+            proxy_http_version 1.1;
+            # nginx接收upstream server数据超时, 默认120s, 如果连续的120s内没有收到1个字节, 连接关闭
+            proxy_read_timeout 120s;
+            # nginx发送数据至upstream server超时, 默认120s, 如果连续的120s内没有发送1个字节, 连接关闭
+            proxy_send_timeout 120s; 
+            # nginx与upstream server的连接超时时间
+            proxy_connect_timeout 4s; 
+            proxy_set_header  X-Real-IP $remote_addr;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+        }
+    }
 }
-# manager负载均衡
-upstream wukongimanager {
-    server 192.168.1.10:5300;
-    server 192.168.1.20:5300;
-}
-# ws负载均衡
-upstream wukongimws {
-    server 192.168.1.10:5200;
-    server 192.168.1.20:5200;
-}
-# tcp负载均衡
-upstream wukongimtcp {
+
+# tcp
+stream {
+  # tcp负载均衡
+  upstream wukongimtcp {
     server 192.168.1.10:5100;
     server 192.168.1.20:5100;
-}
-# http api转发
-server {
-    listen 5001;
-    location / {
-        proxy_pass http://wukongimapi;
-        proxy_connect_timeout 20s;
-        proxy_read_timeout 60s;
-    }
-}
-# demo
-server {
-    listen 5172;
-    location / {
-        proxy_pass http://wukongimdemo;
-        proxy_connect_timeout 20s;
-        proxy_read_timeout 60s;
-    }
-    location /login {
-        rewrite ^ /chatdemo?apiurl=http://127.0.0.1:15001;
-        proxy_pass http://wukongimdemo;
-        proxy_connect_timeout 20s;
-        proxy_read_timeout 60s;
-    }
-}
-# manager
-server {
-    listen 5300;
-    location / {
-        proxy_pass http://wukongimanager;
-        proxy_connect_timeout 60s;
-        proxy_read_timeout 60s;
-    }
-}
-# ws
-server {
-    listen 5200;
-    location / {
-        proxy_pass http://wukongimws;
-        proxy_redirect off;
-	    proxy_http_version 1.1;
-        # nginx接收upstream server数据超时, 默认120s, 如果连续的120s内没有收到1个字节, 连接关闭
-	    proxy_read_timeout 120s;
-        # nginx发送数据至upstream server超时, 默认120s, 如果连续的120s内没有发送1个字节, 连接关闭
-        proxy_send_timeout 120s; 
-        # nginx与upstream server的连接超时时间
-        proxy_connect_timeout 4s; 
-        proxy_set_header  X-Real-IP $remote_addr;
-	    proxy_set_header Upgrade $http_upgrade;
-	    proxy_set_header Connection "upgrade";
-    }
-}
-# tcp
-server {
-    listen: 5100;
+  }
+  server {
+    listen 5100;
     proxy_connect_timeout 4s;
     proxy_timeout 120s;
     proxy_pass wukongimtcp;
+  }
 }
-
 ```
 
 ## 重启

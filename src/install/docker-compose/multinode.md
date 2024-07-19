@@ -53,7 +53,7 @@ services:
     environment:
       - "WK_MODE=release" # release模式
       - "WK_CLUSTER_NODEID=1001" 
-       - "WK_EXTERNAL_IP=119.45.229.172"  # 当前节点外网ip
+      - "WK_EXTERNAL_IP=119.45.229.172"  # 当前节点外网ip
       - "WK_CLUSTER_APIURL=http://10.206.0.13:5001" # 节点内部通信api url地址，这里ip换成自己节点实际node2的内网ip  
       - "WK_CLUSTER_SERVERADDR=10.206.0.13:11110" # 节点内部通信请求地址
       - "WK_EXTERNAL_WSADDR=ws://119.45.229.172:15200"  # web端访问的ws长连接地址
@@ -332,7 +332,7 @@ stream {
 在所有节点下执行如下命令
 
 ```bash
-docker-compose up -d
+sudo docker-compose up -d
 ```
 
 

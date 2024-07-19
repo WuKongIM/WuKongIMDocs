@@ -5,7 +5,7 @@ order: 400
 
 # Webhook
 
-**悟空 IM**的一些数据将通过 webhook 的形式回调给第三方应用服务，比如用户在线状态，需要推送的消息，所有消息等等，所有 webhook 都是 POST 请求，事件名通过 query 参数传入，
+**WuKongIM**的一些数据将通过 webhook 的形式回调给第三方应用服务，比如用户在线状态，需要推送的消息，所有消息等等，所有 webhook 都是 POST 请求，事件名通过 query 参数传入，
 比如 第三方的服务器提供的 webhook 地址为 http://example/webhook 那么在线状态的 webhook 为
 
 ```
@@ -68,7 +68,7 @@ type MessageResp struct {
 
 ## 所有消息通知
 
-**悟空 IM**服务端会将所有消息推送给第三方服务器（为了降低第三方服务器的压力，并不是一条一条推送，做了延迟处理，默认是 500 毫秒（`webhook.msgNotifyEventPushInterval`）批量推送一次，这个可自己视情况配置），第三方服务器可视情况保存或不保存（有一些业务需要保存，比如将消息存入 ElasticSearch，给客户端做搜索使用）不管保不保存，**悟空 IM**服务端都会保存用户的消息。
+**WuKongIM**服务端会将所有消息推送给第三方服务器（为了降低第三方服务器的压力，并不是一条一条推送，做了延迟处理，默认是 500 毫秒（`webhook.msgNotifyEventPushInterval`）批量推送一次，这个可自己视情况配置），第三方服务器可视情况保存或不保存（有一些业务需要保存，比如将消息存入 ElasticSearch，给客户端做搜索使用）不管保不保存，**WuKongIM**服务端都会保存用户的消息。
 
 `事件名：msg.notify`
 
