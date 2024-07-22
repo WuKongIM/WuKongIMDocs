@@ -43,7 +43,7 @@ services:
       - "WK_EXTERNAL_WSADDR=ws://119.45.229.172:15200"  # web端访问的ws长连接地址
       - "WK_EXTERNAL_TCPADDR=119.45.229.172:15100"  # app端访问的tcp长连接地址
       - "WK_TRACE_PROMETHEUSAPIURL=http://10.206.0.13:9090" # 监控地址
-      - "WK_CLUSTER_SEED=1001@10.206.0.13:11110" # 种子节点， 原集群里容易节点都可以做为种子节点，这里将node1节点作为种子节点
+      - "WK_CLUSTER_SEED=1001@10.206.0.13:11110" # 种子节点， 原集群里任意节点都可以做为种子节点，这里将node1节点作为种子节点
     healthcheck:
       test: "wget -q -Y off -O /dev/null http://localhost:5001/health > /dev/null 2>&1"
       interval: 10s

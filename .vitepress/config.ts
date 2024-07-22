@@ -74,5 +74,5 @@ export default defineConfig({
 		},
 		plugins: [UnoCSS()],
 	},
-	ignoreDeadLinks: true
+	ignoreDeadLinks: false
 });

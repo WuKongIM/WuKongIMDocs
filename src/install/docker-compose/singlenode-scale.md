@@ -7,7 +7,7 @@
 
 假设有两台服务器，信息如下
 
-| 名称 | 内网IP | 外网IP | 角色 |
+| 名称 | 内网IP | 外网IP | 描述 |
 | --- | --- | --- | --- | 
 | node1(1001) | 192.168.1.10 | 221.123.68.10 | 主节点（原部署好的单机节点） |
 | node2(1002) | 192.168.1.20 | 221.123.68.20 |  即将加入的新节点 |
@@ -55,7 +55,7 @@ services:
       - "WK_EXTERNAL_TCPADDR=221.123.68.10:15100"  # app端访问的tcp长连接地址,注意这里是 node1的外网ip
       - "WK_CLUSTER_APIURL=http://192.168.1.20:5001" # 节点内部通信api url地址，这里ip换成自己节点实际node2的内网ip  
       - "WK_CLUSTER_SERVERADDR=192.168.1.20:11110" # 节点内部通信请求地址
-      - "WK_CLUSTER_SEED=1001@192.168.1.10:11110" # 种子节点， 原node1节点的内网通讯地址
+      - "WK_CLUSTER_SEED=1001@192.168.1.10:11110" # 种子节点， 原集群里任意节点都可以做为种子节点，这里将node1节点作为种子节点
       - "WK_TRACE_PROMETHEUSAPIURL=http://192.168.1.10:9090" # prometheus监控地址， node1的内网地址
     healthcheck:
       test: "wget -q -Y off -O /dev/null http://localhost:5001/health > /dev/null 2>&1"

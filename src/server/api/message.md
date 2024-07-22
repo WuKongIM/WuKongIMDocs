@@ -30,7 +30,7 @@ order: 200
 }
 ```
 
-[payload 内容参考](/guide/proto#普通消息)
+[payload 内容参考](/server/advance/proto.html#普通消息)
 
 成功响应
 
