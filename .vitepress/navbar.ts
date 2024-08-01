@@ -26,6 +26,7 @@ export const navbar: DefaultTheme.NavItem[] = [
 			{ text: "Flutter", link: "/sdk/flutter" },
 			{ text: "Uniapp", link: "/sdk/uniapp" },
 			{ text: "微信小程序", link: "/sdk/smallprogram" },
+			{ text: "harmonyOS", link: "/sdk/harmonyos" },
 		],
 	},
 	{
