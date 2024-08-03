@@ -43,7 +43,7 @@ export const navbar: DefaultTheme.NavItem[] = [
 	{
 		"text": "v2.0.1 (beta)",
 		items: [
-			{text: "v1.2.5 (stable)", link: "/1.0/"},
+			{text: "v1.2.5 (stable)", link: "https://v1.githubim.com"},
 		],
 	},
 ];

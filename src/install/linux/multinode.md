@@ -106,8 +106,8 @@ cluster:
 mode: "release"
 external: # 公网配置
   ip: "1.13.191.138" # 节点外网IP，客户端能够访问到的IP地址。
-  tcpAddr: "129.211.213.76:15100" #  app访问的长连接地址, 注意这里是负载均衡服务器的ip和端口，不是本机的
-  wsAddr: "ws://129.211.213.76:15200" #  web访问的长连接地址，注意这里是负载均衡服务器的ip和端口，不是本机的
+  tcpAddr: "119.45.229.172:15100" #  app访问的长连接地址, 注意这里是负载均衡服务器的ip和端口，不是本机的
+  wsAddr: "ws://119.45.229.172:15200" #  web访问的长连接地址，注意这里是负载均衡服务器的ip和端口，不是本机的
 cluster:
   nodeId: 1003 # 节点id
   apiUrl: "http://10.206.0.8:5001" # 当前节点内网的api地址
@@ -176,7 +176,7 @@ http {
     }
     # http api转发
     server {
-        listen 5001;
+        listen 15001;
         location / {
             proxy_pass http://wukongimapi;
             proxy_connect_timeout 20s;
@@ -185,7 +185,7 @@ http {
     }
     # demo
     server {
-        listen 5172;
+        listen 15172;
         location / {
             proxy_pass http://wukongimdemo;
             proxy_connect_timeout 20s;
@@ -200,7 +200,7 @@ http {
     }
     # manager
     server {
-        listen 5300;
+        listen 15300;
         location / {
             proxy_pass http://wukongimanager;
             proxy_connect_timeout 60s;
@@ -209,7 +209,7 @@ http {
     }
     # ws
     server {
-        listen 5200;
+        listen 15200;
         location / {
             proxy_pass http://wukongimws;
             proxy_redirect off;
@@ -236,7 +236,7 @@ stream {
     server 10.206.0.8:5100;
   }
   server {
-    listen 5100;
+    listen 15100;
     proxy_connect_timeout 4s;
     proxy_timeout 120s;
     proxy_pass wukongimtcp;

@@ -109,8 +109,8 @@ services:
       - "WK_EXTERNAL_IP=129.211.213.76"  # 当前节点外网ip
       - "WK_CLUSTER_APIURL=http://10.206.0.14:5001" # 节点内部通信api url地址，这里ip换成自己节点实际node2的内网ip  
       - "WK_CLUSTER_SERVERADDR=10.206.0.14:11110" # 节点内部通信请求地址
-      - "WK_EXTERNAL_WSADDR=ws://129.211.213.76:15200"  # web端访问的ws长连接地址
-      - "WK_EXTERNAL_TCPADDR=129.211.213.76:15100"  # app端访问的tcp长连接地址
+      - "WK_EXTERNAL_WSADDR=ws://119.45.229.172:15200"  # web端访问的ws长连接地址
+      - "WK_EXTERNAL_TCPADDR=119.45.229.172:15100"  # app端访问的tcp长连接地址
       - "WK_TRACE_PROMETHEUSAPIURL=http://10.206.0.13:9090" # 监控地址
       - "WK_CLUSTER_INITNODES=1001@10.206.0.13 1002@10.206.0.14 1003@10.206.0.8" # 集群节点列表
     healthcheck:
