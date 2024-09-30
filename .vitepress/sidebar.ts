@@ -131,6 +131,7 @@ export const sidebar: DefaultTheme.Sidebar = {
 		{ text: "概述", link: "/sdk/" },
 		{ text: "iOS", link: "/sdk/ios" },
 		{ text: "Android", link: "/sdk/android" },
+		{ text: "Harmonyos", link: "/sdk/harmonyos" },
 		{
 			text: "Javascript",
 			collapsed: true,

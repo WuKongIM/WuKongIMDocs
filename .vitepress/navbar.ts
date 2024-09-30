@@ -26,7 +26,7 @@ export const navbar: DefaultTheme.NavItem[] = [
 			{ text: "Flutter", link: "/sdk/flutter" },
 			{ text: "Uniapp", link: "/sdk/uniapp" },
 			{ text: "微信小程序", link: "/sdk/smallprogram" },
-			{ text: "harmonyOS", link: "/sdk/harmonyos" },
+			{ text: "HarmonyOS", link: "/sdk/harmonyos" },
 		],
 	},
 	{
@@ -42,9 +42,9 @@ export const navbar: DefaultTheme.NavItem[] = [
 	// 	link: "https://gitee.com/WuKongDev/WuKongIM/releases",
 	// },
 	{
-		"text": "v2.0.1 (beta)",
+		"text": "v2 (beta)",
 		items: [
-			{text: "v1.2.5 (stable)", link: "https://v1.githubim.com"},
+			{text: "v1 (stable)", link: "https://v1.githubim.com/guide/guide.html"},
 		],
 	},
 ];

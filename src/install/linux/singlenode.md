@@ -20,11 +20,11 @@
 ::: code-group
 
 ``` bash [amd64]
-curl -L -o wukongim https://github.com/WuKongIM/WuKongIM/releases/download/v2.0.1-beta-20240715/wukongim-linux-amd64
+curl -L -o wukongim https://github.com/WuKongIM/WuKongIM/releases/download/v2.0.4-beta-20240904/wukongim-linux-amd64
 ```
 
 ``` bash [arm64]
-curl -L -o wukongim https://github.com/WuKongIM/WuKongIM/releases/download/v2.0.1-beta-20240715/wukongim-linux-arm64
+curl -L -o wukongim https://github.com/WuKongIM/WuKongIM/releases/download/v2.0.4-beta-20240904/wukongim-linux-arm64
 ```
 
 :::
