@@ -39,11 +39,11 @@ WuKongIM集群符合 `2n+1` 原则，n表示宕机数量，比如允许1台机�
 ::: code-group
 
 ``` bash [amd64]
-curl -L -o wukongim https://github.com/WuKongIM/WuKongIM/releases/download/v2.0.4-beta-20240904/wukongim-linux-amd64
+curl -L -o wukongim https://github.com/WuKongIM/WuKongIM/releases/download/v2.0.5-20240925/wukongim-linux-amd64
 ```
 
 ``` bash [arm64]
-curl -L -o wukongim https://github.com/WuKongIM/WuKongIM/releases/download/v2.0.4-beta-20240904/wukongim-linux-arm64
+curl -L -o wukongim https://github.com/WuKongIM/WuKongIM/releases/download/v2.0.5-20240925/wukongim-linux-arm64
 ```
 
 :::

@@ -236,7 +236,7 @@ mkdir  ~/wukongim
 version: '3.7'
 services:
   wukongim: # WuKongIM服务
-    image: registry.cn-shanghai.aliyuncs.com/wukongim/wukongim:v2.0.4-beta-20240904
+    image: registry.cn-shanghai.aliyuncs.com/wukongim/wukongim:v2
     environment:
       - "WK_MODE=release" # release模式
       - "WK_CLUSTER_NODEID=1"   # 节点id不能大于等于1024
@@ -273,7 +273,7 @@ services:
 version: '3.7'
 services:
   wukongim: # WuKongIM服务
-    image: registry.cn-shanghai.aliyuncs.com/wukongim/wukongim:v2.0.4-beta-20240904
+    image: registry.cn-shanghai.aliyuncs.com/wukongim/wukongim:v2
     environment:
       - "WK_MODE=release" 
       - "WK_CLUSTER_NODEID=2" 
@@ -311,7 +311,7 @@ services:
 version: '3.7'
 services:
   wukongim: # WuKongIM服务
-    image: registry.cn-shanghai.aliyuncs.com/wukongim/wukongim:v2.0.4-beta-20240904
+    image: registry.cn-shanghai.aliyuncs.com/wukongim/wukongim:v2
     environment:
       - "WK_MODE=release"
       - "WK_CLUSTER_NODEID=3" 

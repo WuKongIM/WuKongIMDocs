@@ -4,6 +4,10 @@
 
 `配置采用yaml格式，如果发现配置什么都不生效，请检查缩进是否正确`
 
+`所有的配置都可以转换成对应的环境变量，配置在docker-compose.yaml的environment里`
+
+转换过程参考文档 [环境变量](#环境变量)
+
 ```yaml
 ## 配置是yaml格式，请严格注意缩进.
 mode: "release" # 运行模式 模式 debug 测试 release 正式 bench 压力测试

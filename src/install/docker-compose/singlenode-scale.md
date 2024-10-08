@@ -46,7 +46,7 @@ cd  ~/wukongim
 version: '3.7'
 services:
   wukongim: # WuKongIM服务
-    image: registry.cn-shanghai.aliyuncs.com/wukongim/wukongim:v2.0.4-beta-20240904
+    image: registry.cn-shanghai.aliyuncs.com/wukongim/wukongim:v2
     environment:
       - "WK_MODE=release" # release模式
       - "WK_CLUSTER_NODEID=1002" 
