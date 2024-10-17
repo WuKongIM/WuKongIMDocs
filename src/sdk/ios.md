@@ -229,13 +229,13 @@ WKTextContent *content = [[WKTextContent alloc] initWithContent:@"hello"];
  @return 正文类型
  */
 
-(NSInteger) contentType;
+- (NSNumber*) contentType;
 
 // 上层无需实现encode 实现此方法即可
-(NSDictionary*) encodeWithJSON;
+- (NSDictionary*) encodeWithJSON;
 
 // 上层无序实现decode 实现此方法即可
-(void) decodeWithJSON:(NSDictionary*)contentDic;
+- (void) decodeWithJSON:(NSDictionary*)contentDic;
 
 // 消息中的@提醒信息
 @property (nonatomic, strong) WKMentionedInfo *mentionedInfo;
@@ -880,12 +880,12 @@ cmd 消息由服务端下发客户端解析。
 @implementation WKGIFContent
 
 // 定义消息正文类型
-(NSInteger) contentType {
-    return 3;
+- (NSNumber*) contentType {
+    return @(3);
 }
 
 // 发送消息时对消息内容编码
-(NSDictionary *)encodeWithJSON {
+- (NSDictionary *)encodeWithJSON {
 	NSMutableDictionary *dataDict = [NSMutableDictionary dictionary];
 	[dataDict setObject:self.url?:@"" forKey:@"url"];
 	[dataDict setObject:@(self.width) forKey:@"width"];
@@ -894,14 +894,14 @@ cmd 消息由服务端下发客户端解析。
 }
 
 // 收到消息时对消息内容解码
-(void)decodeWithJSON:(NSDictionary *)contentDic {
+- (void)decodeWithJSON:(NSDictionary *)contentDic {
 	self.url = contentDic[@"url"];
 	self.width = contentDic[@"width"]?[contentDic[@"width"] integerValue]:100;
 	self.height = contentDic[@"height"]?[contentDic[@"height"] integerValue]:100;
 }
 
 // 最近会话显示的内容
-(NSString *)conversationDigest {
+- (NSString *)conversationDigest {
     return @"[gif表情]"
 }
 
@@ -945,18 +945,18 @@ cmd 消息由服务端下发客户端解析。
 @implementation WKImageContent
 
 // 定义消息正文类型
-(NSInteger) contentType {
-	return 4;
+ - (NSNumber*) contentType {
+	return @(4);
 }
 
 // 将图片数据写入到本地路径，这样后面的上传任务会将此路径的附件上传到服务器
-(void) writeDataToLocalPath {
+ - (void) writeDataToLocalPath {
 	[super writeDataToLocalPath];
 	[self.imageData writeToFile:self.localPath atomically:YES];
 }
 
 // 附件消息当附件上传成功后 会获取到上传后的self.remoteUrl下载地址，我们只需要将此下载地址编码到json里，附件的上传任务进度管理请查看 [WKSDK shared].mediaManager
-(NSDictionary *)encodeWithJSON {
+- (NSDictionary *)encodeWithJSON {
 	NSMutableDictionary *dataDict = [NSMutableDictionary dictionary];
 	[dataDict setObject:self.remoteUrl?:@"" forKey:@"url"];
 	[dataDict setObject:@(self.width) forKey:@"width"];
@@ -964,7 +964,7 @@ cmd 消息由服务端下发客户端解析。
 	return dataDict;
 }
 // 当收到消息需要解码，这时候我们只需要将下载地址url 赋值给self.remoteUrl后 下载任务会通过self.remoteUrl的下载地址进行下载附件 附件的下载任务进度管理请查看 [WKSDK shared].mediaManager
-(void)decodeWithJSON:(NSDictionary *)contentDic {
+- (void)decodeWithJSON:(NSDictionary *)contentDic {
 	self.remoteUrl = contentDic[@"url"];
 	self.width = contentDic[@"width"]?[contentDic[@"width"] floatValue]:0;
 	self.height = contentDic[@"height"]?[contentDic[@"height"] floatValue]:0;
