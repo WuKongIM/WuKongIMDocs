@@ -125,10 +125,12 @@ WKIM.getInstance().channelManager.addOnGetChannelInfoListener { channelID, chann
 - <font color='#999' size=2>SDK 内置频道类型 可通过 `WKChannelType` 查看</font>
 
 也可以批量保存频道资料信息
+`java`
 ```java
 // 批量保存频道资料信息
 WKIM.getInstance().getChannelManager().saveOrUpdateChannels(channels);
 ```
+`kotlin`
 ```kotlin
 // 批量保存频道资料信息
 WKIM.getInstance().channelManager.saveOrUpdateChannels(channels)

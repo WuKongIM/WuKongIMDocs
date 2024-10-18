@@ -13,12 +13,6 @@
 ```java
 // 获取channel信息 先获取内存 如果没有再从数据库获取
 WKIM.getInstance().getChannelManager().getChannel(String channelID, byte channelType)
-
-// 从远程服务器获取channel信息
-WKIM.getInstance().getChannelManager().fetchChannelInfo(String channelID, byte channelType)
-
-// 批量导入频道信息 该方法会触发channel刷新事件
-WKIM.getInstance().getChannelManager().addOrUpdateChannels(List<WKChannel> list);
 ```
 
 `Kotlin`
@@ -26,12 +20,6 @@ WKIM.getInstance().getChannelManager().addOrUpdateChannels(List<WKChannel> list)
 ```kotlin
 // 获取channel信息 先获取内存 如果没有再从数据库获取
 WKIM.getInstance().channelManager.getChannel(channelID,channelType)
-
-// 从远程服务器获取channel信息
-WKIM.getInstance().channelManager.fetchChannelInfo(channelID,channelType)
-
-// 批量导入频道信息 该方法会触发channel刷新事件
-WKIM.getInstance().channelManager.addOrUpdateChannels(list)
 ```
 #### 强制刷新频道资料
 
@@ -62,6 +50,7 @@ WKIM.getInstance().getChannelManager().addOnRefreshChannelInfo("key", new IRefre
                 //
             }
         });
+
 // 移除监听
 WKIM.getInstance().getChannelManager().removeRefreshChannelInfo("key");
 ```

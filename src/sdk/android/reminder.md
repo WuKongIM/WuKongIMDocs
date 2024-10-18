@@ -5,7 +5,7 @@
 `java`
 ```java 
 // 获取指定会话的提醒项
-List<WKReminder> allReminder = WKIM.getInstance().getReminderManager().getReminders(channelId, channelType);
+WKIM.getInstance().getReminderManager().getReminders(channelId, channelType);
 
 // 获取指定类型的提醒项
 WKIM.getInstance().getReminderManager().getRemindersWithType(String channelID, byte channelType, int type);
@@ -13,7 +13,7 @@ WKIM.getInstance().getReminderManager().getRemindersWithType(String channelID, b
 `kotlin`
 ```kotlin
 // 获取指定会话的提醒项
-val allReminder = WKIM.getInstance().reminderManager.s(channelId, channelType)
+WKIM.getInstance().reminderManager.s(channelId, channelType)
 
 // 获取指定类型的提醒项
 WKIM.getInstance().reminderManager.getRemindersWithType( channelID,  channelType, type);

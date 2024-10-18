@@ -35,7 +35,7 @@ cd  ~/wukongim
 version: '3.7'
 services:
   wukongim: # WuKongIM服务
-    image: registry.cn-shanghai.aliyuncs.com/wukongim/wukongim:v2.0.1-beta-20240715
+    image: registry.cn-shanghai.aliyuncs.com/wukongim/wukongim:v2
     environment:
       - "WK_CLUSTER_NODEID=1004" 
       - "WK_CLUSTER_APIURL=http://10.206.0.6:5001" # 节点内部通信api url地址，这里ip换成自己节点实际node2的内网ip  

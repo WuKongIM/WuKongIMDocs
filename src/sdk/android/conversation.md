@@ -21,6 +21,7 @@ WKIM.getInstance().conversationManager.getAll()
 `Java`
 
 ```java
+// 监听刷新最近会话消息
  WKIM.getInstance().getConversationManager().addOnRefreshMsgListener("key", new IRefreshConversationMsg() {
             @Override
             public void onRefreshConversationMsg(WKUIConversationMsg wkUIConversationMsg, boolean isEnd) {
@@ -28,17 +29,24 @@ WKIM.getInstance().conversationManager.getAll()
                 // isEnd 为了防止频繁刷新UI，当isEnd为true可刷新UI
             }
         });
+
+// 退出页面时移除监听
+WKIM.getInstance().getConversationManager().removeOnRefreshMsgListener("key");
 ```
 
 `Kotlin`
 
 ```kotlin
+// 监听刷新最近会话消息
  WKIM.getInstance().conversationManager.addOnRefreshMsgListener(
             "key"
         ) { wkUIConversationMsg, isEnd ->
             // wkUIConversationMsg 最近会话消息内容 UI上已有该会话需进行更新，反之添加到UI上
             // isEnd 为了防止频繁刷新UI，当isEnd为true可刷新UI
         }
+
+// 退出页面时移除监听
+WKIM.getInstance().conversationManager.removeOnRefreshMsgListener("key")
 ```
 
 ### 移除最近会话
@@ -63,6 +71,7 @@ WKIM.getInstance().conversationManager.deleteWitchChannel(channelId, channelType
 `Java`
 
 ```java
+// 监听删除最近会话消息
 WKIM.getInstance().getConversationManager().addOnDeleteMsgListener("key", new IDeleteConversationMsg() {
             @Override
             public void onDelete(String channelID, byte channelType) {
@@ -70,17 +79,24 @@ WKIM.getInstance().getConversationManager().addOnDeleteMsgListener("key", new ID
                 // channelType 聊天频道类型
             }
         });
+
+// 退出页面时移除监听
+WKIM.getInstance().getConversationManager().removeOnDeleteMsgListener("key");
 ```
 
 `Kotlin`
 
 ```kotlin
+// 监听删除最近会话消息
 WKIM.getInstance().conversationManager.addOnDeleteMsgListener(
             "key"
         ) { channelID, channelType ->
             // channelID 聊天频道ID
             // channelType 聊天频道类型
         }
+
+// 退出页面时移除监听
+WKIM.getInstance().conversationManager.removeOnDeleteMsgListener("key")
 ```
 ### 常用方法
 

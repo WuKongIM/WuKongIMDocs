@@ -12,9 +12,16 @@ let msgs = WKIM.shared.conversationManager().all()
 
 只有第一次打开应用时，需要同步最近会话列表， 后续最近会话列表的变化，通过监听来获取
 ```typescript
- WKIM.shared.conversationManager().addRefreshListener((list:WKConversation[]) => {
+// 定义监听器
+let listener =(list:WKConversation[]) => {
      // 当UI列表没有list中的数据时需执行添加操作
-    })
+    }
+
+// 监听新消息
+ WKIM.shared.conversationManager().addRefreshListener(listener)
+
+// 移出监听
+ WKIM.shared.conversationManager().removeRefreshListener(listener)
  ```
 
  ### 删除最近会话
@@ -24,9 +31,16 @@ WKIM.shared.conversationManager().delete(channelId, channelType)
 ```
 调用删除最近会话后，会触发删除最近会话事件，UI可以监听删除最近会话事件，并将UI上的会话进行删除
 ```typescript
-WKIM.shared.conversationManager().addDeletedListener((channelId: string, channelType: number) => {
+// 定义监听器
+let listener = (channelId: string, channelType: number) => {
       // 删除UI上的会话
-    })
+}
+
+// 设置监听
+WKIM.shared.conversationManager().addDeletedListener(listener)
+
+// 移出监听
+WKIM.shared.conversationManager().removeDeletedListener(listener)
 ```
 
 ### 数据结构说明

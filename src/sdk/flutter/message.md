@@ -7,49 +7,28 @@
 WKIM.shared.messageManager.sendMessage(WKTextContent('我是文本消息'), WKChannel('uid_1', WKChannelType.personal));
 ```
 
-如给用户`A`发送一条文本消息。构建文本消息正文
-
-```dart
-WKTextContent textContent = new WKTextContent("你好，悟空");
-```
-
-将消息发送给用户`A`
-
-```dart
-WKIM.shared.messageManager.sendMessage(textContent,WKChannel('A', WKChannelType.personal));
-```
-
 #### 文本消息
 ```dart
-class WKTextContent extends WKMessageContent {
-    WKTextContent(content) {
-    contentType = WkMessageContentType.text;
-    this.content = content;
-  }
-}
+// 定义文本消息
+WKTextContent text = WKTextContent("你好，悟空");
+// 发送文本消息
+WKIM.shared.messageManager.sendMessage(text,channel);
 ```
 
 #### 图片消息
 ```dart
-class WKImageContent extends WKMediaMessageContent {
-  int width;
-  int height;
-  WKImageContent(this.width, this.height) {
-    contentType = WkMessageContentType.image;
-  }
-}
+// 定义图片消息
+WKImageContent image = WKImageContent(100, 100);
+image.localPath = "xxx"; // 图片本地路径
+image.url = "http://xxx.com/xxx.jpg"
+// 发送图片消息
+WKIM.shared.messageManager.sendMessage(image,channel);
 ```
 
-#### 语音消息
-```dart
-class WKVoiceContent extends WKMediaMessageContent {
-  int timeTrad; // 语音秒长
-  String? waveform; // 语音波纹 base64编码
-  WKVoiceContent(this.timeTrad) {
-    contentType = WkMessageContentType.voice;
-  }
-}
-```
+#### 自定义消息
+
+参考自定义消息: [自定义消息](/sdk/flutter/advance.html#自定义消息)
+
 
 ### 消息入库返回（并不是消息发送状态）
 在发送消息时，sdk 将消息保存在本地数据库后就会触发入库回调。此时消息并未进行发送，可在此监听中将消息展示在 UI 上
@@ -65,9 +44,13 @@ WKIM.shared.messageManager.addOnMsgInsertedListener((wkMsg) {
 监听新消息事件
 
 ```dart
+// 监听新消息事件
 WKIM.shared.messageManager.addOnNewMsgListener('chat', (msgs) {
       //  展示在UI上
     });
+
+// 移除新消息监听
+WKIM.shared.messageManager.removeNewMsgListener('chat');
 ```
 - <font color='#999' size=2>如果在聊天页面内收到新消息时需判断该消息是否属于当前会话，可通过消息对象`WKMsg`的`channelID`和`channelType`判断</font>
 
@@ -78,9 +61,13 @@ WKIM.shared.messageManager.addOnNewMsgListener('chat', (msgs) {
 
 监听刷新消息事件
 ```dart
+// 监听刷新消息事件
 WKIM.shared.messageManager.addOnRefreshMsgListener('chat', (wkMsg) {
       // todo 刷新消息
     });
+
+// 移除刷新消息监听
+WKIM.shared.messageManager.removeOnRefreshMsgListener('chat');
 ```
 
 ### 查看某个频道的聊天信息

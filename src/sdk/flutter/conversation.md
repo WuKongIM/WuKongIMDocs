@@ -12,6 +12,7 @@ WKIM.shared.conversationManager.getAll();
 
 只有第一次打开应用时，需要同步最近会话列表， 后续最近会话列表的变化，通过监听来获取
 ```dart
+// 监听刷新消息
  WKIM.getInstance().getConversationManager().addOnRefreshMsgListener("key", new IRefreshConversationMsg() {
             @Override
             public void onRefreshConversationMsg(WKUIConversationMsg wkUIConversationMsg, boolean isEnd) {
@@ -19,6 +20,8 @@ WKIM.shared.conversationManager.getAll();
                 // isEnd 为了防止频繁刷新UI，当isEnd为true可刷新UI
             }
         });
+// 移除监听
+ WKIM.getInstance().getConversationManager().removeOnRefreshMsg("key");
  ```
 ### 删除最近会话
 

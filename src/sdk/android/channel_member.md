@@ -8,7 +8,7 @@
 WKIM.getInstance().getChannelMembersManager().getMembers(channelId,channelType);
 
 // 单个频道成员
-WKIM.getInstance().getChannelMembersManager().getMembers(channelId,channelType,uid);
+WKIM.getInstance().getChannelMembersManager().getMember(channelId,channelType,uid);
 ```
 `kotlin`
 ```kotlin
@@ -16,7 +16,7 @@ WKIM.getInstance().getChannelMembersManager().getMembers(channelId,channelType,u
 WKIM.getInstance().channelMembersManager().getMembers(channelId,channelType);
 
 // 单个频道成员
-WKIM.getInstance().channelMembersManager().getMembers(channelId,channelType,uid);
+WKIM.getInstance().channelMembersManager().getMember(channelId,channelType,uid);
 
 ```
 #### 搜索成员

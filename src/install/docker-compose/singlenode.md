@@ -46,7 +46,7 @@ cd  ~/wukongim
 version: '3.7'
 services:
   wukongim: # WuKongIM服务
-    image: registry.cn-shanghai.aliyuncs.com/wukongim/wukongim:v2.0.1-beta-20240715
+    image: registry.cn-shanghai.aliyuncs.com/wukongim/wukongim:v2
     environment:
       - "WK_CLUSTER_NODEID=1001"  
       - "WK_CLUSTER_SERVERADDR=xx.xx.xx.xx:11110" # 节点内部通信请求地址

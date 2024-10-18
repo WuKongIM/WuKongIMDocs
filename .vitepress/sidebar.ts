@@ -88,10 +88,10 @@ export const sidebar: DefaultTheme.Sidebar = {
 						{ text: "多节点模式扩容", link: "/install/k8s/multinode-scale" },
 					],
 				},
-				{
-					text: "升级",
-					link: "/install/k8s/upgrade",
-				},
+				// {
+				// 	text: "升级",
+				// 	link: "/install/k8s/upgrade",
+				// },
 			],
 
 		},
@@ -129,7 +129,6 @@ export const sidebar: DefaultTheme.Sidebar = {
 	],
 	"/sdk": [
 		{ text: "概述", link: "/sdk/" },
-		{ text: "iOS", link: "/sdk/ios" },
 		{
 			text: "Android",
 			collapsed: true,
@@ -146,6 +145,46 @@ export const sidebar: DefaultTheme.Sidebar = {
 				{ text: "命令管理", link: "/sdk/android/cmd" },
 				{ text: "高级功能", link: "/sdk/android/advance" },
 				{ text: "示例代码", link: "https://github.com/WuKongIM/WuKongIMAndroidSDK" },
+			]
+		},
+		{
+			text: "iOS",
+			collapsed: true,
+			items: [
+				{ text: "说明", link: "/sdk/iossdk/intro" },
+				{ text: "集成", link: "/sdk/iossdk/integration" },
+				{ text: "连接管理", link: "/sdk/iossdk/connection" },
+				{ text: "聊天管理", link: "/sdk/iossdk/chat" },
+				{ text: "最近会话管理", link: "/sdk/iossdk/conversation" },
+				{ text: "频道管理", link: "/sdk/iossdk/channel" },
+				{ text: "多媒体管理", link: "/sdk/iossdk/media" },
+				{ 
+					text: "高级功能", 
+					items: [
+						{
+							text: "自定义消息",
+							link: "/sdk/iossdk/advance/custommessage"
+						},
+						{
+							text: "消息编辑",
+							link: "/sdk/iossdk/advance/messageEdit"
+						},
+						{
+							text: "消息点赞",
+							link: "/sdk/iossdk/advance/messageReaction"
+						},
+						{
+							text: "消息已读",
+							link: "/sdk/iossdk/advance/messageReaded"
+						},
+						{
+							text: "会话提醒",
+							link: "/sdk/iossdk/advance/reminder"
+						},
+					]
+
+				 },
+				{ text: "示例代码", link: "https://github.com/WuKongIM/WuKongIMiOSSDK/tree/main/Example" },
 			]
 		},
 		{

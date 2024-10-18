@@ -18,82 +18,52 @@ WKIM.getInstance().getMsgManager().sendMessage(textContent,channelID, channelTyp
 `Kotlin`
 
 ```kotlin
-WKIM.getInstance().msgManager.sendMessage(textContent,channelID, channelType)
+WKIM.getInstance().msgManager.send(textContent,channel)
 ```
 
 - <font size=2 color="#999">sdk 内置频道类型可通过`WKChannelType`查看</font>
-
-如给用户`A`发送一条文本消息。构建文本消息正文
-
-`Java`
-
-```java
-WKTextContent textContent = new WKTextContent("你好，悟空");
-```
-
-`Kotlin`
-
-```kotlin
-val textContent = WKTextContent("你好，悟空")
-```
-
-将消息发送给用户`A`
-
-`Java`
-
-```java
-WKIM.getInstance().getMsgManager().sendMessage(textContent,"A",WKChannelType.PERSONAL);
-```
-
-`Kotlin`
-
-```kotlin
-WKIM.getInstance().msgManager.sendMessage(textContent,"A",WKChannelType.PERSONAL)
-```
 
 #### 文本消息
 
 `Java`
 
 ```java
-public class WKTextContent extends WKMessageContent {
+// 定义文本消息
+WKTextContent textContent = new WKTextContent("你好，悟空");
+// 发送消息
+WKIM.getInstance().msgManager.send(textContent,channel)
+```
+`Kotlin`
 
-    public WKTextContent(String content) {
-        this.content = content;
-        this.type = WKMsgContentType.WK_TEXT;
-    }
-}
+```kotlin
+// 定义文本消息
+val textContent = WKTextContent("你好，悟空")
+// 发送消息
+WKIM.getInstance().msgManager.send(textContent,channel)
 ```
 
 #### 图片消息
 
 ```java
-public class WKImageContent extends WKMediaMessageContent {
-  public int width; // 宽度
-  public int height; // 高度
-  public WKImageContent(String localPath) {
-        this.localPath = localPath;
-        this.type = WKMsgContentType.WK_IMAGE;
-  }
-}
+// 定义图片消息
+WKImageContent imageContent = new WKImageContent(localPath);
+// 发送消息
+WKIM.getInstance().msgManager.send(imageContent,channel);
 ```
+`Kotlin`
 
+```kotlin
+// 定义图片消息
+val imageContent = WKImageContent(localPath)
+// 发送消息
+WKIM.getInstance().msgManager.send(imageContent,channel)
+```
 - <font color="#999" size=2>在构建图片消息正文时，无需传递图片的高宽。sdk 会自动获取图片高宽</font>
 
-#### 语音消息
+#### 自定义消息
 
-```java
-public class WKVoiceContent extends WKMediaMessageContent {
-    public int timeTrad; // 语音时长
-    public String waveform; // 音频波浪数据 （可选参数）
+参考自定义消息: [自定义消息](/sdk/android/advance.html#自定义消息)
 
-    public WKVoiceContent(String localPath, int timeTrad) {
-        this.type = WKMsgContentType.WK_VOICE;
-        this.timeTrad = timeTrad;
-        this.localPath = localPath;
-    }
-}
-```
 ### 消息入库返回（并不是消息发送状态）
 
 在发送消息时，sdk 将消息保存在本地数据库后就会触发入库回调。此时消息并未进行发送，可在此监听中将消息展示在 UI 上
@@ -125,20 +95,27 @@ WKIM.getInstance().msgManager.addOnSendMsgCallback("key") { wkMsg ->
 `Java`
 
 ```java
+// 添加监听
 WKIM.getInstance().getMsgManager().addOnNewMsgListener("key", new INewMsgListener() {
             @Override
             public void newMsg(List<WKMsg> list) {
                 // list:接收到的消息
             }
         });
+// 退出页面时移除监听
+WKIM.getInstance().getMsgManager().removeNewMsgListener("key");
 ```
 
 `Kotlin`
 
 ```kotlin
+// 添加监听
 WKIM.getInstance().msgManager.addOnNewMsgListener("key") { list ->
           // list:接收到的消息
 }
+
+// 退出页面时移除监听
+WKIM.getInstance().msgManager.removeNewMsgListener("key")
 ```
 
 - <font color='#999' size=2>如果在聊天页面内收到新消息时需判断该消息是否属于当前会话，可通过消息对象`WKMsg`的`channelID`和`channelType`判断</font>
@@ -150,6 +127,7 @@ WKIM.getInstance().msgManager.addOnNewMsgListener("key") { list ->
 `Java`
 
 ```java
+// 添加刷新监听
 WKIM.getInstance().getMsgManager().addOnRefreshMsgListener("key", new IRefreshMsg() {
             @Override
             public void onRefresh(WKMsg wkMsg, boolean isEnd) {
@@ -157,15 +135,22 @@ WKIM.getInstance().getMsgManager().addOnRefreshMsgListener("key", new IRefreshMs
                 // isEnd：为了避免频繁刷新UI导致卡顿，当isEnd为true时在刷新UI
             }
         });
+
+// 退出页面时移除刷新监听
+WKIM.getInstance().getMsgManager().removeRefreshMsgListener("key");
 ```
 
 `Kotlin`
 
 ```kotlin
+// 添加刷新监听
 WKIM.getInstance().msgManager.addOnRefreshMsgListener("") { wkMsg, isEnd ->
    // wkMsg：刷新的消息对象
   // isEnd：为了避免频繁刷新UI导致卡顿，当isEnd为true时在刷新UI
 }
+
+// 退出页面时移除刷新监听
+WKIM.getInstance().msgManager.removeRefreshMsgListener("key")
 ```
 
 

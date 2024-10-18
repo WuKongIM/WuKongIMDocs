@@ -24,6 +24,33 @@ class GifContent extends WKMessageContent{
 ```
 #### 第二步 编码解码
 ```dart
+@override
+WKMessageContent decodeJson(Map<String, dynamic> json) {
+url = readString(json, 'url');
+width = readInt(json, 'width');
+height = readInt(json, 'height');
+return this;
+}
+
+@override
+Map<String, dynamic> encodeJson() {
+return {'url': url, 'width': width, 'height': height};
+}
+```
+- <font color='#999' size=2>解码和编码消息时无需将 `type` 字段考虑其中，sdk 内部会自动处理</font>
+
+#### 第三步 注册消息
+```dart
+WKIM.shared.messageManager.registerMsgContent(WkMessageContentType.gif,
+        (dynamic data) {
+      return GifContent('').decodeJson(data);
+    });
+```
+
+对此通过这三步自定义普通消息就已完成。在收到消息时`WKMsg`中的type为3就表示该消息是名片消息，其中`messageContent`则为自定义的`GifContent`，这时可将`messageContent`强转为`GifContent`并渲染到UI上
+
+完整代码如下：
+```dart
 class GifContent extends WKMessageContent{
     int c=0; // 宽度
     int height=0; // 高度
@@ -53,21 +80,9 @@ class GifContent extends WKMessageContent{
   }
 }
 ```
-- <font color='#999' size=2>解码和编码消息时无需将 `type` 字段考虑其中，sdk 内部会自动处理</font>
-
-#### 第三步 注册消息
-```dart
-WKIM.shared.messageManager.registerMsgContent(WkMessageContentType.gif,
-        (dynamic data) {
-      return GifContent('').decodeJson(data);
-    });
-```
-
-对此通过这三步自定义普通消息就已完成。在收到消息时`WKMsg`中的type为3就表示该消息是名片消息，其中`messageContent`则为自定义的`GifContent`，这时可将`messageContent`强转为`GifContent`并渲染到UI上
-
 ### 自定义附件消息
 
-我们在发送消息的时候有时需发送带附件的消息。WuKongIM 也提供自定义附件消息，自定义附件消息和普通消息区别不大。下面我们图片消息举例
+我们在发送消息的时候有时需发送带附件的消息。WuKongIM 也提供自定义附件消息，自定义附件消息和普通消息区别不大。下面我们位置消息举例
 
 #### 第一步 定义消息
 
@@ -76,47 +91,39 @@ WKIM.shared.messageManager.registerMsgContent(WkMessageContentType.gif,
 
 ```dart
 
-class WKImageContent extends WKMediaMessageContent {
-  int width; // 图片宽度
-  int height; // 图片高度
-  WKImageContent(this.width, this.height) {
-    contentType = WkMessageContentType.image;
+class WKLocationContent extends WKMediaMessageContent {
+  var longitude = 0.0;
+  var latitude = 0.0;
+  var address = "";
+  WKLocationContent() {
+    contentType = 10;
   }
 }
 ```
 
 #### 第二步 编码解码
 ```dart
-class WKImageContent extends WKMediaMessageContent {
-  int width; // 图片宽度
-  int height; // 图片高度
-  WKImageContent(this.width, this.height) {
-    contentType = WkMessageContentType.image;
-  }
 
   @override
   Map<String, dynamic> encodeJson() {
-    return {'width': width, 'height': height, 'url': url};
+    return {'longitude': longitude, 'latitude': latitude, 'url': url,'address':address, 'localPath': localPath};
   }
 
   @override
   WKMessageContent decodeJson(Map<String, dynamic> json) {
-    width = readInt(json, 'width');
-    height = readInt(json, 'height');
+    address = readString(json, 'address');
+    longitude = readDouble(json, 'longitude');
     url = readString(json, 'url');
+    latitude = readDouble(json, 'latitude');
     localPath = readString(json, 'localPath');
     return this;
   }
-
-}
 ```
 #### 第三步 注册消息
 ```dart
-WKIM.shared.messageManager.registerMsgContent(WkMessageContentType.image,
+WKIM.shared.messageManager.registerMsgContent(10,
         (dynamic data) {
-      return WKImageContent(
-        0,
-        0,
+      return WKLocationContent(
       ).decodeJson(data);
     });
 ```
@@ -186,7 +193,7 @@ WKIM.shared.messageManager.sendMessage( text, WKChannel(channelID, channelType))
 WKIM.shared.messageManager.saveMessageReactions(List<WKSyncMsgReaction> list);
 ```
 
-- <font color='#999' size=2>同一个用户对同一条消息只能做出一条回应。重复进行消息不同 emoji 的回应会做为修改回应，重复进行相同 emoji 的回应则做为删除回应</font> sdk 更新消息回应后会触发消息刷新的事件。app 需监听此事件并对 UI 进行刷新
+- <font color='#999' size=2>同一个用户对同一条消息只能做出一条回应。重复进行消息不同 emoji 的回应会做为修改回应，重复进行相同 emoji 的回应则做为删除回应</font> sdk 更新消息回应后会触发消息刷新的事件。app 需监听消息刷新事件并对 UI 进行刷新
 
 ### 消息编辑
 

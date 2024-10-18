@@ -4,6 +4,10 @@
 
 `配置采用yaml格式，如果发现配置什么都不生效，请检查缩进是否正确`
 
+`所有的配置都可以转换成对应的环境变量，配置在docker-compose.yaml的environment里`
+
+转换过程参考文档 [环境变量](#环境变量)
+
 ```yaml
 ## 配置是yaml格式，请严格注意缩进.
 mode: "release" # 运行模式 模式 debug 测试 release 正式 bench 压力测试
@@ -19,7 +23,7 @@ whitelistOffOfPerson: true # 是否关闭个人白名单 默认为true表示关�
 ginMode: "release" # gin框架的模式 debug 调试 release 正式 test 测试
 external: # 公网配置
     ip: "" # 节点外网IP，客户端能够访问到的IP地址，如果客户端是内网使用，这里也可以填写内网IP
-    tcpAddr: "" #  默认自动获取， 节点的TCP地址 对外公开，APP端长连接通讯  格式： ip:port  （支持域名配置）
+    tcpAddr: "" #  默认自动获取， 节点的TCP地址 对外公开，APP端长连接通讯  格式： ip:port  
     wsAddr: "" # 默认自动获取， 节点的wsAdd地址 对外公开 WEB端长连接通讯 格式： ws://ip:port  （支持域名配置）
     wssAddr: "" # 对外的wssAddr地址，也就是客户端真正连接的地址 格式：wss://ip:port （支持域名配置）
     monitorAddr: "" # 默认自动获取， 节点的monitor地址 对外公开 监控服务 格式： ip:port

@@ -34,13 +34,9 @@ WKIM.shared.messageManager().send(imageModel, new WKChannel('A', WKChannelType.p
 ```
 
 #### 自定义消息
-```typescript
-// 自定义消息
-let model: xxx = new xxx()
 
- // 发送给群组g_100
-WKIM.shared.messageManager().send(model, new WKChannel('g_100', WKChannelType.group));
-```
+参考自定义消息: [自定义消息](/sdk/harmonyos/advance.html#自定义消息)
+
 ### 消息入库返回（并不是消息发送状态）
 在发送消息时，sdk 将消息保存在本地数据库后就会触发入库回调。此时消息并未进行发送，可在此监听中将消息展示在 UI 上
 

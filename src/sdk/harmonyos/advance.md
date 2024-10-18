@@ -32,7 +32,7 @@ export class CardMessageContent extends WKMessageContent {
   "avatar": "xxx"
 }
 ```
-重写`WKMessageContent`的`encodeJson`方法开始编码
+重写`WKMessageContent`的`encodeJson`,`decodeJson`方法开始编码解码
 
 ```typescripts
 
@@ -45,9 +45,6 @@ export class CardMessageContent extends WKMessageContent {
     return json
   }
 
-```
-重写`WKMessageContent`的`decodeJson`方法开始解码
-```typescripts
 
   // 解码内容
   decodeJson(jsonStr: string): WKMessageContent {
@@ -59,7 +56,9 @@ export class CardMessageContent extends WKMessageContent {
     }
     return this
   }
+
 ```
+
 - <font color='#999' size=2>解码和编码消息时无需将 `type` 字段考虑其中，sdk 内部会自动处理</font>
 ##### 第三步 注册消息
 ```typescripts
@@ -139,7 +138,7 @@ export class LocationMessageContent extends WKMediaMessageContent {
   "address": "xxx"
 }
 ```
-重写`WKMessageContent`的encodeJson方法开始编码
+重写`WKMessageContent`的`encodeJson`,`decodeJson`方法开始编码解码
 ```typescripts
 // 编码
 encodeJson(): Record<string, Object> {
@@ -149,9 +148,8 @@ json['longitude'] = this.longitude
 json['latitude'] = this.latitude
 return json
 }
-```
-重写`WKMessageContent`的`decodeJson`方法开始解码
-```typescripts
+
+
 // 解码
 decodeJson(jsonStr: string): WKMessageContent {
 let json = CommonUtil.jsonToRecord(jsonStr)
@@ -164,6 +162,7 @@ if (json !== undefined) {
 return this
 }
 ```
+
 ##### 第三步 注册消息
 ```typescripts
 // 注册自定义消息
@@ -174,7 +173,7 @@ WKIM.shared.messageManager().registerMsgContent(17, (jsonStr: string) => {
 ### 消息扩展
 随着业务的发展应用在聊天中的功能也日益增多，为了满足绝大部分的需求 WuKongIM 中增加了消息扩展功能。消息扩展分`本地扩展`和`远程扩展`，本地扩展只针对 app 本地使用卸载 app 后将丢失，远程扩展是服务器保存卸载重装后数据将恢复
 #### 本地扩展
-本地扩展就是消息对象`WKMsg`中的l`localExtraMap`字段
+本地扩展就是消息对象`WKMsg`中的`localExtraMap`字段
 ```typescripts
 /**
   * 修改消息本地扩展

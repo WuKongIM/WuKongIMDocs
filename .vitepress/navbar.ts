@@ -20,13 +20,13 @@ export const navbar: DefaultTheme.NavItem[] = [
 		text: "SDK文档",
 		activeMatch: "^/sdk",
 		items: [
-			{ text: "iOS", link: "/sdk/ios" },
+			{ text: "iOS", link: "/sdk/iossdk/intro" },
 			{ text: "Android", link: "/sdk/android" },
 			{ text: "Javascript", link: "/sdk/jssdk/intro" },
 			{ text: "Flutter", link: "/sdk/flutter" },
 			{ text: "Uniapp", link: "/sdk/uniapp" },
 			{ text: "微信小程序", link: "/sdk/smallprogram" },
-			{ text: "harmonyOS", link: "/sdk/harmonyos" },
+			{ text: "HarmonyOS", link: "/sdk/harmonyos" },
 		],
 	},
 	{
@@ -42,9 +42,9 @@ export const navbar: DefaultTheme.NavItem[] = [
 	// 	link: "https://gitee.com/WuKongDev/WuKongIM/releases",
 	// },
 	{
-		"text": "v2.0.1 (beta)",
+		"text": "v2",
 		items: [
-			{text: "v1.2.5 (stable)", link: "/1.0/"},
+			{text: "v1", link: "https://v1.githubim.com/guide/guide.html"},
 		],
 	},
 ];

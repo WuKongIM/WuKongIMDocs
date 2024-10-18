@@ -167,9 +167,12 @@ WKIM.getInstance().getMsgManager().registerContentMsg(WKCardContent.class);
 
 对此通过这三步自定义普通消息就已完成。在收到消息时`WKMsg`中的type为3就表示该消息是名片消息，其中`baseContentMsgModel`则为自定义的`WKCardContent`，这时可将`baseContentMsgModel`强转为`WKCardContent`并渲染到UI上
 
+完整代码  [名片消息](https://github.com/TangSengDaoDao/TangSengDaoDaoAndroid/blob/master/wkuikit/src/main/java/com/chat/uikit/chat/msgmodel/WKCardContent.java "名片消息") 
+
+
 #### 自定义附件消息
 
-我们在发送消息的时候有时需发送带附件的消息。WuKongIM 也提供自定义附件消息，自定义附件消息和普通消息区别不大。下面我们已地理位置消息举例
+我们在发送消息的时候有时需发送带附件的消息。WuKongIM 也提供自定义附件消息，自定义附件消息和普通消息区别不大。下面我们以地理位置消息举例
 
 ##### 第一步 定义消息
 
