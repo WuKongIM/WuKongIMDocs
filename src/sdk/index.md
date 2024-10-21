@@ -8,16 +8,14 @@ nav:
 
 # 文档阅读引导
 
-[iOS SDK](./ios.md)<br/>
+[iOS SDK](./iossdk/intro.md)<br/>
 
 [Android SDK](./android.md) <br/>
 
-[JavaScript SDK](./javascript.md) <br/>
+[JavaScript SDK](./jssdk/intro.md) <br/>
 
 [Uniapp SDK](./uniapp.md) <br/>
 
 Flutter SDK (待开发)
-
-C SDK (待开发)
 
 Python SDK (待开发)

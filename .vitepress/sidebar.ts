@@ -187,6 +187,5 @@ export const sidebar: DefaultTheme.Sidebar = {
 		},
 		{ text: "Uniapp", link: "/sdk/uniapp" },
 		{ text: "Flutter", link: "/sdk/flutter" },
-		{ text: "c", link: "/sdk/c" },
 	]
 };
