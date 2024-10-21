@@ -130,6 +130,24 @@ export const sidebar: DefaultTheme.Sidebar = {
 	"/sdk": [
 		{ text: "概述", link: "/sdk/" },
 		{
+			text: "Android",
+			collapsed: true,
+			items: [
+				{ text: "说明", link: "/sdk/android/intro" },
+				{ text: "集成", link: "/sdk/android/integration" },
+				{ text: "基础", link: "/sdk/android/base" },
+				{ text: "消息管理", link: "/sdk/android/message" },
+				{ text: "最近会话管理", link: "/sdk/android/conversation" },
+				{ text: "频道管理", link: "/sdk/android/channel" },
+				{ text: "频道成员管理", link: "/sdk/android/channel_member" },
+				{ text: "提醒项管理", link: "/sdk/android/reminder" },
+				{ text: "数据源管理", link: "/sdk/android/datasource" },
+				{ text: "命令管理", link: "/sdk/android/cmd" },
+				{ text: "高级功能", link: "/sdk/android/advance" },
+				{ text: "示例代码", link: "https://github.com/WuKongIM/WuKongIMAndroidSDK" },
+			]
+		},
+		{
 			text: "iOS",
 			collapsed: true,
 			items: [
@@ -169,8 +187,6 @@ export const sidebar: DefaultTheme.Sidebar = {
 				{ text: "示例代码", link: "https://github.com/WuKongIM/WuKongIMiOSSDK/tree/main/Example" },
 			]
 		},
-		{ text: "Android", link: "/sdk/android" },
-		{ text: "Harmonyos", link: "/sdk/harmonyos" },
 		{
 			text: "Javascript",
 			collapsed: true,
@@ -186,6 +202,43 @@ export const sidebar: DefaultTheme.Sidebar = {
 			]
 		},
 		{ text: "Uniapp", link: "/sdk/uniapp" },
-		{ text: "Flutter", link: "/sdk/flutter" },
+		{
+			text: "Flutter",
+			collapsed: true,
+			items: [
+				{ text: "说明", link: "/sdk/flutter/intro" },
+				{ text: "集成", link: "/sdk/flutter/integration" },
+				{ text: "基础", link: "/sdk/flutter/base" },
+				{ text: "消息管理", link: "/sdk/flutter/message" },
+				{ text: "最近会话管理", link: "/sdk/flutter/conversation" },
+				{ text: "频道管理", link: "/sdk/flutter/channel" },
+				{ text: "频道成员管理", link: "/sdk/flutter/channel_member" },
+				{ text: "提醒项管理", link: "/sdk/flutter/reminder" },
+				{ text: "数据源管理", link: "/sdk/flutter/datasource" },
+				{ text: "命令管理", link: "/sdk/flutter/cmd" },
+				{ text: "高级功能", link: "/sdk/flutter/advance" },
+				{ text: "示例代码", link: "https://github.com/WuKongIM/WuKongIMFlutterSDK" },
+
+			]
+		},
+		{
+			text: "HarmonyOS",
+			collapsed: true,
+			items: [
+				{ text: "说明", link: "/sdk/harmonyos/intro" },
+				{ text: "集成", link: "/sdk/harmonyos/integration" },
+				{ text: "基础", link: "/sdk/harmonyos/base" },
+				{ text: "消息管理", link: "/sdk/harmonyos/message" },
+				{ text: "最近会话管理", link: "/sdk/harmonyos/conversation" },
+				{ text: "频道管理", link: "/sdk/harmonyos/channel" },
+				{ text: "频道成员管理", link: "/sdk/harmonyos/channel_member" },
+				{ text: "提醒项管理", link: "/sdk/harmonyos/reminder" },
+				{ text: "数据源管理", link: "/sdk/harmonyos/datasource" },
+				{ text: "命令管理", link: "/sdk/harmonyos/cmd" },
+				{ text: "高级功能", link: "/sdk/harmonyos/advance" },
+				{ text: "示例代码", link: "https://github.com/WuKongIM/WuKongIMHarmonyOSSDK/tree/main/entry" },
+			]
+		},
+		{ text: "c", link: "/sdk/c" },
 	]
 };
