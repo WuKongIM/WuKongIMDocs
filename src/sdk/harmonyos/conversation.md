@@ -3,7 +3,7 @@
 ### 获取最近会话
 #### 所有最近会话
 
-```javascrip
+```javascript
 // 查询所有最近会话
 let msgs = WKIM.shared.conversationManager().all()
 ```
