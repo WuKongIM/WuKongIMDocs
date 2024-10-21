@@ -239,6 +239,5 @@ export const sidebar: DefaultTheme.Sidebar = {
 				{ text: "示例代码", link: "https://github.com/WuKongIM/WuKongIMHarmonyOSSDK/tree/main/entry" },
 			]
 		},
-		{ text: "c", link: "/sdk/c" },
 	]
 };
