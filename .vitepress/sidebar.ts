@@ -103,6 +103,8 @@ export const sidebar: DefaultTheme.Sidebar = {
 			items: [
 				{ text: "WSS 配置", link: "/server/config/wss" },
 				{ text: "认证配置", link: "/server/config/auth" },
+				{ text: "监控配置", link: "/server/config/monitor" },
+				{ text: "消息轨迹配置", link: "/server/config/trace" },
 			],
 		},
 		{
@@ -124,6 +126,8 @@ export const sidebar: DefaultTheme.Sidebar = {
 				{ text: "离线消息说明", link: "/server/advance/offlinemsg" },
 				{ text: "集成到自己系统", link: "/server/advance/integration" },
 				{ text: "WuKongIM 协议", link: "/server/advance/proto" },
+				{ text: "部署压力测试", link: "/server/advance/stress" },
+				// { text: "官方压测报告", link: "/server/advance/stressReport" },
 			],
 		},
 	],
@@ -201,7 +205,6 @@ export const sidebar: DefaultTheme.Sidebar = {
 				{ text: "高级功能", link: "/sdk/jssdk/advance" },
 			]
 		},
-		{ text: "Uniapp", link: "/sdk/uniapp" },
 		{
 			text: "Flutter",
 			collapsed: true,
@@ -239,5 +242,6 @@ export const sidebar: DefaultTheme.Sidebar = {
 				{ text: "示例代码", link: "https://github.com/WuKongIM/WuKongIMHarmonyOSSDK/tree/main/entry" },
 			]
 		},
+		{ text: "Uniapp", link: "/sdk/uniapp" },
 	]
 };

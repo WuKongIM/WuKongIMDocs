@@ -21,12 +21,12 @@ export const navbar: DefaultTheme.NavItem[] = [
 		activeMatch: "^/sdk",
 		items: [
 			{ text: "iOS", link: "/sdk/iossdk/intro" },
-			{ text: "Android", link: "/sdk/android" },
+			{ text: "Android", link: "/sdk/android/intro" },
 			{ text: "Javascript", link: "/sdk/jssdk/intro" },
-			{ text: "Flutter", link: "/sdk/flutter" },
+			{ text: "Flutter", link: "/sdk/flutter/intro" },
 			{ text: "Uniapp", link: "/sdk/uniapp" },
 			{ text: "微信小程序", link: "/sdk/smallprogram" },
-			{ text: "HarmonyOS", link: "/sdk/harmonyos" },
+			{ text: "HarmonyOS", link: "/sdk/harmonyos/intro" },
 		],
 	},
 	{

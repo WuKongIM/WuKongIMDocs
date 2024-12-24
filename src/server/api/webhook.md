@@ -45,7 +45,7 @@ body的数据类似为： [uid1-0-1,uid2-1-0]
 
 `事件名：msg.offline`
 
-事件数据：消息数组
+事件数据：MessageResp消息对象
 
 ```go
 
@@ -55,7 +55,7 @@ type MessageResp struct {
 	MessageID    int64         `json:"message_id"`    // 服务端的消息ID(全局唯一)
 	MessageIDStr string        `json:"message_idstr"` // 字符串类型服务端的消息ID(全局唯一)
 	ClientMsgNo  string        `json:"client_msg_no"` // 客户端消息唯一编号
-	MessageSeq   uint32        `json:"message_seq"`   // 消息序列号 （用户唯一，有序递增）
+	MessageSeq   uint32        `json:"message_seq"`   // 消息序列号 （频道唯一，有序递增）
 	FromUID      string        `json:"from_uid"`      // 发送者UID
 	ChannelID    string        `json:"channel_id"`    // 频道ID
 	ChannelType  uint8         `json:"channel_type"`  // 频道类型
@@ -82,7 +82,7 @@ type MessageResp struct {
 	MessageID    int64         `json:"message_id"`    // 服务端的消息ID(全局唯一)
 	MessageIDStr string        `json:"message_idstr"` // 字符串类型服务端的消息ID(全局唯一)
 	ClientMsgNo  string        `json:"client_msg_no"` // 客户端消息唯一编号
-	MessageSeq   uint32        `json:"message_seq"`   // 消息序列号 （用户唯一，有序递增）
+	MessageSeq   uint32        `json:"message_seq"`   // 消息序列号 （频道唯一，有序递增）
 	FromUID      string        `json:"from_uid"`      // 发送者UID
 	ChannelID    string        `json:"channel_id"`    // 频道ID
 	ChannelType  uint8         `json:"channel_type"`  // 频道类型

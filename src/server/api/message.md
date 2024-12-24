@@ -134,7 +134,7 @@ start_message_seq=100 end_message_seq=0 limit=10 以limit为准，则返回的me
       "setting": 0, // 消息设置 消息设置是一个 uint8的数字类型 为1个字节，完全由第三方自定义 比如定义第8位为已读未读回执标记，开启则为0000 0001 = 1
       "message_id": 122323343445, // 消息全局唯一ID
       "client_msg_no": "xxxxx", // 客户端消息编号，可用此字段去重
-      "message_seq": 1, // 消息序列号 （用户唯一，有序递增）
+      "message_seq": 1, // 消息序列号 （频道唯一，有序递增）
       "from_uid": "xxxx", // 发送者用户id
       "channel_id": "xxxx", // 频道ID
       "channel_type": 2, // 频道类型 1.个人频道 2.群频道
@@ -174,7 +174,7 @@ start_message_seq=100 end_message_seq=0 limit=10 以limit为准，则返回的me
         "setting": 0, // 消息设置 消息设置是一个 uint8的数字类型 为1个字节，完全由第三方自定义 比如定义第8位为已读未读回执标记，开启则为0000 0001 = 1
         "message_id": 122323343445, // 消息全局唯一ID
         "client_msg_no": "xxxxx", // 客户端消息编号，可用此字段去重
-        "message_seq": 1, // 消息序列号 （用户唯一，有序递增）
+        "message_seq": 1, // 消息序列号 （频道唯一，有序递增）
         "from_uid": "xxxx", // 发送者用户id
         "channel_id": "xxxx", // 频道ID
         "channel_type": 2, // 频道类型 1.个人频道 2.群频道

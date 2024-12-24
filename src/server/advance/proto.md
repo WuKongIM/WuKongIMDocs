@@ -438,7 +438,7 @@ CONNACK 报文由服务端所发送，作为对来自客户端的 CONNECT 报文
   <tr>
     <td>Message Seq</td>
     <td>uint32</td>
-    <td>消息序号（有序递增，用户唯一）</td>
+    <td>消息序号（有序递增，频道唯一）</td>
   </tr>
   <tr>
     <td>Reason Code</td>
@@ -634,7 +634,7 @@ CONNACK 报文由服务端所发送，作为对来自客户端的 CONNECT 报文
   <tr>
     <td>Message Seq</td>
     <td>uint32</td>
-    <td>服务端的消息序列号(有序递增，用户唯一)</td>
+    <td>服务端的消息序列号(有序递增，频道唯一)</td>
   </tr>
  
   <tr>

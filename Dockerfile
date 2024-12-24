@@ -1,14 +1,14 @@
-FROM node:18.0.0 as builder
+FROM node:20.9.0 as builder
 WORKDIR /app
-RUN curl -o- -L https://yarnpkg.com/install.sh | bash
+RUN npm install -g pnpm
 COPY package.json .
-COPY yarn.lock .
+COPY pnpm-lock.yaml .
 # https://registry.npmjs.org/  https://registry.npm.taobao.org
 # RUN yarn config set registry https://registry.npm.taobao.org -g
 # RUN yarn config set disturl https://npm.taobao.org/dist
-RUN yarn install
+RUN pnpm install
 COPY . .
-RUN yarn build
+RUN pnpm build
 
 FROM nginx:latest
 COPY --from=builder /app/docker-entrypoint.sh /docker-entrypoint2.sh 
