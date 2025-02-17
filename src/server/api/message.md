@@ -206,3 +206,59 @@ start_message_seq=100 end_message_seq=0 limit=10 以limit为准，则返回的me
 ```
 http status为200
 ```
+
+
+## 用户消息搜索 
+
+`v2.1.3-20250210或以上版本支持` `需要安装wk.plugin.search插件`
+
+搜索属于当前用户的所有消息，多维度，支持中文分词搜索
+
+> POST /plugins/wk.plugin.search/usersearch
+
+请求参数:
+
+```json
+{
+  "uid": "xxxx", // 当前用户uid（限制搜索指定用户的消息）
+  "payload_content": "", //  消息内容搜索
+  "payload_types": [1,2], // 消息类型搜索
+  "from_uid": "", // 发送者uid
+  "channel_id": "", // 频道id
+  "channel_type": 1, // 频道类型
+  "topic": "", // 根据topic搜索
+  "limit": 10, // 查询限制数量
+  "page": 1, // 页码，分页使用，默认为1
+  "start_time": 0, // 消息时间（开始）
+  "end_time": 0 // 消息时间（结束，结果不包含end_time）
+}
+```
+
+
+成功响应
+
+```json
+{
+  "total": 10, // 消息总数量
+  "limit": 10, // 查询数量
+  "page": 1, // 当前页码
+  "messages": [
+    {
+      "message_id": 1234, // 消息唯一id
+      "message_idstr": "1234", // 消息唯一id（字符串形式）
+      "message_seq": 1, // 消息序号
+      "client_msg_no": "djzdfdfdf", // 客户端消息唯一编号
+      "from_uid": "u1", // 发送者uid
+      "channel_id": "g1", // 频道id
+      "channel_type": 2, // 频道类型
+      "payload": {
+        "type": 1, // 消息类型
+        "content": "hello" // 消息内容
+        ...
+      },
+      "topic": "", // 消息topic
+      "timestamp": 762834 // 消息时间戳 10位到秒
+    }
+  ]
+}
+```
