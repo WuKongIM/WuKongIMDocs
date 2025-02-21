@@ -26,7 +26,7 @@ order: 200
   "channel_id": "xxxx", // 接收频道ID 如果channel_type=1 channel_id为个人uid 如果channel_type=2 channel_id为群id
   "channel_type": 2, // 接收频道类型  1.个人频道 2.群聊频道
   "payload": "xxxxx", // 消息，base64编码，消息格式参考下面 【payload 内容参考】的链接
-  "subscribers": ["uid123", "uid234", "..."] // 订阅者 如果此字段有值，表示消息只发给指定的订阅者,没有值则发给频道内所有订阅者
+  "subscribers": ["uid123", "uid234", "..."] // 订阅者 subscribers和channel_id二选一
 }
 ```
 
@@ -221,16 +221,19 @@ http status为200
 ```json
 {
   "uid": "xxxx", // 当前用户uid（限制搜索指定用户的消息）
-  "payload_content": "", //  消息内容搜索
+  "payload": { // 消息payload，支持搜索自定义字段
+    "content": "xxx" //  消息内容搜索
+  }, 
   "payload_types": [1,2], // 消息类型搜索
   "from_uid": "", // 发送者uid
-  "channel_id": "", // 频道id
-  "channel_type": 1, // 频道类型
+  "channel_id": "", // 频道id, 指定频道后，搜索表示只搜索此频道内的消息
+  "channel_type": 0, // 频道类型
   "topic": "", // 根据topic搜索
   "limit": 10, // 查询限制数量
   "page": 1, // 页码，分页使用，默认为1
   "start_time": 0, // 消息时间（开始）
-  "end_time": 0 // 消息时间（结束，结果不包含end_time）
+  "end_time": 0, // 消息时间（结束，结果包含end_time）
+  "highlights": [] // 需要高亮显示的关键字 比如payload.content="你是北京大学的吗" 搜索关键字:"北京" 那么highlights设置为["payload.content"] 这样payload.content返回的内容为带上mark标签为："你是<mark>北京</mark>大学的吗"
 }
 ```
 

@@ -617,14 +617,9 @@ CONNACK 报文由服务端所发送，作为对来自客户端的 CONNECT 报文
     <td>流式消息编号，根据setting是否开启stream判断是否有此字段</td>
   </tr>
   <tr>
-    <td>StreamSeq</td>
+    <td>StreamId</td>
     <td>uint32</td>
     <td>流序号，根据setting是否开启stream判断是否有此字段</td>
-  </tr>
-  <tr>
-    <td>StreamFlag</td>
-    <td>uint8</td>
-    <td>流标记（0.开始 1.进行中 2. 结束），根据setting是否开启stream判断是否有此字段</td>
   </tr>
    <tr>
     <td>Message ID</td>
@@ -788,8 +783,8 @@ CONNACK 报文由服务端所发送，作为对来自客户端的 CONNECT 报文
     <td>Signal</td>
     <td>NoEncrypt</td>
     <td>Topic</td>
-    <td>Stream</td>
     <td>Reserved</td>
+    <td>Stream</td>
     <td>Reserved</td>
   </tr>
   
@@ -799,11 +794,15 @@ CONNACK 报文由服务端所发送，作为对来自客户端的 CONNECT 报文
 
 Receipt： 消息已读回执，此标记表示，此消息需要已读回执
 
+Reserved：保留位，暂未用到
+
 NoEncrypt: 消息是否不开启加密
 
 Signal： 加密
 
 Topic：消息是否包含 topic（如果为 1 则发送包和接受包都将包含 topic 字段）
+
+Reserved：保留位，暂未用到
 
 Stream: 流式消息
 

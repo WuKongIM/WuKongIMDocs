@@ -16,6 +16,6 @@
 # 可选参数 
 # 1.副本数量 replicaCount=1 默认为2
 # 2.外部IP externalIP=
-helm upgrade wkim wukongim/wukongim -n wukomgim --create-namespace --version 0.1.0 --set replicaCount=3
+helm upgrade wkim wukongim/wukongim -n wukongim --create-namespace --version 0.1.0 --set replicaCount=3
 
 ```
