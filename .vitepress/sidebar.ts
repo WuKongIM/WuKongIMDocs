@@ -117,8 +117,17 @@ export const sidebar: DefaultTheme.Sidebar = {
 				{ text: "消息", link: "/server/api/message" },
 				{ text: "最近会话", link: "/server/api/conversation" },
 				{ text: "Webhook", link: "/server/api/webhook" },
-				{ text: "Datasource", link: "/server/api/datasource" },
+				// { text: "Datasource", link: "/server/api/datasource" },
 				{ text: "API调用时机说明", link: "/server/api/instructions" },
+			],
+		},
+		{
+			text: "插件",
+			items: [
+				{ text: "说明", link: "/server/plugin/intro" },
+				{ text: "市场", link: "/server/plugin/market" },
+				{ text: "使用", link: "/server/plugin/use" },
+				{ text: "开发", link: "/server/plugin/dev" },
 			],
 		},
 		{
