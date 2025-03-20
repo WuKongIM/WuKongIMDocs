@@ -212,6 +212,8 @@ http status为200
 
 `v2.1.3-20250210或以上版本支持` `需要安装wk.plugin.search插件`
 
+插件使用文档：[文档](https://githubim.com/server/plugin/use.html)
+
 搜索属于当前用户的所有消息，多维度，支持中文分词搜索
 
 > POST /plugins/wk.plugin.search/usersearch
