@@ -136,6 +136,7 @@ export const sidebar: DefaultTheme.Sidebar = {
 				{ text: "离线消息说明", link: "/server/advance/offlinemsg" },
 				{ text: "集成到自己系统", link: "/server/advance/integration" },
 				{ text: "WuKongIM 协议", link: "/server/advance/proto" },
+				{ text: "JSON-RPC 协议", link: "/server/advance/jsonrpc" },
 				{ text: "部署压力测试", link: "/server/advance/stress" },
 				{ text: "压测报告（单机）", link: "/server/advance/stressSingleReport" },
 				// { text: "压测报告（分布式）", link: "/server/advance/stressReport" },
