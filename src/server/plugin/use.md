@@ -13,7 +13,11 @@
 
 复制插件到`WuKongIM`数据目录下的`plugins`目录下即可完成安装
 
+
 ![图片](plugin-dir.png)
+
+如果日志提示： permission denied，执行 `sudo chmod +x 插件名字` 来设置权限
+
 
 **配置插件**
 
@@ -25,12 +29,14 @@
 
 ![图片](plugin-config2.png)
 
+`注意guest用户没有权限配置插件`，权限设置参考文档：https://githubim.com/server/config/auth.html
+
 
 ## 调用插件
 
 如果是全局插件，当系统中有消息发送时，插件就会被调用。
 
-如果是AI插件，需要将AI插件绑定到用户UID上，所以主要讲AI插件怎么绑定用户UID。
+如果是AI插件，需要将AI插件绑定到用户UID上，这里主要讲AI插件怎么绑定用户UID。
 
 在`WuKongIM后台 --> AI --> 添加AI` 即可实现绑定。
 
