@@ -9,7 +9,7 @@
 ##### 第一步 定义消息
 定义消息对象并继承 WKMessageContent 并在构造方法中指定消息类型
 
-```typescripts
+```typescript
 // 定义名片消息
 export class CardMessageContent extends WKMessageContent {
   uid: string = ''
@@ -24,7 +24,7 @@ export class CardMessageContent extends WKMessageContent {
 
 ##### 第二步 编码和解码
 我们需要将uid,name,avatar三个字段信息发送给对方，最终传递的消息内容为
-```typescripts
+```typescript
 {
   "type": 16,
   "uid": "xxxx",
@@ -34,7 +34,7 @@ export class CardMessageContent extends WKMessageContent {
 ```
 重写`WKMessageContent`的`encodeJson`,`decodeJson`方法开始编码解码
 
-```typescripts
+```typescript
 
   // 编码发送内容
   encodeJson(): Record<string, Object> {
@@ -61,7 +61,7 @@ export class CardMessageContent extends WKMessageContent {
 
 - <font color='#999' size=2>解码和编码消息时无需将 `type` 字段考虑其中，sdk 内部会自动处理</font>
 ##### 第三步 注册消息
-```typescripts
+```typescript
  // 注册自定义消息
 WKIM.shared.messageManager().registerMsgContent(16, (jsonStr: string) => {
     return new CardMessageContent().decodeJson(jsonStr)
@@ -69,7 +69,7 @@ WKIM.shared.messageManager().registerMsgContent(16, (jsonStr: string) => {
 ```
 对此通过这三步自定义普通消息就已完成。在收到消息时`WKMsg`中的`type`为16就表示该消息是名片消息，其中`messageContent`则为自定义的`CardMessageContent`，这时可将`messageContent`强转为`CardMessageContent`并渲染到UI上
 完整代码
-```typescripts
+```typescript
 
 // 自定义普通消息
 export class CardMessageContent extends WKMessageContent {
@@ -112,7 +112,7 @@ export class CardMessageContent extends WKMessageContent {
 
 ##### 第一步 定义消息
 值得注意的是自定义附件消息需继承`WKMediaMessageContent`而不是`WKMessageContent`
-```typescripts
+```typescript
 export class LocationMessageContent extends WKMediaMessageContent {
   address: string = ''
   longitude: number = 0.0
@@ -129,7 +129,7 @@ export class LocationMessageContent extends WKMediaMessageContent {
 
 ##### 第二步 编码和解码
 我们需要将`longitude`,`latitude`,`address`,`url`信息发送给对方，最终传递的消息内容为
-```typescripts
+```typescript
 {
   "type": 17,
   "longitude": 115.25,
@@ -139,7 +139,7 @@ export class LocationMessageContent extends WKMediaMessageContent {
 }
 ```
 重写`WKMessageContent`的`encodeJson`,`decodeJson`方法开始编码解码
-```typescripts
+```typescript
 // 编码
 encodeJson(): Record<string, Object> {
 let json: Record<string, Object> = {}
@@ -164,7 +164,7 @@ return this
 ```
 
 ##### 第三步 注册消息
-```typescripts
+```typescript
 // 注册自定义消息
 WKIM.shared.messageManager().registerMsgContent(17, (jsonStr: string) => {
       return new LocationMessageContent().decodeJson(jsonStr)
@@ -174,7 +174,7 @@ WKIM.shared.messageManager().registerMsgContent(17, (jsonStr: string) => {
 随着业务的发展应用在聊天中的功能也日益增多，为了满足绝大部分的需求 WuKongIM 中增加了消息扩展功能。消息扩展分`本地扩展`和`远程扩展`，本地扩展只针对 app 本地使用卸载 app 后将丢失，远程扩展是服务器保存卸载重装后数据将恢复
 #### 本地扩展
 本地扩展就是消息对象`WKMsg`中的`localExtraMap`字段
-```typescripts
+```typescript
 /**
   * 修改消息本地扩展
   *
@@ -188,13 +188,13 @@ WKIM.shared.messageManager().updateLocalExtra(clientMsgNo: string, extra: Record
 #### 远程扩展
 远程扩展就是消息对象`WKMsg`中的`remoteExtra`字段
 
-```typescripts
+```typescript
 WKIM.shared.messageManager().saveRemoteExtras(list: WKMsgExtra[])
 ```
 
 - <font color='#999' size=2>更新成功后 sdk 会触发刷新消息回调</font>
 ##### 数据结构说明
-```typescripts
+```typescript
 
 export class WKMsgExtra {
   // 消息ID
@@ -233,7 +233,7 @@ export class WKMsgExtra {
 ### 消息已读未读
 消息的已读未读又称消息回执。消息回执功能可通过 setting 进行设置
 
-```typescripts
+```typescript
 let option = new WKSendOptions()
 option.setting.receipt = 1 // 开启回执
 // 发送消息
@@ -246,7 +246,7 @@ WKIM.shared.messageManager().sendWithOption(textModel, channel, option)
 
 <video controls height='30%' width='30%' src="/video/msgedit.mp4"></video>
 #### 设置编辑内容
-```typescripts
+```typescript
 /**
   * 修改编辑内容
   * @param messageId 消息服务器ID
@@ -258,7 +258,7 @@ WKIM.shared.messageManager().updateEdit(messageId: string, channelId: string, ch
 ```
 更改 sdk 消息编辑内容后需将编辑后的内容上传到服务器,则需要监听上传消息扩展
 
-```typescripts
+```typescript
 WKIM.shared.config.provider.uploadMessageExtraCallback = (extra: WKMsgExtra) => {
       //上传到业务服务器
     }
@@ -270,7 +270,7 @@ WKIM.shared.config.provider.uploadMessageExtraCallback = (extra: WKMsgExtra) => 
 
 在发送消息时，只需将消息正文`WKMessageContent`中的`WKReply`对象赋值就能对达到消息回复效果
 
-```typescripts
+```typescript
 let textModel: WKTextContent = new WKTextContent(this.sendContent)
 textModel.reply  = new WKReply()
 textModel.reply.messageId = ''
@@ -281,7 +281,7 @@ WKIM.shared.messageManager().send(textModel, channel)
 ```
 
 #### 回复消息结构说明
-```typescripts
+```typescript
 
 export class WKReply {
   // 被回复的消息根ID，多级回复时的第一次回复的消息ID
@@ -309,13 +309,13 @@ export class WKReply {
 
 ### 消息回应(点赞)
 #### 保存
-```typescripts
+```typescript
 WKIM.shared.messageManager().saveReactions(list: WKMsgReaction[])
 ```
 
 - <font color='#999' size=2>同一个用户对同一条消息只能做出一条回应。重复进行消息不同 emoji 的回应会做为修改回应，重复进行相同 emoji 的回应则做为删除回应</font> sdk 更新消息回应后会触发消息刷新的事件。app 需监听此事件并对 UI 进行刷新
 监听消息回应刷新
-```typescripts
+```typescript
 // 监听消息回应刷新
 WKIM.shared.messageManager().addRefreshReactionListener((list)=>{
     // 刷新 UI
@@ -323,12 +323,12 @@ WKIM.shared.messageManager().addRefreshReactionListener((list)=>{
 ```
 #### 获取
 
-```typescripts
+```typescript
 WKIM.shared.messageManager().getMsgReactions(messageId:string)
 ```
 
 #### 数据结构说明
-```typescripts
+```typescript
 export class WKMsgReaction {
   // 消息ID
   messageId = ""

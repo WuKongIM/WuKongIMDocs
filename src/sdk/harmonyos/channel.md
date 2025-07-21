@@ -8,19 +8,19 @@
 ### 频道资料
 
 #### 获取频道资料
-```javascrip
+```javascript
 // 获取频道资料
 let channel = WKIM.shared.channelManager().getChannel(channelId, channelType)
 ```
 #### 强制刷新频道资料
-```javascrip
+```javascript
 // 强制刷新频道资料
 WKIM.shared.channelManager().fetchChannelInfo(channelId, channelType)
 ```
 
 ### 事件
 #### 监听频道资料更新
-```javascrip
+```javascript
 refreshChannelListener = (channel: WKChannel) => {
    // 刷新
   }

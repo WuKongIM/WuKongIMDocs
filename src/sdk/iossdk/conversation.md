@@ -25,21 +25,13 @@ NSArray<WKConversation*> *conversations = [[WKSDK shared].conversationManager ge
 WKConversationManagerDelegate说明
 
 ```objc   
-/**
-  当最近会话被新增的时候会调用此方法
-
- @param conversation 最近会话对象
- @param left 会话剩余数量 UI层可以判断left == 0 的时候才刷新 避免频繁刷新UI导致卡顿
- */
-- (void)onConversationAdd:(WKConversation*)conversation left:(NSInteger)left;
 
 /**
  当最近会话对象更新的时候会调用此方法
 
- @param conversation 最近会话对象
- @param left 会话剩余数量 UI层可以判断left == 0 的时候才刷新 避免频繁刷新UI导致卡顿
+ @param conversations 最近会话集合
  */
-- (void)onConversationUpdate:(WKConversation*)conversation left:(NSInteger)left;
+- (void)onConversationUpdate:(NSArray<WKConversation*>*)conversations;
 
 /**
  最近会话未读数发送改变

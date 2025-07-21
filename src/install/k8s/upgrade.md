@@ -10,5 +10,5 @@ helm search repo wukongim
 
 ### 3. 更新
 ```bash
-helm upgrade wkim wukongim/wukongim -n wukomgim --create-namespace --version 版本号
+helm upgrade wkim wukongim/wukongim -n wukongim --create-namespace --version 版本号
 ```

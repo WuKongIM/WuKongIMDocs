@@ -123,7 +123,10 @@ pid        /var/run/nginx.pid;
 
 
 events {
-    worker_connections  1024;
+    use epoll;                        # 使用 epoll (Linux) 或 kqueue (BSD)，适用于高并发环境
+    worker_connections  40960;          # 每个 worker 进程最大连接数
+    multi_accept on;                   # 每次接收多个连接
+    accept_mutex off;                  # 禁用 accept_mutex 提高性能
 }
 
 

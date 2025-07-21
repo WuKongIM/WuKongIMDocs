@@ -30,7 +30,7 @@ helm search repo wukongim
 # 可选参数 
 # 1.副本数量 replicaCount=1 默认为2
 # 2.外部IP externalIP=
-helm install wkim wukongim/wukongim -n wukomgim --create-namespace --version 0.1.0 --set replicaCount=1
+helm install wkim wukongim/wukongim -n wukongim --create-namespace --version 0.1.0 --set replicaCount=1
 ```
 
 #### 5. 查看安装状态

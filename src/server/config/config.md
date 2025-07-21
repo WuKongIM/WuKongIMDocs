@@ -10,7 +10,7 @@
 
 ```yaml
 ## 配置是yaml格式，请严格注意缩进.
-mode: "release" # 运行模式 模式 debug 测试 release 正式 bench 压力测试
+mode: "release" # 运行模式 模式 debug 测试 release 正式 
 addr: "tcp://0.0.0.0:5100" # tcp监听地址
 httpAddr: "0.0.0.0:5001" #  http api的监听地址  默认：0.0.0.0:5001
 rootDir: "./wukongimdata" # 数据存储目录
@@ -21,6 +21,7 @@ wsAddr: "ws://0.0.0.0:5200"  # websocket ws 监听地址
 wssAddr: "wss://0.0.0.0:5210"  # websocket wss 监听地址 如果打开则需要进行 wssConfig相关的证书配置
 whitelistOffOfPerson: true # 是否关闭个人白名单 默认为true表示关闭个人白名单的验证
 ginMode: "release" # gin框架的模式 debug 调试 release 正式 test 测试
+stress: false # 是否开启压力测试模式 默认为false
 external: # 公网配置
     ip: "" # 节点外网IP，客户端能够访问到的IP地址，如果客户端是内网使用，这里也可以填写内网IP
     tcpAddr: "" #  默认自动获取， 节点的TCP地址 对外公开，APP端长连接通讯  格式： ip:port  

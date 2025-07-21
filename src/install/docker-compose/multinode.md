@@ -68,6 +68,10 @@ services:
 
 #### 3. 配置负载均衡
 
+`将以下配置的，10.206.0.10，10.206.0.12，10.206.0.5 三个IM节点的内网地址，分别替换你自己节点1，节点2，节点3的内网ip`
+
+`将以下配置的119.45.33.109 替换成负载均衡的外网IP`
+
 在`gateway`节点的安装目录（`~/gateway`）里创建`nginx.conf`文件，内容如下：
 
 ```nginx
@@ -78,7 +82,10 @@ error_log  /var/log/nginx/error.log notice;
 pid        /var/run/nginx.pid;
 
 events {
-    worker_connections  1024;
+    use epoll;                        # 使用 epoll (Linux) 或 kqueue (BSD)，适用于高并发环境
+    worker_connections  4096;          # 每个 worker 进程最大连接数
+    multi_accept on;                   # 每次接收多个连接
+    accept_mutex off;                  # 禁用 accept_mutex 提高性能
 }
 http {
     include       /etc/nginx/mime.types;
@@ -157,8 +164,8 @@ http {
             proxy_pass http://wukongimws;
             proxy_redirect off;
             proxy_http_version 1.1;
-            # nginx接收upstream server数据超时, 默认120s, 如果连续的120s内没有收到1个字节, 连接关闭
-            proxy_read_timeout 120s;
+            # nginx接收upstream server数据超时, 默认180s, 如果连续的180s内没有收到1个字节, 连接关闭
+            proxy_read_timeout 180s;
             # nginx发送数据至upstream server超时, 默认120s, 如果连续的120s内没有发送1个字节, 连接关闭
             proxy_send_timeout 120s; 
             # nginx与upstream server的连接超时时间
@@ -189,6 +196,8 @@ stream {
 ```
 
 #### 4. 配置监控
+
+`将以下配置的，10.206.0.10，10.206.0.12，10.206.0.5 三个IM节点的内网地址，分别替换你自己节点1，节点2，节点3的内网ip`
 
 在`gateway`节点的安装目录（`~/gateway`）里创建`prometheus.yml`文件，内容如下：
 
@@ -232,6 +241,9 @@ mkdir  ~/wukongim
 
 在`node1`节点上的安装目录（`~/wukongim`）里创建`docker-compose.yml`文件，内容如下：
 
+`在以下配置的，10.206.0.10，10.206.0.12，10.206.0.5分别替换成你节点1，节点2，节点3的内网IP，119.45.33.109替换成你负载均衡的外网IP，10.206.0.2替换成监控的内网地址`
+
+
 ```yaml
 version: '3.7'
 services:
@@ -240,7 +252,7 @@ services:
     environment:
       - "WK_MODE=release" # release模式
       - "WK_CLUSTER_NODEID=1"   # 节点id不能大于等于1024
-      - "WK_EXTERNAL_IP=146.56.249.208"  # 当前节点外网ip
+      - "WK_INTRANET_TCPADDR=10.206.0.10:5100" # 内网长连接地址
       - "WK_CLUSTER_APIURL=http://10.206.0.10:5001" # 节点内部通信api url地址，这里ip换成自己节点实际的内网ip  
       - "WK_CLUSTER_SERVERADDR=10.206.0.10:11110" # 节点内部通信请求地址
       - "WK_EXTERNAL_WSADDR=ws://119.45.33.109:15200"  # web端访问的ws长连接地址，这里设置负载均衡的地址即可，这样让负载均衡来分配WuKongIM节点
@@ -269,6 +281,9 @@ services:
 
 在`node2`节点上的安装目录（`~/wukongim`）里创建`docker-compose.yml`文件，内容如下：
 
+
+`在以下配置的，10.206.0.10，10.206.0.12，10.206.0.5分别替换成你节点1，节点2，节点3的内网IP，119.45.33.109替换成你负载均衡的外网IP，10.206.0.2替换成监控的内网地址`
+
 ```yaml
 version: '3.7'
 services:
@@ -277,11 +292,11 @@ services:
     environment:
       - "WK_MODE=release" 
       - "WK_CLUSTER_NODEID=2" 
-      - "WK_EXTERNAL_IP=129.211.171.99"  
       - "WK_CLUSTER_APIURL=http://10.206.0.12:5001"
       - "WK_CLUSTER_SERVERADDR=10.206.0.12:11110" 
       - "WK_EXTERNAL_WSADDR=ws://119.45.33.109:15200"  
       - "WK_EXTERNAL_TCPADDR=119.45.33.109:15100"  
+      - "WK_INTRANET_TCPADDR=10.206.0.12:5100" 
       - "WK_TRACE_PROMETHEUSAPIURL=http://10.206.0.2:9090" 
       - "WK_CLUSTER_INITNODES=1@10.206.0.10 2@10.206.0.12 3@10.206.0.5" # 集群节点列表
     healthcheck:
@@ -307,6 +322,8 @@ services:
 
 在`node3`节点上的安装目录（`~/wukongim`）里创建`docker-compose.yml`文件，内容如下：
 
+`在以下配置的，10.206.0.10，10.206.0.12，10.206.0.5分别替换成你节点1，节点2，节点3的内网IP，119.45.33.109替换成你负载均衡的外网IP，10.206.0.2替换成监控的内网地址`
+
 ```yaml
 version: '3.7'
 services:
@@ -315,11 +332,11 @@ services:
     environment:
       - "WK_MODE=release"
       - "WK_CLUSTER_NODEID=3" 
-      - "WK_EXTERNAL_IP=119.45.175.82" 
       - "WK_CLUSTER_APIURL=http://10.206.0.5:5001"
       - "WK_CLUSTER_SERVERADDR=10.206.0.5:11110" 
       - "WK_EXTERNAL_WSADDR=ws://119.45.33.109:15200"  
       - "WK_EXTERNAL_TCPADDR=119.45.33.109:15100"  
+      - "WK_INTRANET_TCPADDR=10.206.0.5:5100" 
       - "WK_TRACE_PROMETHEUSAPIURL=http://10.206.0.2:9090" 
       - "WK_CLUSTER_INITNODES=1@10.206.0.10 2@10.206.0.12 3@10.206.0.5" 
     healthcheck:

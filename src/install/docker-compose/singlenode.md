@@ -53,6 +53,8 @@ services:
       - "WK_TRACE_PROMETHEUSAPIURL=http://prometheus:9090" # prometheus监控地址
       - "WK_MODE=release" # release模式
       - "WK_EXTERNAL_IP=xxx.xxx.xxx.xxx" # 服务器外网ip
+      - "WK_CLUSTER_APIURL=http://xx.xxx.xxx.xx:5001" # api的内网地址
+      - "WK_INTRANET_TCPADDR=xx.xx.xxx.xx:5100" # tcp连接的内网地址，此配置主要用于压测
     healthcheck:
       test: "wget -q -Y off -O /dev/null http://localhost:5001/health > /dev/null 2>&1"
       interval: 10s

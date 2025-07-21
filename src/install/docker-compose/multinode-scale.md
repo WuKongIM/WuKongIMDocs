@@ -79,7 +79,7 @@ scrape_configs:
 
 #### 4. 配置负载均衡
 
-在`node1`节点上的安装目录（`~/wukongim`）里的`nginx.conf`文件的所有upstream下新增如下内容：
+在`gateway`节点上的安装目录（`~/gateway`）里的`nginx.conf`文件的所有upstream下新增如下内容：
 
 
 ```nginx

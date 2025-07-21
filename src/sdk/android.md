@@ -1501,7 +1501,7 @@ public class WKReminder {
     public String messageID; // 消息ID
     public String channelID; // 频道ID
     public byte channelType; // 频道类型
-    public long messageSeq; // 消息序列号（用户唯一，有序）
+    public long messageSeq; // 消息序列号
     public int type; // 提醒类型[1、有人@你][2、群内审核] 等
     public int isLocate; // 是否需要进行消息定位
     public String text; // 提醒文本

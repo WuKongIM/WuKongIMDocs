@@ -8,16 +8,15 @@ nav:
 
 # 文档阅读引导
 
-[iOS SDK](./ios.md)<br/>
+[iOS SDK](./iossdk/intro.md)<br/>
 
-[Android SDK](./android.md) <br/>
+[Android SDK](./android/intro.md) <br/>
 
-[JavaScript SDK](./javascript.md) <br/>
+[JavaScript SDK](./jssdk/intro.md) <br/>
 
 [Uniapp SDK](./uniapp.md) <br/>
 
-Flutter SDK (待开发)
+[Flutter SDK](./flutter/intro.md) <br/>
 
-C SDK (待开发)
+[HarmonyOS SDK](./harmonyos/intro.md) <br/>
 
-Python SDK (待开发)
