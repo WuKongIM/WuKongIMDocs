@@ -50,6 +50,7 @@ services:
     environment:
       - "WK_MODE=release" # release模式
       - "WK_CLUSTER_NODEID=1002" 
+      # - "WK_TOKENAUTHON=true"  # 开启token认证，生产环境强烈建议开启
       - "WK_EXTERNAL_IP=221.123.68.20" # 服务器外网ip
       - "WK_EXTERNAL_WSADDR=ws://221.123.68.10:15200"  # web端访问的ws长连接地址，注意这里是 node1的外网ip
       - "WK_EXTERNAL_TCPADDR=221.123.68.10:15100"  # app端访问的tcp长连接地址,注意这里是 node1的外网ip

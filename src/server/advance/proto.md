@@ -138,6 +138,27 @@ Connack协议中的标志位
   
 </table>
 
+
+Chunk协议中的标志位
+
+<table>
+  <tr>
+    <th>bit</th>
+    <th>3</th>
+    <th>2</th>
+    <th>1</th>
+    <th>0</th>
+  </tr>
+  <tr>
+    <td>byte</td>
+    <td>Reserved</td>
+    <td>Reserved</td>
+    <td>Reserved</td>
+    <td>End</td>
+  </tr>
+  
+</table>
+
 备注:
 
 ```
@@ -147,6 +168,7 @@ Connack协议中的标志位
  NoPersist: 是否不存储此消息
  Reserved：保留位
  HasServerVersion：是否有服务端版本号
+ End：是否是结束的消息块
 ```
 
 #### 剩余长度
@@ -467,7 +489,7 @@ CONNACK 报文由服务端所发送，作为对来自客户端的 CONNECT 报文
   <tr>
     <td>Packet Type</td>
     <td >0.5 byte</td>
-    <td>报文类型(5)</td>
+    <td>报文类型(x)</td>
   </tr>
   <tr>
     <td>Flag</td>
@@ -522,7 +544,7 @@ CONNACK 报文由服务端所发送，作为对来自客户端的 CONNECT 报文
   <tr>
     <td>Packet Type</td>
     <td >0.5 byte</td>
-    <td>报文类型(5)</td>
+    <td>报文类型(x)</td>
   </tr>
   <tr>
     <td>Flag</td>
@@ -659,6 +681,47 @@ CONNACK 报文由服务端所发送，作为对来自客户端的 CONNECT 报文
   
 </table>
 
+
+## Chunk 消息块（流式消息使用）
+
+<table>
+  <tr>
+    <th>参数名</th>
+    <th>类型</th>
+    <th>说明</th>
+  </tr>
+  <tr>
+    <td>Packet Type</td>
+    <td >0.5 byte</td>
+    <td>报文类型(12)</td>
+  </tr>
+  <tr>
+    <td>Flag</td>
+    <td >0.5 byte</td>
+    <td> 标示位</td>
+  </tr>
+  <tr>
+    <td>Remaining Length</td>
+    <td >... byte</td>
+    <td>报文剩余长度</td>
+  </tr>
+  <tr>
+    <td>Message ID</td>
+    <td>uint64</td>
+    <td>服务端的消息ID(全局唯一，同个消息的chunk MessageID相同，可以通过这个ID合并成一条完整消息)</td>
+  </tr>
+  <tr>
+    <td>Chunk ID</td>
+    <td>uint64</td>
+    <td>消息块ID(顺序递增)</td>
+  </tr>
+  <tr>
+    <td>Payload</td>
+    <td>... byte</td>
+    <td>块内容</td>
+  </tr>
+</table>
+
 ## RECVACK 收消息确认
 
 <table>
@@ -769,6 +832,8 @@ CONNACK 报文由服务端所发送，作为对来自客户端的 CONNECT 报文
     <td>原因</td>
   </tr>
 </table>
+
+
 
 ## 消息设置
 

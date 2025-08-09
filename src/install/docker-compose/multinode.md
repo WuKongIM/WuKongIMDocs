@@ -252,6 +252,7 @@ services:
     environment:
       - "WK_MODE=release" # release模式
       - "WK_CLUSTER_NODEID=1"   # 节点id不能大于等于1024
+      # - "WK_TOKENAUTHON=true"  # 开启token认证，生产环境强烈建议开启
       - "WK_INTRANET_TCPADDR=10.206.0.10:5100" # 内网长连接地址
       - "WK_CLUSTER_APIURL=http://10.206.0.10:5001" # 节点内部通信api url地址，这里ip换成自己节点实际的内网ip  
       - "WK_CLUSTER_SERVERADDR=10.206.0.10:11110" # 节点内部通信请求地址
@@ -292,6 +293,7 @@ services:
     environment:
       - "WK_MODE=release" 
       - "WK_CLUSTER_NODEID=2" 
+      # - "WK_TOKENAUTHON=true"  # 开启token认证，生产环境强烈建议开启
       - "WK_CLUSTER_APIURL=http://10.206.0.12:5001"
       - "WK_CLUSTER_SERVERADDR=10.206.0.12:11110" 
       - "WK_EXTERNAL_WSADDR=ws://119.45.33.109:15200"  
@@ -332,6 +334,7 @@ services:
     environment:
       - "WK_MODE=release"
       - "WK_CLUSTER_NODEID=3" 
+      # - "WK_TOKENAUTHON=true"  # 开启token认证，生产环境强烈建议开启
       - "WK_CLUSTER_APIURL=http://10.206.0.5:5001"
       - "WK_CLUSTER_SERVERADDR=10.206.0.5:11110" 
       - "WK_EXTERNAL_WSADDR=ws://119.45.33.109:15200"  
@@ -392,4 +395,4 @@ sudo docker-compose up -d
 
 1. 访问`http://119.45.33.109:15172/login`，随便输入用户名和密码，登录后可以聊天，说明部署成功。
 
-2. 访问 ` http://119.45.33.109:15300/web` 可以进入后台管理系统 默认系统内置的guest只有读权限，如果需要操作权限，请看[授权的配置](/server/config/auth) 。
+2. 访问 ` http://119.45.33.109:15300/web` 可以进入后台管理系统 默认系统内置的guest只有读权限，如果需要操作权限，请看[授权的配置](/zh/server/configuration#管理员认证配置) 。

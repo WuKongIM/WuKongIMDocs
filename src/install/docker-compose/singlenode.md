@@ -49,6 +49,7 @@ services:
     image: registry.cn-shanghai.aliyuncs.com/wukongim/wukongim:v2
     environment:
       - "WK_CLUSTER_NODEID=1001"  
+      # - "WK_TOKENAUTHON=true"  # 开启token认证，生产环境强烈建议开启
       - "WK_CLUSTER_SERVERADDR=xx.xx.xx.xx:11110" # 节点内部通信请求地址
       - "WK_TRACE_PROMETHEUSAPIURL=http://prometheus:9090" # prometheus监控地址
       - "WK_MODE=release" # release模式
@@ -139,4 +140,4 @@ sudo docker-compose stop
 
 1. 访问`http://xx.xx.xx.xx:5172`，随便输入用户名和密码，登录后可以聊天，说明部署成功。
 
-2. 访问 ` http://xx.xx.xx.xx:5300/web` 可以进入后台管理系统 默认系统内置的guest只有读权限，如果需要操作权限，请看[授权的配置](/server/config/auth) 。
+2. 访问 ` http://xx.xx.xx.xx:5300/web` 可以进入后台管理系统 默认系统内置的guest只有读权限，如果需要操作权限，请看[授权的配置](/zh/server/configuration#管理员认证配置) 。

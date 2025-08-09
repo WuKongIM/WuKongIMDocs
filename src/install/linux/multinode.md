@@ -39,11 +39,11 @@ WuKongIM集群符合 `2n+1` 原则，n表示宕机数量，比如允许1台机�
 ::: code-group
 
 ``` bash [amd64]
-curl -L -o wukongim https://github.com/WuKongIM/WuKongIM/releases/download/v2.1.2-20250120/wukongim-linux-amd64
+curl -L -o wukongim https://github.com/WuKongIM/WuKongIM/releases/download/latest/wukongim-linux-amd64
 ```
 
 ``` bash [arm64]
-curl -L -o wukongim https://github.com/WuKongIM/WuKongIM/releases/download/v2.1.2-20250120/wukongim-linux-arm64
+curl -L -o wukongim https://github.com/WuKongIM/WuKongIM/releases/download/latest/wukongim-linux-arm64
 ```
 
 :::
@@ -286,4 +286,4 @@ stream {
 
 1. 访问`http://119.45.229.172:15172/login`，随便输入用户名和密码，登录后可以聊天，说明部署成功。
 
-2. 访问 ` http://119.45.229.172:15300/web` 可以进入后台管理系统 默认系统内置的guest只有读权限，如果需要操作权限，请看[授权的配置](/server/config/auth) 。
+2. 访问 ` http://119.45.229.172:15300/web` 可以进入后台管理系统 默认系统内置的guest只有读权限，如果需要操作权限，请看[授权的配置](/zh/server/configuration#管理员认证配置) 。

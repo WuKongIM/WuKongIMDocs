@@ -38,6 +38,7 @@ services:
     image: registry.cn-shanghai.aliyuncs.com/wukongim/wukongim:v2
     environment:
       - "WK_CLUSTER_NODEID=1004" 
+      # - "WK_TOKENAUTHON=true"  # 开启token认证，生产环境强烈建议开启
       - "WK_CLUSTER_APIURL=http://10.206.0.6:5001" # 节点内部通信api url地址，这里ip换成自己节点实际node2的内网ip  
       - "WK_CLUSTER_SERVERADDR=10.206.0.6:11110" # 节点内部通信请求地址
       - "WK_EXTERNAL_WSADDR=ws://119.45.229.172:15200"  # web端访问的ws长连接地址

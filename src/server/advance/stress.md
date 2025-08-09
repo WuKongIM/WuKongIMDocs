@@ -54,11 +54,11 @@ WK_INTRANET_TCPADDR=ip:port
 ::: code-group
 
 ``` bash [amd64]
-sudo curl -L -o wkstress https://github.com/WuKongIM/StressTester/releases/download/v1.0.0/wkstress-linux-amd64
+sudo curl -L -o wkstress https://github.com/WuKongIM/StressTester/releases/download/v1.1.0/wkstress-linux-amd64
 ```
 
 ``` bash [arm64]
-sudo curl -L -o wkstress https://github.com/WuKongIM/StressTester/releases/download/v1.0.0/wkstress-linux-arm64
+sudo curl -L -o wkstress https://github.com/WuKongIM/StressTester/releases/download/v1.1.0/wkstress-linux-arm64
 ```
 
 :::
