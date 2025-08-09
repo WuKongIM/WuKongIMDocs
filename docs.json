@@ -11,7 +11,7 @@
   "logo": {
     "light": "/images/logo-light.png",
     "dark": "/images/logo-dark.png",
-    "href": "https://github.com/WuKongIM/WuKongIM"
+    "href": "https://docs.githubim.com"
   },
   "favicon": "/images/favicon.png",
   "icons": {
@@ -517,17 +517,7 @@
                 "icon": "zap",
                 "pages": [
                   "zh/api/stream/open",
-                  "zh/api/stream/write",
-                  "zh/api/stream/close"
-                ]
-              },
-              {
-                "group": "流消息",
-                "icon": "zap",
-                "pages": [
-                  "zh/api/stream/open",
-                  "zh/api/stream/write",
-                  "zh/api/stream/close"
+                  "zh/api/stream/write"
                 ]
               },
               {

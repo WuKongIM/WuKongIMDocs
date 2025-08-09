@@ -10,9 +10,7 @@
     "mintlify"
   ],
   "scripts": {
-    "dev": "mint dev",
-    "build": "mint build",
-    "preview": "mint preview"
+    "dev": "mint dev"
   },
   "devDependencies": {
     "mint": "^4.0.0"
