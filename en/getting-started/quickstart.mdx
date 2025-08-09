@@ -1,0 +1,142 @@
+---
+title: "Quick Start Guide"
+description: "Get WuKongIM up and running in minutes"
+---
+
+This guide will help you get WuKongIM running locally in just a few minutes using Docker.
+
+## Prerequisites
+
+Before you begin, make sure you have:
+- Docker installed on your system
+- Basic understanding of instant messaging concepts
+- A terminal or command prompt
+
+## Step 1: Run WuKongIM with Docker
+
+The fastest way to get started is using Docker:
+
+```bash
+docker run -d \
+  --name wukongim \
+  -p 5001:5001 \
+  -p 5100:5100 \
+  -p 5200:5200 \
+  -v wukongim-data:/wukongim/data \
+  wukongim/wukongim:latest
+```
+
+This command will:
+- Start WuKongIM in the background
+- Expose the HTTP API on port 5001
+- Expose the TCP connection on port 5100  
+- Expose the WebSocket connection on port 5200
+- Create a persistent volume for data storage
+
+## Step 2: Verify Installation
+
+Check if WuKongIM is running:
+
+```bash
+curl http://localhost:5001/health
+```
+
+You should see a response indicating the service is healthy.
+
+## Step 3: Get Connection Information
+
+Get the connection details for your clients:
+
+```bash
+curl "http://localhost:5001/route?uid=testuser"
+```
+
+Response:
+```json
+{
+  "tcp_addr": "127.0.0.1:5100",
+  "ws_addr": "ws://127.0.0.1:5200"
+}
+```
+
+## Step 4: Test with a Simple Client
+
+Here's a basic JavaScript example to connect and send a message:
+
+```javascript
+// Connect via WebSocket
+const ws = new WebSocket('ws://localhost:5200');
+
+ws.onopen = function() {
+    console.log('Connected to WuKongIM');
+    
+    // Send a test message
+    const message = {
+        type: 'message',
+        channel_id: 'test-channel',
+        content: 'Hello, WuKongIM!'
+    };
+    
+    ws.send(JSON.stringify(message));
+};
+
+ws.onmessage = function(event) {
+    console.log('Received:', event.data);
+};
+```
+
+## Next Steps
+
+Now that you have WuKongIM running, you can:
+
+<CardGroup cols={2}>
+  <Card
+    title="Explore the API"
+    icon="code"
+    href="/api/getting-started"
+  >
+    Learn about the REST API endpoints
+  </Card>
+  <Card
+    title="Try the SDKs"
+    icon="mobile"
+    href="/sdk/overview"
+  >
+    Use our client SDKs for your platform
+  </Card>
+  <Card
+    title="Configure Your Setup"
+    icon="gear"
+    href="/server/configuration/basic"
+  >
+    Customize WuKongIM for your needs
+  </Card>
+  <Card
+    title="Production Deployment"
+    icon="server"
+    href="/installation/overview"
+  >
+    Deploy WuKongIM in production
+  </Card>
+</CardGroup>
+
+## Common Issues
+
+### Port Already in Use
+If you get port binding errors, check what's using the ports:
+```bash
+lsof -i :5001
+lsof -i :5100
+lsof -i :5200
+```
+
+### Connection Refused
+Make sure WuKongIM is fully started by checking the logs:
+```bash
+docker logs wukongim
+```
+
+### Need Help?
+- Check our [troubleshooting guide](/advanced/troubleshooting)
+- Visit our [GitHub Issues](https://github.com/WuKongIM/WuKongIM/issues)
+- Join our community discussions

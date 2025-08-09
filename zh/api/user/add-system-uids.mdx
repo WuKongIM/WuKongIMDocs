@@ -1,0 +1,128 @@
+---
+title: "添加系统用户 ID"
+description: "将用户添加到系统用户 ID 列表"
+api: "POST /user/systemuids_add"
+---
+
+## 概述
+
+将指定用户添加到系统用户 ID 列表，使其获得系统用户的特殊权限和标识。
+
+## 请求体
+
+<ParamField body="uids" type="array" required>
+要添加到系统用户列表的用户 ID 数组
+<ParamField body="uids[]" type="string">
+用户 ID
+</ParamField>
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "http://localhost:5001/user/systemuids_add" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "uids": ["bot_assistant", "notification_service", "admin_helper"]
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5001/user/systemuids_add', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    uids: ['bot_assistant', 'notification_service', 'admin_helper']
+  })
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+
+data = {
+    "uids": ["bot_assistant", "notification_service", "admin_helper"]
+}
+
+response = requests.post('http://localhost:5001/user/systemuids_add', json=data)
+result = response.json()
+print(result)
+```
+
+```go Go
+package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    data := map[string]interface{}{
+        "uids": []string{"bot_assistant", "notification_service", "admin_helper"},
+    }
+    
+    jsonData, _ := json.Marshal(data)
+    
+    resp, err := http.Post(
+        "http://localhost:5001/user/systemuids_add",
+        "application/json",
+        bytes.NewBuffer(jsonData),
+    )
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    var result map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Printf("%+v\n", result)
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json 成功响应
+{
+  "status": "ok"
+}
+```
+</ResponseExample>
+
+## 响应字段
+
+<ResponseField name="status" type="string" required>
+操作状态，成功时返回 `"ok"`
+</ResponseField>
+
+## 状态码
+
+| 状态码 | 说明 |
+|--------|------|
+| 200 | 系统用户 ID 添加成功 |
+| 400 | 请求参数错误 |
+| 403 | 没有管理权限 |
+| 500 | 服务器内部错误 |
+
+## 系统用户特权
+
+### 特殊权限
+
+成为系统用户后，用户将获得以下特权：
+
+| 权限 | 说明 | 影响范围 |
+|------|------|----------|
+| 免验证发送 | 发送消息时免于某些验证 | 消息发送 |
+
+### 权限层级
+
+```
+系统用户 > 管理员 > 白名单 > 普通用户 > 黑名单
+```
+

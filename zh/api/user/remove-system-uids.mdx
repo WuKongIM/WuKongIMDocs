@@ -1,0 +1,112 @@
+---
+title: "移除系统用户 ID"
+description: "从系统用户 ID 列表中移除用户"
+api: "POST /user/systemuids_remove"
+---
+
+## 概述
+
+从系统用户 ID 列表中移除指定用户，取消其系统用户的特殊权限和标识。
+
+## 请求体
+
+<ParamField body="uids" type="array" required>
+要从系统用户列表中移除的用户 ID 数组
+<ParamField body="uids[]" type="string">
+用户 ID
+</ParamField>
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "http://localhost:5001/user/systemuids_remove" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "uids": ["old_bot", "deprecated_service"]
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5001/user/systemuids_remove', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    uids: ['old_bot', 'deprecated_service']
+  })
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+
+data = {
+    "uids": ["old_bot", "deprecated_service"]
+}
+
+response = requests.post('http://localhost:5001/user/systemuids_remove', json=data)
+result = response.json()
+print(result)
+```
+
+```go Go
+package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    data := map[string]interface{}{
+        "uids": []string{"old_bot", "deprecated_service"},
+    }
+    
+    jsonData, _ := json.Marshal(data)
+    
+    resp, err := http.Post(
+        "http://localhost:5001/user/systemuids_remove",
+        "application/json",
+        bytes.NewBuffer(jsonData),
+    )
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    var result map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Printf("%+v\n", result)
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json 成功响应
+{
+  "status": "ok"
+}
+```
+</ResponseExample>
+
+## 响应字段
+
+<ResponseField name="status" type="string" required>
+操作状态，成功时返回 `"ok"`
+</ResponseField>
+
+## 状态码
+
+| 状态码 | 说明 |
+|--------|------|
+| 200 | 系统用户 ID 移除成功 |
+| 400 | 请求参数错误 |
+| 403 | 没有管理权限 |
+| 404 | 指定用户不在系统用户列表中 |
+| 500 | 服务器内部错误 |

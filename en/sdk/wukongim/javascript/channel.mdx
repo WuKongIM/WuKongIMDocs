@@ -1,0 +1,501 @@
+---
+title: "Channel Management"
+description: "WuKongIM JavaScript SDK channel management functionality, including channel information retrieval, subscriber management and monitoring"
+icon: "hash"
+---
+
+## Data Structure Description
+
+Channel information data structure:
+
+```javascript
+class ChannelInfo {
+    channel!: Channel;      // Channel
+    title!: string;         // Channel title
+    logo!: string;          // Channel logo
+    mute!: boolean;         // Do not disturb
+    top!: boolean;          // Is pinned
+    orgData: any;           // Third-party data
+    online: boolean = false // Is online
+    lastOffline: number = 0 // Last offline time
+}
+```
+
+Subscriber data structure:
+
+```javascript
+class Subscriber {
+    uid!: string;           // Subscriber uid
+    name!: string;          // Subscriber name
+    remark!: string;        // Subscriber remark
+    avatar!: string;        // Subscriber avatar
+    role!: number;          // Subscriber role
+    channel!: Channel;      // Channel
+    version!: number;       // Data version
+    isDeleted!: boolean;    // Is deleted
+    status!: number;        // Subscriber status
+    orgData: any;           // Third-party data
+}
+```
+
+## Channel Information
+
+### Request Channel Information
+
+`Need to implement channel information data source` [Channel Information Data Source](/en/sdk/wukongim/javascript/datasource#channel-information-data-source)
+
+```javascript
+// Force fetch channel information from server and put into cache
+WKSDK.shared().channelManager.fetchChannelInfo(channel)
+```
+
+### Get Channel Information
+
+```javascript
+// Get channel information from cache
+const channelInfo = WKSDK.shared().channelManager.getChannelInfo(channel)
+```
+
+### Listen for Channel Information
+
+`WKSDK.shared().channelManager.fetchChannelInfo(channel) method will trigger this listener`
+
+```javascript
+const listen = (channelInfo: ChannelInfo) => {
+    console.log('Channel info updated:', channelInfo);
+    // Update UI with new channel information
+    updateChannelUI(channelInfo);
+}
+```
+
+Add listener:
+
+```javascript
+WKSDK.shared().channelManager.addListener(listen)
+```
+
+Remove listener:
+
+```javascript
+WKSDK.shared().channelManager.removeListener(listen)
+```
+
+### Complete Channel Information Example
+
+```javascript
+class ChannelInfoManager {
+    constructor() {
+        this.setupChannelListener();
+    }
+    
+    setupChannelListener() {
+        // Listen for channel information updates
+        const channelInfoListener = (channelInfo) => {
+            this.handleChannelInfoUpdate(channelInfo);
+        };
+        
+        WKSDK.shared().channelManager.addListener(channelInfoListener);
+        
+        // Store listener reference for cleanup
+        this.channelInfoListener = channelInfoListener;
+    }
+    
+    async loadChannelInfo(channel) {
+        // First try to get from cache
+        let channelInfo = WKSDK.shared().channelManager.getChannelInfo(channel);
+        
+        if (channelInfo) {
+            // Use cached data
+            this.updateUI(channelInfo);
+        } else {
+            // Fetch from server
+            this.showLoading();
+            await WKSDK.shared().channelManager.fetchChannelInfo(channel);
+            // The listener will handle the update
+        }
+    }
+    
+    handleChannelInfoUpdate(channelInfo) {
+        console.log('Channel info updated:', channelInfo);
+        this.updateUI(channelInfo);
+        this.hideLoading();
+    }
+    
+    updateUI(channelInfo) {
+        // Update channel title
+        document.getElementById('channel-title').textContent = channelInfo.title;
+        
+        // Update channel avatar
+        document.getElementById('channel-avatar').src = channelInfo.logo;
+        
+        // Update pin status
+        const pinButton = document.getElementById('pin-button');
+        pinButton.classList.toggle('active', channelInfo.top);
+        
+        // Update mute status
+        const muteButton = document.getElementById('mute-button');
+        muteButton.classList.toggle('active', channelInfo.mute);
+        
+        // Update online status
+        const onlineIndicator = document.getElementById('online-indicator');
+        onlineIndicator.classList.toggle('online', channelInfo.online);
+    }
+    
+    cleanup() {
+        if (this.channelInfoListener) {
+            WKSDK.shared().channelManager.removeListener(this.channelInfoListener);
+        }
+    }
+}
+```
+
+## Subscribers (Members)
+
+### Sync Channel Subscriber List
+
+`Need to implement sync channel subscriber data source` [Sync Channel Subscriber Data Source](/en/sdk/wukongim/javascript/datasource#sync-channel-subscriber-data-source)
+
+```javascript
+WKSDK.shared().channelManager.syncSubscribes(channel)
+```
+
+### Get Channel Subscriber List
+
+```javascript
+const subscribers = WKSDK.shared().channelManager.getSubscribes(channel)
+```
+
+### Get My Subscriber Identity in Channel
+
+```javascript
+const subscriber = WKSDK.shared().channelManager.getSubscribeOfMe(channel)
+```
+
+### Listen for Channel Subscriber Changes
+
+```javascript
+const listen = (channel: Channel) => {
+    const subscribers = WKSDK.shared().channelManager.getSubscribes(channel)
+    console.log('Subscribers updated for channel:', channel.channelID, subscribers);
+    // Update member list UI
+    updateMemberListUI(subscribers);
+}
+```
+
+Add listener:
+
+```javascript
+WKSDK.shared().channelManager.addSubscriberChangeListener(listen)
+```
+
+Remove listener:
+
+```javascript
+WKSDK.shared().channelManager.removeSubscriberChangeListener(listen)
+```
+
+### Complete Subscriber Management Example
+
+```javascript
+class ChannelMemberManager {
+    constructor(channel) {
+        this.channel = channel;
+        this.subscribers = [];
+        this.setupSubscriberListener();
+    }
+    
+    setupSubscriberListener() {
+        this.subscriberChangeListener = (updatedChannel) => {
+            if (updatedChannel.channelID === this.channel.channelID && 
+                updatedChannel.channelType === this.channel.channelType) {
+                this.handleSubscriberChange(updatedChannel);
+            }
+        };
+        
+        WKSDK.shared().channelManager.addSubscriberChangeListener(this.subscriberChangeListener);
+    }
+    
+    async loadSubscribers() {
+        try {
+            // First get from cache
+            this.subscribers = WKSDK.shared().channelManager.getSubscribes(this.channel) || [];
+            
+            if (this.subscribers.length > 0) {
+                this.updateMemberListUI();
+            }
+            
+            // Sync from server
+            await WKSDK.shared().channelManager.syncSubscribes(this.channel);
+            // The listener will handle the update
+        } catch (error) {
+            console.error('Failed to load subscribers:', error);
+        }
+    }
+    
+    handleSubscriberChange(channel) {
+        this.subscribers = WKSDK.shared().channelManager.getSubscribes(channel) || [];
+        this.updateMemberListUI();
+    }
+    
+    updateMemberListUI() {
+        const memberList = document.getElementById('member-list');
+        memberList.innerHTML = '';
+        
+        this.subscribers.forEach(subscriber => {
+            const memberElement = this.createMemberElement(subscriber);
+            memberList.appendChild(memberElement);
+        });
+        
+        // Update member count
+        document.getElementById('member-count').textContent = this.subscribers.length;
+    }
+    
+    createMemberElement(subscriber) {
+        const memberDiv = document.createElement('div');
+        memberDiv.className = 'member-item';
+        memberDiv.innerHTML = `
+            <img src="${subscriber.avatar}" alt="${subscriber.name}" class="member-avatar">
+            <div class="member-info">
+                <div class="member-name">${subscriber.remark || subscriber.name}</div>
+                <div class="member-role">${this.getRoleText(subscriber.role)}</div>
+            </div>
+            <div class="member-status ${subscriber.status === 1 ? 'online' : 'offline'}"></div>
+        `;
+        return memberDiv;
+    }
+    
+    getRoleText(role) {
+        switch (role) {
+            case 1: return 'Owner';
+            case 2: return 'Admin';
+            case 3: return 'Member';
+            default: return 'Unknown';
+        }
+    }
+    
+    getMyRole() {
+        const mySubscriber = WKSDK.shared().channelManager.getSubscribeOfMe(this.channel);
+        return mySubscriber ? mySubscriber.role : 0;
+    }
+    
+    canManageMembers() {
+        const myRole = this.getMyRole();
+        return myRole === 1 || myRole === 2; // Owner or Admin
+    }
+    
+    cleanup() {
+        if (this.subscriberChangeListener) {
+            WKSDK.shared().channelManager.removeSubscriberChangeListener(this.subscriberChangeListener);
+        }
+    }
+}
+```
+
+## Channel Operations
+
+### Channel Settings Management
+
+```javascript
+class ChannelSettingsManager {
+    constructor(channel) {
+        this.channel = channel;
+    }
+    
+    async togglePin() {
+        const channelInfo = WKSDK.shared().channelManager.getChannelInfo(this.channel);
+        if (!channelInfo) return;
+        
+        const newPinStatus = !channelInfo.top;
+        
+        try {
+            // Update locally first for immediate UI feedback
+            channelInfo.top = newPinStatus;
+            this.updatePinUI(newPinStatus);
+            
+            // Call server API to sync
+            await this.updateChannelSettings({ top: newPinStatus });
+            
+        } catch (error) {
+            // Revert on error
+            channelInfo.top = !newPinStatus;
+            this.updatePinUI(!newPinStatus);
+            console.error('Failed to update pin status:', error);
+        }
+    }
+    
+    async toggleMute() {
+        const channelInfo = WKSDK.shared().channelManager.getChannelInfo(this.channel);
+        if (!channelInfo) return;
+        
+        const newMuteStatus = !channelInfo.mute;
+        
+        try {
+            // Update locally first
+            channelInfo.mute = newMuteStatus;
+            this.updateMuteUI(newMuteStatus);
+            
+            // Call server API to sync
+            await this.updateChannelSettings({ mute: newMuteStatus });
+            
+        } catch (error) {
+            // Revert on error
+            channelInfo.mute = !newMuteStatus;
+            this.updateMuteUI(!newMuteStatus);
+            console.error('Failed to update mute status:', error);
+        }
+    }
+    
+    updatePinUI(isPinned) {
+        const pinButton = document.getElementById('pin-button');
+        pinButton.classList.toggle('active', isPinned);
+        pinButton.textContent = isPinned ? 'Unpin' : 'Pin';
+    }
+    
+    updateMuteUI(isMuted) {
+        const muteButton = document.getElementById('mute-button');
+        muteButton.classList.toggle('active', isMuted);
+        muteButton.textContent = isMuted ? 'Unmute' : 'Mute';
+    }
+    
+    async updateChannelSettings(settings) {
+        // Implement your server API call here
+        const response = await fetch('/api/channel/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                channelId: this.channel.channelID,
+                channelType: this.channel.channelType,
+                ...settings
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to update channel settings');
+        }
+    }
+}
+```
+
+## Stream Messages (Suitable for ChatGPT)
+
+### Subscribe to Channel Stream Messages
+
+```javascript
+// Subscribe to stream messages for real-time AI responses
+WKSDK.shared().channelManager.subscribeStream(channel, {
+    onStreamStart: (streamId) => {
+        console.log('Stream started:', streamId);
+        // Show typing indicator
+    },
+    onStreamData: (data) => {
+        console.log('Stream data received:', data);
+        // Update UI with partial response
+    },
+    onStreamEnd: (streamId) => {
+        console.log('Stream ended:', streamId);
+        // Hide typing indicator
+    },
+    onStreamError: (error) => {
+        console.error('Stream error:', error);
+        // Handle stream error
+    }
+});
+```
+
+### Unsubscribe from Channel Stream Messages
+
+```javascript
+// Unsubscribe from stream messages
+WKSDK.shared().channelManager.unsubscribeStream(channel);
+```
+
+## Best Practices
+
+### 1. Memory Management
+
+```javascript
+class ChannelComponent {
+    constructor(channel) {
+        this.channel = channel;
+        this.listeners = [];
+    }
+    
+    mount() {
+        // Store all listeners for cleanup
+        const channelInfoListener = (channelInfo) => this.handleChannelInfo(channelInfo);
+        const subscriberListener = (channel) => this.handleSubscriberChange(channel);
+        
+        WKSDK.shared().channelManager.addListener(channelInfoListener);
+        WKSDK.shared().channelManager.addSubscriberChangeListener(subscriberListener);
+        
+        this.listeners.push(
+            { type: 'channelInfo', listener: channelInfoListener },
+            { type: 'subscriber', listener: subscriberListener }
+        );
+    }
+    
+    unmount() {
+        // Clean up all listeners
+        this.listeners.forEach(({ type, listener }) => {
+            if (type === 'channelInfo') {
+                WKSDK.shared().channelManager.removeListener(listener);
+            } else if (type === 'subscriber') {
+                WKSDK.shared().channelManager.removeSubscriberChangeListener(listener);
+            }
+        });
+        this.listeners = [];
+    }
+}
+```
+
+### 2. Error Handling
+
+```javascript
+async function safeChannelOperation(operation) {
+    try {
+        await operation();
+    } catch (error) {
+        console.error('Channel operation failed:', error);
+        // Show user-friendly error message
+        showErrorToast('Operation failed. Please try again.');
+    }
+}
+
+// Usage
+safeChannelOperation(() => 
+    WKSDK.shared().channelManager.fetchChannelInfo(channel)
+);
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Conversation Management"
+    icon="users"
+    href="/en/sdk/wukongim/javascript/conversation"
+  >
+    Learn how to manage conversation lists
+  </Card>
+  <Card
+    title="Data Source Configuration"
+    icon="database"
+    href="/en/sdk/wukongim/javascript/datasource"
+  >
+    Configure channel data sources
+  </Card>
+  <Card
+    title="Chat Management"
+    icon="message-circle"
+    href="/en/sdk/wukongim/javascript/chat"
+  >
+    Return to chat message management
+  </Card>
+  <Card
+    title="Advanced Features"
+    icon="cog"
+    href="/en/sdk/wukongim/javascript/advance"
+  >
+    Explore advanced features and custom messages
+  </Card>
+</CardGroup>

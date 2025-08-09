@@ -1,0 +1,611 @@
+---
+title: "Data Source Configuration"
+description: "WuKongIM Flutter SDK data source configuration, including file upload/download, conversation sync, channel information and message sync"
+icon: "database"
+---
+
+Data source configuration is one of the core functions of WuKongIM Flutter SDK, responsible for handling key business logic such as file upload/download, conversation sync, channel information retrieval, and message sync.
+
+## File Management
+
+When sending custom attachment messages, the message sent to the recipient is a network address, not the actual file. In this case, we need to listen for attachment uploads.
+
+### Listen for Attachment Upload
+
+```dart
+// Listen for message attachment upload
+WKIM.shared.messageManager.addOnUploadAttachmentListener((wkMsg, back) {
+  if (wkMsg.contentType == WkMessageContentType.image) {
+    // TODO upload attachment
+    WKImageContent imageContent = wkMsg.messageContent! as WKImageContent;
+    imageContent.url = 'xxxxxx';
+    wkMsg.messageContent = imageContent;
+    back(wkMsg);
+  }
+  if (wkMsg.contentType == WkMessageContentType.voice) {
+    // TODO upload voice
+    WKVoiceContent voiceContent = wkMsg.messageContent! as WKVoiceContent;
+    voiceContent.url = 'xxxxxx';
+    wkMsg.messageContent = voiceContent;
+    back(wkMsg);
+  } else if (wkMsg.contentType == WkMessageContentType.video) {
+    WKVideoContent videoContent = wkMsg.messageContent! as WKVideoContent;
+    // TODO upload cover and video
+    videoContent.cover = 'xxxxxx';
+    videoContent.url = 'ssssss';
+    wkMsg.messageContent = videoContent;
+    back(wkMsg);
+  }
+});
+```
+
+### Complete File Upload Management Example
+
+```dart
+class FileUploadManager {
+  
+  static void setupUploadListener() {
+    WKIM.shared.messageManager.addOnUploadAttachmentListener((wkMsg, back) {
+      _handleFileUpload(wkMsg, back);
+    });
+  }
+  
+  static void _handleFileUpload(WKMsg wkMsg, Function(WKMsg) back) async {
+    try {
+      switch (wkMsg.contentType) {
+        case WkMessageContentType.image:
+          await _uploadImage(wkMsg, back);
+          break;
+        case WkMessageContentType.voice:
+          await _uploadVoice(wkMsg, back);
+          break;
+        case WkMessageContentType.video:
+          await _uploadVideo(wkMsg, back);
+          break;
+        case WkMessageContentType.file:
+          await _uploadFile(wkMsg, back);
+          break;
+        default:
+          // For custom attachment messages
+          await _uploadCustomAttachment(wkMsg, back);
+          break;
+      }
+    } catch (error) {
+      print('File upload failed: $error');
+      // Can call back with original message to indicate failure
+      back(wkMsg);
+    }
+  }
+  
+  static Future<void> _uploadImage(WKMsg wkMsg, Function(WKMsg) back) async {
+    final imageContent = wkMsg.messageContent! as WKImageContent;
+    
+    if (imageContent.localPath.isNotEmpty) {
+      // Compress image if needed
+      final compressedPath = await _compressImage(imageContent.localPath);
+      
+      // Upload to server
+      final uploadResult = await _uploadToServer(compressedPath, 'image');
+      
+      // Update message content
+      imageContent.url = uploadResult['url'];
+      imageContent.size = uploadResult['size'];
+      wkMsg.messageContent = imageContent;
+      
+      print('Image upload successful: ${imageContent.url}');
+    }
+    
+    back(wkMsg);
+  }
+  
+  static Future<void> _uploadVoice(WKMsg wkMsg, Function(WKMsg) back) async {
+    final voiceContent = wkMsg.messageContent! as WKVoiceContent;
+    
+    if (voiceContent.localPath.isNotEmpty) {
+      // Upload voice file
+      final uploadResult = await _uploadToServer(voiceContent.localPath, 'voice');
+      
+      // Update message content
+      voiceContent.url = uploadResult['url'];
+      voiceContent.size = uploadResult['size'];
+      wkMsg.messageContent = voiceContent;
+      
+      print('Voice upload successful: ${voiceContent.url}');
+    }
+    
+    back(wkMsg);
+  }
+  
+  static Future<void> _uploadVideo(WKMsg wkMsg, Function(WKMsg) back) async {
+    final videoContent = wkMsg.messageContent! as WKVideoContent;
+    
+    if (videoContent.localPath.isNotEmpty) {
+      // Generate video thumbnail
+      final thumbnailPath = await _generateVideoThumbnail(videoContent.localPath);
+      
+      // Upload thumbnail
+      final thumbnailResult = await _uploadToServer(thumbnailPath, 'image');
+      videoContent.cover = thumbnailResult['url'];
+      
+      // Upload video
+      final videoResult = await _uploadToServer(videoContent.localPath, 'video');
+      videoContent.url = videoResult['url'];
+      videoContent.size = videoResult['size'];
+      
+      wkMsg.messageContent = videoContent;
+      
+      print('Video upload successful: ${videoContent.url}');
+    }
+    
+    back(wkMsg);
+  }
+  
+  static Future<void> _uploadFile(WKMsg wkMsg, Function(WKMsg) back) async {
+    final fileContent = wkMsg.messageContent! as WKFileContent;
+    
+    if (fileContent.localPath.isNotEmpty) {
+      // Upload file
+      final uploadResult = await _uploadToServer(fileContent.localPath, 'file');
+      
+      // Update message content
+      fileContent.url = uploadResult['url'];
+      fileContent.size = uploadResult['size'];
+      wkMsg.messageContent = fileContent;
+      
+      print('File upload successful: ${fileContent.url}');
+    }
+    
+    back(wkMsg);
+  }
+  
+  static Future<void> _uploadCustomAttachment(WKMsg wkMsg, Function(WKMsg) back) async {
+    // Handle custom attachment messages
+    print('Uploading custom attachment for message type: ${wkMsg.contentType}');
+    
+    // Example: Location message with image
+    if (wkMsg.contentType == 17) { // Assuming 17 is location message type
+      final locationContent = wkMsg.messageContent as LocationMessageContent;
+      
+      if (locationContent.localPath.isNotEmpty) {
+        final uploadResult = await _uploadToServer(locationContent.localPath, 'image');
+        locationContent.url = uploadResult['url'];
+        wkMsg.messageContent = locationContent;
+      }
+    }
+    
+    back(wkMsg);
+  }
+  
+  // Helper methods
+  static Future<String> _compressImage(String imagePath) async {
+    // Implement image compression logic
+    // Can use image compression packages
+    return imagePath; // Return compressed path
+  }
+  
+  static Future<String> _generateVideoThumbnail(String videoPath) async {
+    // Implement video thumbnail generation
+    // Can use video thumbnail packages
+    return 'thumbnail_path';
+  }
+  
+  static Future<Map<String, dynamic>> _uploadToServer(String filePath, String type) async {
+    // Implement actual upload logic
+    // This is a mock implementation
+    await Future.delayed(Duration(seconds: 2)); // Simulate upload time
+    
+    return {
+      'url': 'https://example.com/uploaded_file_${DateTime.now().millisecondsSinceEpoch}',
+      'size': 1024, // File size in bytes
+    };
+  }
+}
+```
+
+### Attachment Download
+
+The SDK will not actively download message attachments. When receiving messages with attachments, the app needs to download them as needed. After the app completes the download, it can change the local file address to avoid repeated downloads.
+
+```dart
+/**
+  * Modify message content
+  *
+  * @param clientMsgNo       Client message ID
+  * @param messageContent    Message module, save local address in messageContent
+  * @param isRefreshUI       Whether to notify UI to refresh corresponding message
+  */
+WKIM.shared.messageManager.updateContent(String clientMsgNo, WKMessageContent messageContent, boolean isRefreshUI);
+```
+
+### Complete File Download Management Example
+
+```dart
+class FileDownloadManager {
+  static final Map<String, String> _downloadCache = {};
+  
+  // Download file and update message
+  static Future<void> downloadAndUpdateMessage(WKMsg message) async {
+    if (message.messageContent == null) return;
+    
+    try {
+      switch (message.contentType) {
+        case WkMessageContentType.image:
+          await _downloadImage(message);
+          break;
+        case WkMessageContentType.voice:
+          await _downloadVoice(message);
+          break;
+        case WkMessageContentType.video:
+          await _downloadVideo(message);
+          break;
+        case WkMessageContentType.file:
+          await _downloadFile(message);
+          break;
+      }
+    } catch (error) {
+      print('File download failed: $error');
+    }
+  }
+  
+  static Future<void> _downloadImage(WKMsg message) async {
+    final imageContent = message.messageContent as WKImageContent;
+    
+    if (imageContent.url.isNotEmpty && imageContent.localPath.isEmpty) {
+      // Check cache first
+      if (_downloadCache.containsKey(imageContent.url)) {
+        imageContent.localPath = _downloadCache[imageContent.url]!;
+      } else {
+        // Download from server
+        final localPath = await _downloadFromServer(imageContent.url, 'image');
+        imageContent.localPath = localPath;
+        _downloadCache[imageContent.url] = localPath;
+      }
+      
+      // Update message content
+      WKIM.shared.messageManager.updateContent(message.clientMsgNO, imageContent, true);
+    }
+  }
+  
+  static Future<void> _downloadVoice(WKMsg message) async {
+    final voiceContent = message.messageContent as WKVoiceContent;
+    
+    if (voiceContent.url.isNotEmpty && voiceContent.localPath.isEmpty) {
+      if (_downloadCache.containsKey(voiceContent.url)) {
+        voiceContent.localPath = _downloadCache[voiceContent.url]!;
+      } else {
+        final localPath = await _downloadFromServer(voiceContent.url, 'voice');
+        voiceContent.localPath = localPath;
+        _downloadCache[voiceContent.url] = localPath;
+      }
+      
+      WKIM.shared.messageManager.updateContent(message.clientMsgNO, voiceContent, true);
+    }
+  }
+  
+  static Future<void> _downloadVideo(WKMsg message) async {
+    final videoContent = message.messageContent as WKVideoContent;
+    
+    if (videoContent.url.isNotEmpty && videoContent.localPath.isEmpty) {
+      if (_downloadCache.containsKey(videoContent.url)) {
+        videoContent.localPath = _downloadCache[videoContent.url]!;
+      } else {
+        final localPath = await _downloadFromServer(videoContent.url, 'video');
+        videoContent.localPath = localPath;
+        _downloadCache[videoContent.url] = localPath;
+      }
+      
+      WKIM.shared.messageManager.updateContent(message.clientMsgNO, videoContent, true);
+    }
+  }
+  
+  static Future<void> _downloadFile(WKMsg message) async {
+    final fileContent = message.messageContent as WKFileContent;
+    
+    if (fileContent.url.isNotEmpty && fileContent.localPath.isEmpty) {
+      if (_downloadCache.containsKey(fileContent.url)) {
+        fileContent.localPath = _downloadCache[fileContent.url]!;
+      } else {
+        final localPath = await _downloadFromServer(fileContent.url, 'file');
+        fileContent.localPath = localPath;
+        _downloadCache[fileContent.url] = localPath;
+      }
+      
+      WKIM.shared.messageManager.updateContent(message.clientMsgNO, fileContent, true);
+    }
+  }
+  
+  static Future<String> _downloadFromServer(String url, String type) async {
+    // Implement actual download logic
+    // This is a mock implementation
+    await Future.delayed(Duration(seconds: 1)); // Simulate download time
+    
+    // Return local file path
+    final fileName = url.split('/').last;
+    return '/local/downloads/$type/$fileName';
+  }
+  
+  // Clear download cache
+  static void clearDownloadCache() {
+    _downloadCache.clear();
+  }
+}
+```
+
+## Recent Conversations
+
+### Listen for Conversation Sync
+
+```dart
+WKIM.shared.conversationManager
+        .addOnSyncConversationListener((lastSsgSeqs, msgCount, version, back) {
+        /**
+            * Sync conversations
+            *
+            * @param lastSsgSeqs     Recent conversation list msg_seq collection
+            * @param msgCount        Message sync count in conversations
+            * @param version         Maximum version number
+            * @param back            Callback
+            */
+            // Need to request business interface and return data to SDK
+            back(conversation);
+    });
+```
+
+### Complete Conversation Sync Example
+
+```dart
+class ConversationSyncManager {
+  
+  static void setupConversationSync() {
+    WKIM.shared.conversationManager.addOnSyncConversationListener((lastSsgSeqs, msgCount, version, back) {
+      _syncConversations(lastSsgSeqs, msgCount, version, back);
+    });
+  }
+  
+  static void _syncConversations(String lastSsgSeqs, int msgCount, int version, Function(List<WKConversationMsg>) back) async {
+    try {
+      // Call business API to sync conversations
+      final conversations = await _requestConversationSync(lastSsgSeqs, msgCount, version);
+      
+      // Return to SDK
+      back(conversations);
+      
+      print('Conversation sync completed: ${conversations.length} conversations');
+    } catch (error) {
+      print('Conversation sync failed: $error');
+      back([]);
+    }
+  }
+  
+  static Future<List<WKConversationMsg>> _requestConversationSync(String lastSsgSeqs, int msgCount, int version) async {
+    // Implement actual API call
+    // This is a mock implementation
+    await Future.delayed(Duration(seconds: 1));
+    
+    // Return mock conversation data
+    return [
+      // Mock conversation data
+    ];
+  }
+}
+```
+
+## Channel Information
+
+### Channel Information Data Source
+
+```dart
+// Listen for getting channel information
+WKIM.shared.channelManager.addOnGetChannelListener((channelId, channelType, back) {
+    // After getting information, return through back
+    // Or call WKIM.shared.channelManager.addOrUpdateChannel() method to update channel information in SDK
+});
+```
+
+You can also batch save channel information:
+
+```dart
+// Batch save channel information
+WKIM.shared.channelManager.addOrUpdateChannels(channels);
+```
+
+### Complete Channel Data Source Example
+
+```dart
+class ChannelDataSourceManager {
+  
+  static void setupChannelDataSource() {
+    WKIM.shared.channelManager.addOnGetChannelListener((channelId, channelType, back) {
+      _getChannelInfo(channelId, channelType, back);
+    });
+  }
+  
+  static void _getChannelInfo(String channelId, int channelType, Function(WKChannel?) back) async {
+    try {
+      // First check local cache
+      final cachedChannel = _getChannelFromCache(channelId, channelType);
+      if (cachedChannel != null) {
+        back(cachedChannel);
+        return;
+      }
+      
+      // Request from server
+      final channel = await _requestChannelInfo(channelId, channelType);
+      
+      if (channel != null) {
+        // Cache the result
+        _cacheChannel(channel);
+        
+        // Return to SDK
+        back(channel);
+        
+        print('Channel info retrieved: ${channel.channelName}');
+      } else {
+        back(null);
+      }
+    } catch (error) {
+      print('Failed to get channel info: $error');
+      back(null);
+    }
+  }
+  
+  static WKChannel? _getChannelFromCache(String channelId, int channelType) {
+    // Implement cache logic
+    return null;
+  }
+  
+  static void _cacheChannel(WKChannel channel) {
+    // Implement cache logic
+  }
+  
+  static Future<WKChannel?> _requestChannelInfo(String channelId, int channelType) async {
+    // Implement actual API call
+    await Future.delayed(Duration(seconds: 1));
+    
+    // Return mock channel data
+    final channel = WKChannel();
+    channel.channelID = channelId;
+    channel.channelType = channelType;
+    channel.channelName = 'Channel $channelId';
+    channel.avatar = 'https://example.com/avatar.jpg';
+    
+    return channel;
+  }
+  
+  // Batch update channels
+  static void batchUpdateChannels(List<WKChannel> channels) {
+    WKIM.shared.channelManager.addOrUpdateChannels(channels);
+    print('Batch updated ${channels.length} channels');
+  }
+}
+```
+
+## Messages
+
+### Channel Message Data Source
+
+```dart
+WKIM.shared.messageManager.addOnSyncChannelMsgListener((channelID,
+        channelType, startMessageSeq, endMessageSeq, limit, pullMode, back) {
+        /*
+        * Sync messages for a channel
+        *
+        * @param channelID           Channel ID
+        * @param channelType         Channel type
+        * @param startMessageSeq     Start message sequence (result includes start_message_seq message)
+        * @param endMessageSeq       End message sequence (result excludes end_message_seq message)
+        * @param limit               Message count limit
+        * @param pullMode            Pull mode 0: pull down 1: pull up
+        * @param iSyncChannelMsgBack Request callback
+        */
+        // TODO request interface and return to SDK
+    });
+```
+
+### Complete Message Sync Example
+
+```dart
+class MessageSyncManager {
+  
+  static void setupMessageSync() {
+    WKIM.shared.messageManager.addOnSyncChannelMsgListener((channelID, channelType, startMessageSeq, endMessageSeq, limit, pullMode, back) {
+      _syncChannelMessages(channelID, channelType, startMessageSeq, endMessageSeq, limit, pullMode, back);
+    });
+  }
+  
+  static void _syncChannelMessages(String channelID, int channelType, int startMessageSeq, int endMessageSeq, int limit, int pullMode, Function(List<WKMsg>) back) async {
+    try {
+      // Call business API to sync messages
+      final messages = await _requestChannelMessages(channelID, channelType, startMessageSeq, endMessageSeq, limit, pullMode);
+      
+      // Return to SDK
+      back(messages);
+      
+      print('Message sync completed: ${messages.length} messages for channel $channelID');
+    } catch (error) {
+      print('Message sync failed: $error');
+      back([]);
+    }
+  }
+  
+  static Future<List<WKMsg>> _requestChannelMessages(String channelID, int channelType, int startMessageSeq, int endMessageSeq, int limit, int pullMode) async {
+    // Implement actual API call
+    await Future.delayed(Duration(seconds: 1));
+    
+    // Return mock message data
+    return [
+      // Mock message data
+    ];
+  }
+}
+```
+
+## Complete Data Source Manager
+
+```dart
+class WuKongIMDataSourceManager {
+  
+  static void initialize() {
+    // Setup file upload/download
+    FileUploadManager.setupUploadListener();
+    
+    // Setup conversation sync
+    ConversationSyncManager.setupConversationSync();
+    
+    // Setup channel data source
+    ChannelDataSourceManager.setupChannelDataSource();
+    
+    // Setup message sync
+    MessageSyncManager.setupMessageSync();
+    
+    print('WuKongIM data source manager initialized');
+  }
+  
+  // Clear all cache
+  static void clearAllCache() {
+    FileDownloadManager.clearDownloadCache();
+    print('All cache cleared');
+  }
+}
+
+// Initialize when app starts
+void main() {
+  runApp(MyApp());
+  
+  // Initialize data source manager
+  WuKongIMDataSourceManager.initialize();
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Advanced Features"
+    icon="cog"
+    href="/en/sdk/wukongim/flutter/advance"
+  >
+    Explore custom messages and extension features
+  </Card>
+  <Card
+    title="Reminder Management"
+    icon="bell"
+    href="/en/sdk/wukongim/flutter/reminder"
+  >
+    Return to reminder management functionality
+  </Card>
+  <Card
+    title="Channel Management"
+    icon="hash"
+    href="/en/sdk/wukongim/flutter/channel"
+  >
+    Return to channel management functionality
+  </Card>
+  <Card
+    title="Message Management"
+    icon="message-circle"
+    href="/en/sdk/wukongim/flutter/message"
+  >
+    Return to message handling functionality
+  </Card>
+</CardGroup>

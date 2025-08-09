@@ -1,0 +1,371 @@
+---
+title: "5分钟集成 Web"
+description: "快速集成 WuKongIM Web EasySDK，5分钟实现聊天功能"
+icon: "panel-top"
+---
+
+## 概述
+
+WuKongIM Web EasySDK 是一个轻量级的 JavaScript SDK，让您能够在 5 分钟内为 Web 应用添加实时聊天功能。本指南将带您快速完成从安装到发送第一条消息的全过程。
+
+<Note>
+  **系统要求**：支持现代浏览器（Chrome 60+、Firefox 55+、Safari 11+、Edge 79+）
+</Note>
+
+## 步骤 1：安装 SDK
+
+选择以下任一方式安装 EasyJSSDK：
+
+<Tabs>
+  <Tab title="npm">
+    ```bash
+    npm install easyjssdk
+    ```
+  </Tab>
+  <Tab title="yarn">
+    ```bash
+    yarn add easyjssdk
+    ```
+  </Tab>
+  <Tab title="CDN">
+    ```html
+    <script src="https://unpkg.com/easyjssdk@latest/dist/easyjssdk.min.js"></script>
+    ```
+  </Tab>
+</Tabs>
+
+## 步骤 2：基本集成
+
+### 2.1 导入 SDK
+
+<Tabs>
+  <Tab title="ES6 模块">
+    ```javascript
+    import { WKIM, WKIMChannelType, WKIMEvent } from 'easyjssdk';
+    ```
+  </Tab>
+  <Tab title="CommonJS">
+    ```javascript
+    const { WKIM, WKIMChannelType, WKIMEvent } = require('easyjssdk');
+    ```
+  </Tab>
+  <Tab title="CDN (全局变量)">
+    ```javascript
+    // SDK 通过 CDN 加载后，可直接使用全局变量
+    const { WKIM, WKIMChannelType, WKIMEvent } = window.EasyJSSDK;
+    ```
+  </Tab>
+</Tabs>
+
+### 2.2 初始化 SDK
+
+```javascript
+// 1. 初始化 SDK
+const im = WKIM.init("ws://your-wukongim-server.com:5200", {
+    uid: "your_user_id",        // 您的用户 ID
+    token: "your_auth_token"    // 您的认证 Token
+    // deviceId: "optional_device_id", // 可选：设备 ID
+    // deviceFlag: 2 // 可选：设备标识 (1:APP, 2:WEB, 默认为 2)
+});
+```
+
+### 2.3 监听消息
+
+```javascript
+// 2. 监听各种事件
+im.on(WKIMEvent.Connect, (result) => {
+    console.log("Event: Connected!", result);
+    // 连接成功，可以开始发送消息
+    updateUI(true);
+});
+
+im.on(WKIMEvent.Disconnect, (disconnectInfo) => {
+    console.log("Event: Disconnected.", disconnectInfo);
+    console.log("Disconnect code:", disconnectInfo.code, "reason:", disconnectInfo.reason);
+    // 连接断开，更新UI状态
+    updateUI(false);
+});
+
+im.on(WKIMEvent.Message, (message) => {
+    console.log("Event: Message Received", message);
+    // 处理接收到的消息
+    displayMessage(message);
+});
+
+im.on(WKIMEvent.Error, (error) => {
+    console.log("Event: Error Occurred", error.message || error);
+    // 处理错误，可能需要更新UI或重连
+});
+
+// 可以为同一事件添加多个监听器
+im.on(WKIMEvent.Message, (message) => {
+    console.log("Second listener also received message:", message.messageId);
+    // 在这里可以添加不同的处理逻辑
+});
+```
+
+### 2.4 移除事件监听器
+
+在某些情况下，您可能需要移除事件监听器以避免内存泄漏或重复处理。EasyJSSDK 提供了 `off` 方法来移除事件监听器。
+
+<Note>
+  **重要提醒**：`off` 方法的 `eventName` 和 `callback` 参数都是必需的。`callback` 引用必须与使用 `on()` 添加监听器时的引用完全相同。
+</Note>
+
+#### 语法
+
+```javascript
+im.off(eventName, callback)
+```
+
+**参数说明：**
+- `eventName` (Event): 要移除监听器的事件名称（必需）
+- `callback` (EventHandler): 要移除的具体回调函数（必需）
+
+#### 正确的使用方式
+
+```javascript
+// ✅ 正确：使用具名函数
+function handleMessage(message) {
+    console.log('处理消息:', message);
+}
+
+function handleConnect(result) {
+    console.log('连接成功:', result);
+}
+
+function handleError(error) {
+    console.log('发生错误:', error);
+}
+
+// 添加事件监听器
+im.on(WKIMEvent.Message, handleMessage);
+im.on(WKIMEvent.Connect, handleConnect);
+im.on(WKIMEvent.Error, handleError);
+
+// 移除特定的事件监听器 - 使用相同的函数引用
+im.off(WKIMEvent.Message, handleMessage);
+im.off(WKIMEvent.Connect, handleConnect);
+im.off(WKIMEvent.Error, handleError);
+```
+
+#### 错误的使用方式
+
+```javascript
+// ❌ 错误：使用匿名函数无法正确移除
+im.on(WKIMEvent.Message, (message) => {
+    console.log('处理消息:', message);
+});
+
+// 这样无法移除上面的监听器，因为函数引用不同
+im.off(WKIMEvent.Message, (message) => {
+    console.log('处理消息:', message);
+});
+```
+
+#### 实际应用示例
+
+```javascript
+class ChatManager {
+    constructor() {
+        // 绑定方法到实例，确保 this 上下文正确
+        this.handleMessage = this.handleMessage.bind(this);
+        this.handleConnect = this.handleConnect.bind(this);
+        this.handleDisconnect = this.handleDisconnect.bind(this);
+        this.handleError = this.handleError.bind(this);
+    }
+
+    init() {
+        // 初始化 SDK
+        this.im = WKIM.init("ws://your-server.com:5200", {
+            uid: "user123",
+            token: "user-token"
+        });
+
+        // 添加事件监听器
+        this.im.on(WKIMEvent.Message, this.handleMessage);
+        this.im.on(WKIMEvent.Connect, this.handleConnect);
+        this.im.on(WKIMEvent.Disconnect, this.handleDisconnect);
+        this.im.on(WKIMEvent.Error, this.handleError);
+    }
+
+    destroy() {
+        if (this.im) {
+            // 移除事件监听器 - 使用相同的方法引用
+            this.im.off(WKIMEvent.Message, this.handleMessage);
+            this.im.off(WKIMEvent.Connect, this.handleConnect);
+            this.im.off(WKIMEvent.Disconnect, this.handleDisconnect);
+            this.im.off(WKIMEvent.Error, this.handleError);
+
+            this.im = null;
+        }
+    }
+
+    handleMessage(message) {
+        console.log('收到消息:', message);
+    }
+
+    handleConnect(result) {
+        console.log('连接成功:', result);
+    }
+
+    handleDisconnect(disconnectInfo) {
+        console.log('连接断开:', disconnectInfo);
+        console.log('断开代码:', disconnectInfo.code, '原因:', disconnectInfo.reason);
+    }
+
+    handleError(error) {
+        console.log('发生错误:', error);
+    }
+}
+
+// 使用示例
+const chatManager = new ChatManager();
+chatManager.init();
+
+// 页面卸载时清理
+window.addEventListener('beforeunload', () => {
+    chatManager.destroy();
+});
+```
+
+#### 框架集成最佳实践
+
+**React 示例：**
+
+```javascript
+import React, { useEffect, useRef } from 'react';
+import { WKIM, WKIMEvent } from 'easyjssdk';
+
+function ChatComponent() {
+    const imRef = useRef(null);
+
+    useEffect(() => {
+        // 定义事件处理函数
+        const handleMessage = (message) => {
+            console.log('收到消息:', message);
+        };
+
+        const handleConnect = (result) => {
+            console.log('连接成功:', result);
+        };
+
+        // 初始化 SDK
+        const im = WKIM.init("ws://your-server.com:5200", {
+            uid: "user123",
+            token: "user-token"
+        });
+        imRef.current = im;
+
+        // 添加事件监听器
+        im.on(WKIMEvent.Message, handleMessage);
+        im.on(WKIMEvent.Connect, handleConnect);
+
+        // 清理函数：组件卸载时移除监听器
+        return () => {
+            if (imRef.current) {
+                imRef.current.off(WKIMEvent.Message, handleMessage);
+                imRef.current.off(WKIMEvent.Connect, handleConnect);
+            }
+        };
+    }, []);
+
+    return <div>聊天组件</div>;
+}
+```
+
+**Vue 示例：**
+
+```javascript
+export default {
+    data() {
+        return {
+            im: null
+        };
+    },
+
+    mounted() {
+        // 定义事件处理函数
+        this.handleMessage = (message) => {
+            console.log('收到消息:', message);
+        };
+
+        this.handleConnect = (result) => {
+            console.log('连接成功:', result);
+        };
+
+        // 初始化 SDK
+        this.im = WKIM.init("ws://your-server.com:5200", {
+            uid: "user123",
+            token: "user-token"
+        });
+
+        // 添加事件监听器
+        this.im.on(WKIMEvent.Message, this.handleMessage);
+        this.im.on(WKIMEvent.Connect, this.handleConnect);
+    },
+
+    beforeUnmount() {
+        // 组件销毁前移除监听器
+        if (this.im) {
+            this.im.off(WKIMEvent.Message, this.handleMessage);
+            this.im.off(WKIMEvent.Connect, this.handleConnect);
+        }
+    }
+};
+```
+
+<Tip>
+  **参考源码实现**：您可以查看 [EasyJSSDK 源码](https://github.com/WuKongIM/EasyJSSDK/blob/main/src/index.ts) 了解 `off` 方法的具体实现细节。
+</Tip>
+
+### 2.5 连接服务器
+
+```javascript
+// 4. 连接到服务器
+try {
+    await im.connect();
+    console.log("连接成功！");
+} catch (error) {
+    console.error("连接失败:", error);
+}
+```
+
+### 2.6 发送消息
+
+```javascript
+// 5. 发送消息示例
+async function sendMessage() {
+    const targetChannelID = "friend_user_id"; // 目标用户 ID
+    const messagePayload = { 
+        type: 1, 
+        content: "Hello from EasyJSSDK!" 
+    }; // 您的自定义消息载荷
+    
+    try {
+        const result = await im.send(targetChannelID, WKIMChannelType.Person, messagePayload);
+        console.log("消息发送成功:", result);
+    } catch (error) {
+        console.error("消息发送失败:", error);
+    }
+}
+```
+
+
+## 相关资源
+
+<CardGroup cols={2}>
+  <Card title="完整示例代码" icon="code" href="https://github.com/WuKongIM/EasyJSSDK/blob/main/example/app.js">
+    查看完整的示例代码和更多功能演示
+  </Card>
+  <Card title="协议完整文档" icon="file-text" href="https://github.com/WuKongIM/WuKongIM/blob/main/pkg/jsonrpc/wukongim_rpc_schema.json">
+    查看 WuKongIM 的完整协议文档
+  </Card>
+  <Card title="GitHub 仓库" icon="github" href="https://github.com/WuKongIM/EasyJSSDK">
+    访问 EasyJSSDK 的 GitHub 仓库
+  </Card>
+  <Card title="问题反馈" icon="bug" href="https://github.com/WuKongIM/EasyJSSDK/issues">
+    报告问题或提出建议
+  </Card>
+</CardGroup>
+

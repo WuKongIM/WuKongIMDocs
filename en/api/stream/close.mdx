@@ -1,0 +1,237 @@
+---
+title: "Close Stream Message"
+description: "Close specified stream message"
+api: "POST /stream/close"
+---
+
+## Overview
+
+Close specified stream message to end stream message transmission.
+
+## Request Body
+
+<ParamField body="client_msg_no" type="string" required>
+Client message number used to identify the stream message to close
+</ParamField>
+
+<ParamField body="stream_no" type="string" required>
+Stream message number
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "http://localhost:5001/stream/close" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "client_msg_no": "client_msg_123",
+    "stream_no": "stream_456"
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5001/stream/close', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    client_msg_no: 'client_msg_123',
+    stream_no: 'stream_456'
+  })
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+
+data = {
+    "client_msg_no": "client_msg_123",
+    "stream_no": "stream_456"
+}
+
+response = requests.post('http://localhost:5001/stream/close', json=data)
+result = response.json()
+print(result)
+```
+
+```go Go
+package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    data := map[string]string{
+        "client_msg_no": "client_msg_123",
+        "stream_no":     "stream_456",
+    }
+    
+    jsonData, _ := json.Marshal(data)
+    
+    resp, err := http.Post(
+        "http://localhost:5001/stream/close",
+        "application/json",
+        bytes.NewBuffer(jsonData),
+    )
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    var result map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Printf("%+v\n", result)
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json Success Response
+{
+  "status": "ok"
+}
+```
+
+```json Error Response
+{
+  "error": "Stream not found"
+}
+```
+</ResponseExample>
+
+## Response Fields
+
+<ResponseField name="status" type="string" required>
+Operation status ("ok" for success)
+</ResponseField>
+
+## Status Codes
+
+| Status Code | Description |
+|-------------|-------------|
+| 200 | Stream closed successfully |
+| 400 | Invalid request parameters |
+| 404 | Stream not found |
+| 500 | Internal server error |
+
+## Usage Examples
+
+### Basic Stream Closure
+
+```javascript
+async function closeStream(clientMsgNo, streamNo) {
+  try {
+    const response = await fetch('http://localhost:5001/stream/close', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        client_msg_no: clientMsgNo,
+        stream_no: streamNo
+      })
+    });
+    
+    if (response.ok) {
+      console.log('Stream closed successfully');
+      return true;
+    } else {
+      console.error('Failed to close stream:', response.status);
+      return false;
+    }
+  } catch (error) {
+    console.error('Error closing stream:', error);
+    return false;
+  }
+}
+```
+
+### Stream Management
+
+```javascript
+class StreamManager {
+  constructor() {
+    this.activeStreams = new Map();
+  }
+  
+  async openStream(channelId, channelType, payload) {
+    // Open stream logic here
+    const streamId = await this.openStreamAPI(channelId, channelType, payload);
+    this.activeStreams.set(streamId, {
+      clientMsgNo: `msg_${Date.now()}`,
+      streamNo: streamId,
+      opened: Date.now()
+    });
+    return streamId;
+  }
+  
+  async closeStream(streamId) {
+    const streamInfo = this.activeStreams.get(streamId);
+    if (!streamInfo) {
+      throw new Error('Stream not found in local registry');
+    }
+    
+    const success = await this.closeStreamAPI(
+      streamInfo.clientMsgNo,
+      streamInfo.streamNo
+    );
+    
+    if (success) {
+      this.activeStreams.delete(streamId);
+    }
+    
+    return success;
+  }
+  
+  async closeStreamAPI(clientMsgNo, streamNo) {
+    const response = await fetch('http://localhost:5001/stream/close', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ client_msg_no: clientMsgNo, stream_no: streamNo })
+    });
+    
+    return response.ok;
+  }
+  
+  async closeAllStreams() {
+    const closePromises = Array.from(this.activeStreams.keys()).map(
+      streamId => this.closeStream(streamId)
+    );
+    
+    await Promise.all(closePromises);
+  }
+}
+```
+
+## Best Practices
+
+1. **Explicit Closure**: Always explicitly close streams when done
+2. **Error Handling**: Handle cases where stream is already closed or not found
+3. **Resource Management**: Track active streams to prevent resource leaks
+4. **Timeout Handling**: Implement timeouts for stream operations
+5. **Cleanup**: Clean up local references after successful closure
+6. **Batch Operations**: Consider batch closing for multiple streams
+
+## Related APIs
+
+- [Open Stream Message](/en/api/stream/open) - Create new stream session
+- [Write Stream Message](/en/api/stream/write) - Write data to stream
+
+## Common Issues
+
+### Stream Not Found
+This usually occurs when:
+- Stream was already closed
+- Invalid stream_no provided
+- Stream expired due to timeout
+
+### Resource Cleanup
+Ensure proper cleanup by:
+- Closing streams explicitly
+- Implementing timeout mechanisms
+- Monitoring active stream count

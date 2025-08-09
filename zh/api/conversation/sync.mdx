@@ -1,0 +1,256 @@
+---
+title: "同步用户会话"
+description: "同步用户的会话列表和状态"
+api: "POST /conversation/sync"
+---
+
+## 概述
+
+同步用户的会话列表和状态，支持增量同步和全量同步。
+
+## 请求体
+
+### 必传参数
+
+<ParamField body="uid" type="string" required>
+用户 ID
+</ParamField>
+
+### 可选参数
+
+<ParamField body="version" type="integer">
+版本时间戳，用于增量同步
+</ParamField>
+
+<ParamField body="last_msg_seqs" type="string">
+客户端最后消息序列号，格式：channelID:channelType:last_msg_seq|channelID:channelType:last_msg_seq
+</ParamField>
+
+<ParamField body="msg_count" type="integer">
+每个会话返回的最近消息数量
+</ParamField>
+
+<ParamField body="only_unread" type="integer" default={0}>
+是否只返回未读会话 (1=只返回未读, 0=返回所有)
+</ParamField>
+
+<ParamField body="exclude_channel_types" type="array">
+要排除的频道类型数组
+<ParamField body="exclude_channel_types[]" type="integer">
+频道类型
+</ParamField>
+</ParamField>
+
+
+<RequestExample>
+```bash cURL
+curl -X POST "http://localhost:5001/conversation/sync" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "uid": "user123",
+    "version": 1640995200000000000,
+    "last_msg_seqs": "user1:1:100|group1:2:200",
+    "msg_count": 10,
+    "only_unread": 0,
+    "exclude_channel_types": [3, 4]
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5001/conversation/sync', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    uid: 'user123',
+    version: 1640995200000000000,
+    last_msg_seqs: 'user1:1:100|group1:2:200',
+    msg_count: 10,
+    only_unread: 0,
+    exclude_channel_types: [3, 4]
+  })
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+
+data = {
+    "uid": "user123",
+    "version": 1640995200000000000,
+    "last_msg_seqs": "user1:1:100|group1:2:200",
+    "msg_count": 10,
+    "only_unread": 0,
+    "exclude_channel_types": [3, 4]
+}
+
+response = requests.post('http://localhost:5001/conversation/sync', json=data)
+result = response.json()
+print(result)
+```
+
+```go Go
+package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    data := map[string]interface{}{
+        "uid":                    "user123",
+        "version":                1640995200000000000,
+        "last_msg_seqs":          "user1:1:100|group1:2:200",
+        "msg_count":              10,
+        "only_unread":            0,
+        "exclude_channel_types":  []int{3, 4},
+    }
+    
+    jsonData, _ := json.Marshal(data)
+    
+    resp, err := http.Post(
+        "http://localhost:5001/conversation/sync",
+        "application/json",
+        bytes.NewBuffer(jsonData),
+    )
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    var result []map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Printf("%+v\n", result)
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json 成功响应
+[
+  {
+    "channel_id": "group123",
+    "channel_type": 2,
+    "unread": 5,
+    "timestamp": 1640995200,
+    "last_msg_seq": 1005,
+    "version": 1640995200000000000,
+    "messages": [
+      {
+        "message_id": 123456789,
+        "message_seq": 1005,
+        "client_msg_no": "msg_123",
+        "from_uid": "user456",
+        "timestamp": 1640995200,
+        "payload": "SGVsbG8gV29ybGQ="
+      }
+    ]
+  },
+  {
+    "channel_id": "private_user123_user789",
+    "channel_type": 1,
+    "unread": 2,
+    "timestamp": 1640995100,
+    "last_msg_seq": 502,
+    "version": 1640995100000000000,
+    "messages": [
+      {
+        "message_id": 123456788,
+        "message_seq": 502,
+        "client_msg_no": "msg_122",
+        "from_uid": "user789",
+        "timestamp": 1640995100,
+        "payload": "SGkgdGhlcmU="
+      }
+    ]
+  }
+]
+```
+</ResponseExample>
+
+## 响应字段
+
+响应是一个会话数组，每个会话包含以下字段：
+
+### 会话信息
+
+<ResponseField name="channel_id" type="string" required>
+频道 ID
+</ResponseField>
+
+<ResponseField name="channel_type" type="integer" required>
+频道类型
+- `1` - 个人频道
+- `2` - 群组频道
+</ResponseField>
+
+<ResponseField name="unread" type="integer" required>
+未读消息数量
+</ResponseField>
+
+<ResponseField name="timestamp" type="integer" required>
+最后消息时间戳
+</ResponseField>
+
+<ResponseField name="last_msg_seq" type="integer" required>
+最后消息序列号
+</ResponseField>
+
+<ResponseField name="version" type="integer" required>
+会话版本号（纳秒级时间戳）
+</ResponseField>
+
+### 消息列表
+
+<ResponseField name="messages" type="array" required>
+会话中的最新消息列表
+<Expandable title="消息对象字段">
+<ResponseField name="messages[].message_id" type="integer">
+消息 ID
+</ResponseField>
+<ResponseField name="messages[].message_seq" type="integer">
+消息序列号
+</ResponseField>
+<ResponseField name="messages[].client_msg_no" type="string">
+客户端消息编号
+</ResponseField>
+<ResponseField name="messages[].from_uid" type="string">
+发送者用户 ID
+</ResponseField>
+<ResponseField name="messages[].timestamp" type="integer">
+消息时间戳
+</ResponseField>
+<ResponseField name="messages[].payload" type="string">
+Base64 编码的消息内容
+</ResponseField>
+</Expandable>
+</ResponseField>
+
+## 状态码
+
+| 状态码 | 说明 |
+|--------|------|
+| 200 | 会话同步成功 |
+| 400 | 请求参数错误 |
+| 403 | 没有访问权限 |
+| 500 | 服务器内部错误 |
+
+
+## 参数说明
+
+### 消息数量 (msg_count)
+
+控制每个会话返回的消息数量：
+
+| 值 | 说明 | 适用场景 |
+|----|------|----------|
+| 0 | 不返回消息 | 只需要会话列表 |
+| 1-50 | 返回指定数量 | 正常使用 |
+| > 50 | 系统限制为 50 | 避免数据过大 |

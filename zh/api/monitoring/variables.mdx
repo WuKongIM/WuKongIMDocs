@@ -1,0 +1,270 @@
+---
+title: "获取系统变量"
+description: "获取系统变量和性能指标"
+api: "GET /varz"
+---
+
+## 概述
+
+获取 WuKongIM 系统的运行时变量和性能指标，用于系统监控和性能分析。
+
+## 查询参数
+
+<ParamField query="sort" type="string" default="in_msgs">
+排序字段
+- `in_msgs` - 按接收消息数排序
+- `out_msgs` - 按发送消息数排序
+- `in_bytes` - 按接收字节数排序
+- `out_bytes` - 按发送字节数排序
+</ParamField>
+
+<ParamField query="conn_limit" type="integer" default={20}>
+连接信息限制数量
+</ParamField>
+
+<ParamField query="node_id" type="integer">
+指定节点 ID（集群环境）
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X GET "http://localhost:5001/varz?sort=in_msgs&conn_limit=50"
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5001/varz?sort=in_msgs&conn_limit=50');
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+
+params = {
+    'sort': 'in_msgs',
+    'conn_limit': 50
+}
+
+response = requests.get('http://localhost:5001/varz', params=params)
+data = response.json()
+print(data)
+```
+
+```go Go
+package main
+
+import (
+    "encoding/json"
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    resp, err := http.Get("http://localhost:5001/varz?sort=in_msgs&conn_limit=50")
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    var result map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Printf("%+v\n", result)
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json 成功响应
+{
+  "server_id": "wukongim-node-1",
+  "version": "2.0.0",
+  "git_commit": "abc123def",
+  "go_version": "go1.21.0",
+  "start": "2024-01-15T08:00:00Z",
+  "now": "2024-01-15T10:30:00Z",
+  "uptime": "2h30m0s",
+  "connections": 1250,
+  "total_connections": 15000,
+  "in_msgs": 125000,
+  "out_msgs": 130000,
+  "in_bytes": 12500000,
+  "out_bytes": 13000000,
+  "slow_consumers": 5,
+  "subscriptions": 8500,
+  "http_req_stats": {
+    "uri_stats": [
+      {
+        "uri": "/message/send",
+        "count": 5000,
+        "avg_time": "15ms"
+      },
+      {
+        "uri": "/channel/create",
+        "count": 200,
+        "avg_time": "25ms"
+      }
+    ]
+  },
+  "cpu": 15.5,
+  "mem": 536870912,
+  "config": {
+    "max_connections": 10000,
+    "max_subscriptions_per_conn": 100,
+    "max_payload": 1048576
+  }
+}
+```
+</ResponseExample>
+
+## 响应字段
+
+### 服务器信息
+
+<ResponseField name="server_id" type="string" required>
+服务器标识符
+</ResponseField>
+
+<ResponseField name="version" type="string" required>
+WuKongIM 版本号
+</ResponseField>
+
+<ResponseField name="git_commit" type="string" required>
+Git 提交哈希
+</ResponseField>
+
+<ResponseField name="go_version" type="string" required>
+Go 语言版本
+</ResponseField>
+
+### 运行时信息
+
+<ResponseField name="start" type="string" required>
+服务器启动时间（ISO 8601 格式）
+</ResponseField>
+
+<ResponseField name="now" type="string" required>
+当前时间（ISO 8601 格式）
+</ResponseField>
+
+<ResponseField name="uptime" type="string" required>
+运行时长
+</ResponseField>
+
+### 连接统计
+
+<ResponseField name="connections" type="integer" required>
+当前连接数
+</ResponseField>
+
+<ResponseField name="total_connections" type="integer" required>
+总连接数（历史累计）
+</ResponseField>
+
+<ResponseField name="slow_consumers" type="integer" required>
+慢消费者数量
+</ResponseField>
+
+<ResponseField name="subscriptions" type="integer" required>
+订阅总数
+</ResponseField>
+
+### 消息统计
+
+<ResponseField name="in_msgs" type="integer" required>
+接收消息总数
+</ResponseField>
+
+<ResponseField name="out_msgs" type="integer" required>
+发送消息总数
+</ResponseField>
+
+<ResponseField name="in_bytes" type="integer" required>
+接收字节总数
+</ResponseField>
+
+<ResponseField name="out_bytes" type="integer" required>
+发送字节总数
+</ResponseField>
+
+### HTTP 请求统计
+
+<ResponseField name="http_req_stats" type="object" required>
+HTTP 请求统计信息
+<Expandable title="http_req_stats 字段">
+<ResponseField name="http_req_stats.uri_stats" type="array">
+URI 统计列表
+<ResponseField name="http_req_stats.uri_stats[].uri" type="string">
+请求 URI
+</ResponseField>
+<ResponseField name="http_req_stats.uri_stats[].count" type="integer">
+请求次数
+</ResponseField>
+<ResponseField name="http_req_stats.uri_stats[].avg_time" type="string">
+平均响应时间
+</ResponseField>
+</ResponseField>
+</Expandable>
+</ResponseField>
+
+### 系统资源
+
+<ResponseField name="cpu" type="number" required>
+CPU 使用率（百分比）
+</ResponseField>
+
+<ResponseField name="mem" type="integer" required>
+内存使用量（字节）
+</ResponseField>
+
+### 配置信息
+
+<ResponseField name="config" type="object" required>
+系统配置信息
+<Expandable title="config 字段">
+<ResponseField name="config.max_connections" type="integer">
+最大连接数限制
+</ResponseField>
+<ResponseField name="config.max_subscriptions_per_conn" type="integer">
+每连接最大订阅数
+</ResponseField>
+<ResponseField name="config.max_payload" type="integer">
+最大消息载荷大小（字节）
+</ResponseField>
+</Expandable>
+</ResponseField>
+
+## 状态码
+
+| 状态码 | 说明 |
+|--------|------|
+| 200 | 成功获取系统变量 |
+| 500 | 服务器内部错误 |
+
+## 监控指标说明
+
+### 性能指标
+
+| 指标 | 说明 | 正常范围 | 告警阈值 |
+|------|------|----------|----------|
+| CPU 使用率 | 服务器 CPU 占用百分比 | < 70% | > 80% |
+| 内存使用量 | 服务器内存占用 | < 80% | > 90% |
+| 连接数 | 当前活跃连接数 | 根据配置 | 接近最大值 |
+| 慢消费者 | 处理缓慢的连接数 | < 5% | > 10% |
+
+### 吞吐量指标
+
+| 指标 | 说明 | 监控重点 |
+|------|------|----------|
+| 消息接收速率 | 每秒接收消息数 | 突增或突降 |
+| 消息发送速率 | 每秒发送消息数 | 与接收速率的比例 |
+| 字节传输速率 | 网络传输速度 | 带宽使用情况 |
+| HTTP 请求统计 | API 调用频率和响应时间 | 热点 API 和性能瓶颈 |
+
+## 最佳实践
+
+1. **定期监控**：建议每 30-60 秒获取一次系统变量
+2. **告警设置**：为关键指标设置合理的告警阈值
+3. **趋势分析**：记录历史数据，分析系统性能趋势
+4. **容量规划**：根据监控数据进行容量规划
+5. **性能优化**：识别性能瓶颈并进行优化
+6. **集群监控**：在集群环境中监控所有节点的状态

@@ -1,0 +1,249 @@
+---
+title: "Write Stream Message"
+description: "Write data to an opened stream message session"
+api: "POST /streamv2/write"
+---
+
+## Overview
+
+Write data to an opened stream message session, supporting fragmented transmission and real-time updates.
+
+## Request Body
+
+<ParamField body="stream_id" type="string" required>
+Stream message session ID (obtained through open stream interface)
+</ParamField>
+
+<ParamField body="data" type="string" required>
+Data content to write (Base64 encoded)
+</ParamField>
+
+<ParamField body="end" type="boolean" default={false}>
+Whether to end the stream
+- `false` - Continue writing, keep stream open
+- `true` - End stream, close session
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "http://localhost:5001/streamv2/write" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "stream_id": "stream_123456789",
+    "data": "VGhpcyBpcyBzdHJlYW0gZGF0YQ==",
+    "end": false
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5001/streamv2/write', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    stream_id: 'stream_123456789',
+    data: btoa('This is stream data'),
+    end: false
+  })
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+import base64
+
+data = {
+    "stream_id": "stream_123456789",
+    "data": base64.b64encode("This is stream data".encode()).decode(),
+    "end": False
+}
+
+response = requests.post('http://localhost:5001/streamv2/write', json=data)
+result = response.json()
+print(result)
+```
+
+```go Go
+package main
+
+import (
+    "bytes"
+    "encoding/base64"
+    "encoding/json"
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    data := map[string]interface{}{
+        "stream_id": "stream_123456789",
+        "data":      base64.StdEncoding.EncodeToString([]byte("This is stream data")),
+        "end":       false,
+    }
+    
+    jsonData, _ := json.Marshal(data)
+    
+    resp, err := http.Post(
+        "http://localhost:5001/streamv2/write",
+        "application/json",
+        bytes.NewBuffer(jsonData),
+    )
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    var result map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Printf("%+v\n", result)
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json Success Response
+{
+  "status": "ok"
+}
+```
+
+```json End Stream Response
+{
+  "status": "ok",
+  "stream_closed": true
+}
+```
+</ResponseExample>
+
+## Response Fields
+
+<ResponseField name="status" type="string" required>
+Operation status ("ok" for success)
+</ResponseField>
+
+<ResponseField name="stream_closed" type="boolean">
+Whether stream is closed (only present when end=true)
+</ResponseField>
+
+## Status Codes
+
+| Status Code | Description |
+|-------------|-------------|
+| 200 | Data written successfully |
+| 400 | Invalid request parameters |
+| 404 | Stream not found or already closed |
+| 413 | Data too large |
+| 500 | Internal server error |
+
+## Usage Examples
+
+### Continuous Writing
+
+```javascript
+// Write multiple chunks of data
+const streamId = 'stream_123456789';
+const chunks = ['First chunk', 'Second chunk', 'Final chunk'];
+
+for (let i = 0; i < chunks.length; i++) {
+  const isLast = i === chunks.length - 1;
+  
+  await fetch('http://localhost:5001/streamv2/write', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      stream_id: streamId,
+      data: btoa(chunks[i]),
+      end: isLast
+    })
+  });
+}
+```
+
+### Real-time Text Streaming
+
+```javascript
+// Simulate typing effect
+const text = "Hello, this is a streaming message!";
+const streamId = 'stream_123456789';
+
+for (let i = 0; i <= text.length; i++) {
+  const chunk = text.substring(0, i);
+  const isComplete = i === text.length;
+  
+  await fetch('http://localhost:5001/streamv2/write', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      stream_id: streamId,
+      data: btoa(chunk),
+      end: isComplete
+    })
+  });
+  
+  // Add delay for typing effect
+  await new Promise(resolve => setTimeout(resolve, 100));
+}
+```
+
+## Best Practices
+
+1. **Data Size**: Keep individual chunks reasonably sized (< 1MB recommended)
+2. **Error Handling**: Always check response status and handle errors
+3. **Stream State**: Track stream state to avoid writing to closed streams
+4. **End Flag**: Always set end=true for the final write operation
+5. **Rate Limiting**: Implement appropriate delays between writes
+6. **Encoding**: Ensure proper Base64 encoding of data content
+
+## Common Patterns
+
+### Progressive Content Loading
+
+```javascript
+// Load and stream large content progressively
+async function streamLargeContent(streamId, content) {
+  const chunkSize = 1000; // 1KB chunks
+  
+  for (let i = 0; i < content.length; i += chunkSize) {
+    const chunk = content.substring(i, i + chunkSize);
+    const isLast = i + chunkSize >= content.length;
+    
+    await writeToStream(streamId, chunk, isLast);
+  }
+}
+```
+
+### Error Recovery
+
+```javascript
+async function writeWithRetry(streamId, data, end, maxRetries = 3) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await fetch('http://localhost:5001/streamv2/write', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stream_id: streamId, data, end })
+      });
+      
+      if (response.ok) {
+        return await response.json();
+      }
+      
+      if (response.status === 404) {
+        throw new Error('Stream not found or closed');
+      }
+      
+    } catch (error) {
+      if (attempt === maxRetries) {
+        throw error;
+      }
+      
+      // Wait before retry
+      await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+    }
+  }
+}
+```

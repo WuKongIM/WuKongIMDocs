@@ -1,0 +1,366 @@
+---
+title: "Get Channel Max Message Sequence"
+description: "Get the maximum message sequence number for a specified channel"
+api: "GET /channel/max_message_seq"
+---
+
+## Overview
+
+Get the maximum message sequence number for a specified channel, used for message synchronization and status checking.
+
+## Query Parameters
+
+<ParamField query="channel_id" type="string" required>
+Channel ID
+</ParamField>
+
+<ParamField query="channel_type" type="integer" required>
+Channel type (1=personal channel, 2=group channel)
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X GET "http://localhost:5001/channel/max_message_seq?channel_id=group123&channel_type=2"
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5001/channel/max_message_seq?channel_id=group123&channel_type=2');
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+
+params = {
+    'channel_id': 'group123',
+    'channel_type': 2
+}
+
+response = requests.get('http://localhost:5001/channel/max_message_seq', params=params)
+data = response.json()
+print(data)
+```
+
+```go Go
+package main
+
+import (
+    "encoding/json"
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    resp, err := http.Get("http://localhost:5001/channel/max_message_seq?channel_id=group123&channel_type=2")
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    var result map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Printf("%+v\n", result)
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json Success Response
+{
+  "max_message_seq": 1500
+}
+```
+
+```json Channel Not Exists
+{
+  "max_message_seq": 0
+}
+```
+</ResponseExample>
+
+## Response Fields
+
+<ResponseField name="max_message_seq" type="integer" required>
+Maximum message sequence number for the channel. Returns 0 if channel doesn't exist or has no messages.
+</ResponseField>
+
+## Status Codes
+
+| Status Code | Description |
+|-------------|-------------|
+| 200 | Successfully retrieved maximum message sequence |
+| 400 | Request parameter error |
+| 500 | Internal server error |
+
+## Use Cases
+
+### Message Synchronization
+
+**Check for New Messages**:
+```javascript
+// Check if there are new messages since last sync
+async function checkForNewMessages(channelId, channelType, lastKnownSeq) {
+    try {
+        const response = await fetch(
+            `/channel/max_message_seq?channel_id=${channelId}&channel_type=${channelType}`
+        );
+        const data = await response.json();
+        
+        const hasNewMessages = data.max_message_seq > lastKnownSeq;
+        const newMessageCount = hasNewMessages ? data.max_message_seq - lastKnownSeq : 0;
+        
+        return {
+            hasNewMessages,
+            newMessageCount,
+            maxSeq: data.max_message_seq
+        };
+    } catch (error) {
+        console.error('Failed to check for new messages:', error);
+        return { hasNewMessages: false, newMessageCount: 0, maxSeq: lastKnownSeq };
+    }
+}
+
+// Usage
+const result = await checkForNewMessages('group123', 2, 1450);
+if (result.hasNewMessages) {
+    console.log(`${result.newMessageCount} new messages available`);
+    // Sync new messages
+    await syncNewMessages('group123', 2, 1450, result.maxSeq);
+}
+```
+
+### Offline Message Detection
+
+**Detect Missed Messages After Reconnection**:
+```javascript
+class OfflineMessageDetector {
+    constructor() {
+        this.lastSeqMap = new Map(); // Store last known seq for each channel
+    }
+    
+    // Store last known sequence before going offline
+    storeLastSequence(channelId, channelType, seq) {
+        const key = `${channelId}:${channelType}`;
+        this.lastSeqMap.set(key, seq);
+    }
+    
+    // Check for missed messages after coming back online
+    async checkMissedMessages(channels) {
+        const missedMessages = [];
+        
+        for (const channel of channels) {
+            try {
+                const response = await fetch(
+                    `/channel/max_message_seq?channel_id=${channel.id}&channel_type=${channel.type}`
+                );
+                const data = await response.json();
+                
+                const key = `${channel.id}:${channel.type}`;
+                const lastKnownSeq = this.lastSeqMap.get(key) || 0;
+                
+                if (data.max_message_seq > lastKnownSeq) {
+                    missedMessages.push({
+                        channelId: channel.id,
+                        channelType: channel.type,
+                        missedCount: data.max_message_seq - lastKnownSeq,
+                        fromSeq: lastKnownSeq + 1,
+                        toSeq: data.max_message_seq
+                    });
+                }
+            } catch (error) {
+                console.error(`Failed to check missed messages for ${channel.id}:`, error);
+            }
+        }
+        
+        return missedMessages;
+    }
+}
+
+// Usage
+const detector = new OfflineMessageDetector();
+
+// Before going offline
+detector.storeLastSequence('group123', 2, 1450);
+
+// After coming back online
+const missedMessages = await detector.checkMissedMessages([
+    { id: 'group123', type: 2 },
+    { id: 'user456', type: 1 }
+]);
+
+for (const missed of missedMessages) {
+    console.log(`Channel ${missed.channelId} has ${missed.missedCount} missed messages`);
+    // Sync missed messages
+    await syncMissedMessages(missed);
+}
+```
+
+### Channel Activity Monitoring
+
+**Monitor Channel Activity**:
+```javascript
+class ChannelActivityMonitor {
+    constructor(channels, checkInterval = 30000) {
+        this.channels = channels;
+        this.checkInterval = checkInterval;
+        this.lastSeqMap = new Map();
+        this.isMonitoring = false;
+    }
+    
+    async startMonitoring() {
+        if (this.isMonitoring) return;
+        
+        this.isMonitoring = true;
+        
+        // Initialize last sequences
+        await this.initializeSequences();
+        
+        // Start periodic checking
+        this.monitoringInterval = setInterval(() => {
+            this.checkActivity();
+        }, this.checkInterval);
+        
+        console.log('Channel activity monitoring started');
+    }
+    
+    stopMonitoring() {
+        if (this.monitoringInterval) {
+            clearInterval(this.monitoringInterval);
+            this.monitoringInterval = null;
+        }
+        this.isMonitoring = false;
+        console.log('Channel activity monitoring stopped');
+    }
+    
+    async initializeSequences() {
+        for (const channel of this.channels) {
+            try {
+                const response = await fetch(
+                    `/channel/max_message_seq?channel_id=${channel.id}&channel_type=${channel.type}`
+                );
+                const data = await response.json();
+                
+                const key = `${channel.id}:${channel.type}`;
+                this.lastSeqMap.set(key, data.max_message_seq);
+            } catch (error) {
+                console.error(`Failed to initialize sequence for ${channel.id}:`, error);
+            }
+        }
+    }
+    
+    async checkActivity() {
+        for (const channel of this.channels) {
+            try {
+                const response = await fetch(
+                    `/channel/max_message_seq?channel_id=${channel.id}&channel_type=${channel.type}`
+                );
+                const data = await response.json();
+                
+                const key = `${channel.id}:${channel.type}`;
+                const lastSeq = this.lastSeqMap.get(key) || 0;
+                
+                if (data.max_message_seq > lastSeq) {
+                    const newMessages = data.max_message_seq - lastSeq;
+                    this.onChannelActivity(channel, newMessages, data.max_message_seq);
+                    this.lastSeqMap.set(key, data.max_message_seq);
+                }
+            } catch (error) {
+                console.error(`Failed to check activity for ${channel.id}:`, error);
+            }
+        }
+    }
+    
+    onChannelActivity(channel, newMessageCount, currentSeq) {
+        console.log(`Channel ${channel.id} has ${newMessageCount} new messages (seq: ${currentSeq})`);
+        
+        // Trigger notifications or UI updates
+        this.notifyChannelActivity(channel, newMessageCount);
+    }
+    
+    notifyChannelActivity(channel, count) {
+        // Implement notification logic
+        if (count > 0) {
+            // Show notification badge
+            updateChannelBadge(channel.id, count);
+            
+            // Play notification sound for important channels
+            if (channel.priority === 'high') {
+                playNotificationSound();
+            }
+        }
+    }
+}
+
+// Usage
+const monitor = new ChannelActivityMonitor([
+    { id: 'group123', type: 2, priority: 'high' },
+    { id: 'user456', type: 1, priority: 'normal' }
+], 15000); // Check every 15 seconds
+
+await monitor.startMonitoring();
+```
+
+### Batch Sequence Checking
+
+**Check Multiple Channels Efficiently**:
+```javascript
+// Check max sequences for multiple channels
+async function batchCheckMaxSequences(channels) {
+    const promises = channels.map(async (channel) => {
+        try {
+            const response = await fetch(
+                `/channel/max_message_seq?channel_id=${channel.id}&channel_type=${channel.type}`
+            );
+            const data = await response.json();
+            
+            return {
+                channelId: channel.id,
+                channelType: channel.type,
+                maxSeq: data.max_message_seq,
+                success: true
+            };
+        } catch (error) {
+            return {
+                channelId: channel.id,
+                channelType: channel.type,
+                maxSeq: 0,
+                success: false,
+                error: error.message
+            };
+        }
+    });
+    
+    const results = await Promise.all(promises);
+    
+    // Separate successful and failed results
+    const successful = results.filter(r => r.success);
+    const failed = results.filter(r => !r.success);
+    
+    if (failed.length > 0) {
+        console.warn('Failed to get max sequence for some channels:', failed);
+    }
+    
+    return { successful, failed };
+}
+
+// Usage
+const channels = [
+    { id: 'group123', type: 2 },
+    { id: 'group456', type: 2 },
+    { id: 'user789', type: 1 }
+];
+
+const { successful, failed } = await batchCheckMaxSequences(channels);
+console.log('Max sequences:', successful);
+```
+
+## Best Practices
+
+1. **Caching**: Cache max sequence values to reduce API calls
+2. **Batch Operations**: Check multiple channels efficiently when possible
+3. **Error Handling**: Handle network errors gracefully
+4. **Rate Limiting**: Avoid excessive polling by using reasonable intervals
+5. **Offline Support**: Store last known sequences for offline message detection
+6. **Performance**: Use this API for sync decisions rather than full message retrieval
+7. **Monitoring**: Implement activity monitoring for real-time updates

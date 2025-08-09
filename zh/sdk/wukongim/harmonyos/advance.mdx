@@ -1,0 +1,709 @@
+---
+title: "高级功能"
+description: "WuKongIM HarmonyOS SDK 高级功能，包括自定义消息类型和扩展功能"
+icon: "settings"
+---
+
+高级功能为开发者提供了扩展 WuKongIM HarmonyOS SDK 的能力，包括自定义消息类型、消息扩展、消息回执等企业级功能。
+
+<Note>
+在 WuKongIM 中所有的消息类型都是自定义消息
+</Note>
+
+## 自定义消息
+
+### 自定义普通消息
+
+下面我们以名片消息举例。
+
+#### 第一步：定义消息
+
+定义消息对象并继承 `WKMessageContent` 并在构造方法中指定消息类型。
+
+```typescript
+// 定义名片消息
+export class CardMessageContent extends WKMessageContent {
+  uid: string = '';
+  name: string = '';
+  avatar: string = '';
+  
+  constructor() {
+    super();
+    this.contentType = 16; // 指定类型
+  }
+}
+```
+
+#### 第二步：编码和解码
+
+我们需要将 uid、name、avatar 三个字段信息发送给对方，最终传递的消息内容为：
+
+```typescript
+{
+  "type": 16,
+  "uid": "xxxx",
+  "name": "xxx",
+  "avatar": "xxx"
+}
+```
+
+重写 `WKMessageContent` 的 `encodeJson`、`decodeJson` 方法开始编码解码：
+
+```typescript
+// 编码发送内容
+encodeJson(): Record<string, Object> {
+  let json: Record<string, Object> = {};
+  json['uid'] = this.uid;
+  json['name'] = this.name;
+  json['avatar'] = this.avatar;
+  return json;
+}
+
+// 解码内容
+decodeJson(jsonStr: string): WKMessageContent {
+  let json = CommonUtil.jsonToRecord(jsonStr);
+  if (json !== undefined) {
+    this.uid = CommonUtil.readString(json, 'uid');
+    this.name = CommonUtil.readString(json, 'name');
+    this.avatar = CommonUtil.readString(json, 'avatar');
+  }
+  return this;
+}
+```
+
+<Note>
+解码和编码消息时无需将 `type` 字段考虑其中，SDK 内部会自动处理
+</Note>
+
+#### 第三步：注册消息
+
+```typescript
+// 注册自定义消息
+WKIM.shared.messageManager().registerMsgContent(16, (jsonStr: string) => {
+  return new CardMessageContent().decodeJson(jsonStr);
+});
+```
+
+### 完整名片消息实现
+
+```typescript
+// 自定义普通消息
+export class CardMessageContent extends WKMessageContent {
+  uid: string = '';
+  name: string = '';
+  avatar: string = '';
+  
+  constructor() {
+    super();
+    this.contentType = 16; // 指定类型
+  }
+
+  // 编码发送内容
+  encodeJson(): Record<string, Object> {
+    let json: Record<string, Object> = {};
+    json['uid'] = this.uid;
+    json['name'] = this.name;
+    json['avatar'] = this.avatar;
+    return json;
+  }
+
+  // 解码内容
+  decodeJson(jsonStr: string): WKMessageContent {
+    let json = CommonUtil.jsonToRecord(jsonStr);
+    if (json !== undefined) {
+      this.uid = CommonUtil.readString(json, 'uid');
+      this.name = CommonUtil.readString(json, 'name');
+      this.avatar = CommonUtil.readString(json, 'avatar');
+    }
+    return this;
+  }
+
+  // 最近会话显示内容
+  displayText(): string {
+    return '[名片]';
+  }
+  
+  // 验证消息内容
+  isValid(): boolean {
+    return this.uid.length > 0 && this.name.length > 0;
+  }
+}
+
+// 注册名片消息类型
+WKIM.shared.messageManager().registerMsgContent(16, (jsonStr: string) => {
+  return new CardMessageContent().decodeJson(jsonStr);
+});
+
+// 发送名片消息
+function sendCardMessage(channelId: string, channelType: number, uid: string, name: string, avatar: string): void {
+  const cardContent = new CardMessageContent();
+  cardContent.uid = uid;
+  cardContent.name = name;
+  cardContent.avatar = avatar;
+  
+  if (cardContent.isValid()) {
+    WKIM.shared.messageManager().send(cardContent, new WKChannel(channelId, channelType));
+  }
+}
+```
+
+## 自定义附件消息
+
+我们在发送消息的时候有时需发送带附件的消息。WuKongIM 也提供自定义附件消息，自定义附件消息和普通消息区别不大。下面我们以地理位置消息举例。
+
+### 第一步：定义消息
+
+值得注意的是自定义附件消息需继承 `WKMediaMessageContent` 而不是 `WKMessageContent`。
+
+```typescript
+export class LocationMessageContent extends WKMediaMessageContent {
+  address: string = '';
+  longitude: number = 0.0;
+  latitude: number = 0.0;
+
+  constructor() {
+    super();
+    this.contentType = 17; // 指定类型
+  }
+}
+```
+
+<Note>
+`WKMediaMessageContent` 提供了 `url`、`localPath` 字段，自定义消息无需再定义网络地址和本地地址字段
+</Note>
+
+### 第二步：编码和解码
+
+我们需要将 `longitude`、`latitude`、`address`、`url` 信息发送给对方，最终传递的消息内容为：
+
+```typescript
+{
+  "type": 17,
+  "longitude": 115.25,
+  "latitude": 39.26,
+  "url": "xxx",
+  "address": "xxx"
+}
+```
+
+重写 `WKMessageContent` 的 `encodeJson`、`decodeJson` 方法开始编码解码：
+
+```typescript
+// 编码
+encodeJson(): Record<string, Object> {
+  let json: Record<string, Object> = {};
+  json['url'] = this.url;
+  json['longitude'] = this.longitude;
+  json['latitude'] = this.latitude;
+  json['address'] = this.address;
+  return json;
+}
+
+// 解码
+decodeJson(jsonStr: string): WKMessageContent {
+  let json = CommonUtil.jsonToRecord(jsonStr);
+  if (json !== undefined) {
+    this.address = CommonUtil.readString(json, 'address');
+    this.url = CommonUtil.readString(json, 'url');
+    this.longitude = CommonUtil.readNumber(json, 'longitude');
+    this.latitude = CommonUtil.readNumber(json, 'latitude');
+  }
+  return this;
+}
+```
+
+### 第三步：注册消息
+
+```typescript
+// 注册自定义消息
+WKIM.shared.messageManager().registerMsgContent(17, (jsonStr: string) => {
+  return new LocationMessageContent().decodeJson(jsonStr);
+});
+```
+
+### 完整位置消息实现
+
+```typescript
+export class LocationMessageContent extends WKMediaMessageContent {
+  address: string = '';
+  longitude: number = 0.0;
+  latitude: number = 0.0;
+  title: string = '';
+  mapType: string = '';
+
+  constructor() {
+    super();
+    this.contentType = 17; // 指定类型
+  }
+
+  // 编码
+  encodeJson(): Record<string, Object> {
+    let json: Record<string, Object> = {};
+    json['url'] = this.url;
+    json['longitude'] = this.longitude;
+    json['latitude'] = this.latitude;
+    json['address'] = this.address;
+    
+    if (this.title) json['title'] = this.title;
+    if (this.mapType) json['map_type'] = this.mapType;
+    
+    return json;
+  }
+
+  // 解码
+  decodeJson(jsonStr: string): WKMessageContent {
+    let json = CommonUtil.jsonToRecord(jsonStr);
+    if (json !== undefined) {
+      this.address = CommonUtil.readString(json, 'address');
+      this.url = CommonUtil.readString(json, 'url');
+      this.longitude = CommonUtil.readNumber(json, 'longitude');
+      this.latitude = CommonUtil.readNumber(json, 'latitude');
+      this.title = CommonUtil.readString(json, 'title');
+      this.mapType = CommonUtil.readString(json, 'map_type');
+    }
+    return this;
+  }
+
+  // 最近会话显示内容
+  displayText(): string {
+    return this.title ? `[位置] ${this.title}` : `[位置] ${this.address}`;
+  }
+  
+  // 验证位置信息
+  isValid(): boolean {
+    return this.latitude !== 0 && this.longitude !== 0 && this.address.length > 0;
+  }
+  
+  // 获取地图链接
+  getMapUrl(): string {
+    return `https://maps.google.com/?q=${this.latitude},${this.longitude}`;
+  }
+}
+
+// 注册位置消息类型
+WKIM.shared.messageManager().registerMsgContent(17, (jsonStr: string) => {
+  return new LocationMessageContent().decodeJson(jsonStr);
+});
+
+// 发送位置消息
+function sendLocationMessage(channelId: string, channelType: number, longitude: number, latitude: number, address: string): void {
+  const locationContent = new LocationMessageContent();
+  locationContent.longitude = longitude;
+  locationContent.latitude = latitude;
+  locationContent.address = address;
+  
+  if (locationContent.isValid()) {
+    WKIM.shared.messageManager().send(locationContent, new WKChannel(channelId, channelType));
+  }
+}
+```
+
+## 消息扩展
+
+随着业务的发展应用在聊天中的功能也日益增多，为了满足绝大部分的需求 WuKongIM 中增加了消息扩展功能。消息扩展分 `本地扩展` 和 `远程扩展`，本地扩展只针对 app 本地使用卸载 app 后将丢失，远程扩展是服务器保存卸载重装后数据将恢复。
+
+### 本地扩展
+
+本地扩展就是消息对象 `WKMsg` 中的 `localExtraMap` 字段。
+
+```typescript
+/**
+ * 修改消息本地扩展
+ *
+ * @param clientMsgNo 客户端ID
+ * @param extra   扩展字段
+ */
+WKIM.shared.messageManager().updateLocalExtra(clientMsgNo: string, extra: Record<string, Object>);
+```
+
+<Note>
+更新成功后 SDK 会触发刷新消息回调
+</Note>
+
+### 远程扩展
+
+远程扩展就是消息对象 `WKMsg` 中的 `remoteExtra` 字段。
+
+```typescript
+WKIM.shared.messageManager().saveRemoteExtras(list: WKMsgExtra[]);
+```
+
+<Note>
+更新成功后 SDK 会触发刷新消息回调
+</Note>
+
+### 消息扩展管理示例
+
+```typescript
+class MessageExtraManager {
+  
+  // 添加本地标记
+  static addLocalTag(clientMsgNo: string, key: string, value: any): void {
+    const extraData: Record<string, Object> = {};
+    extraData[key] = value;
+    WKIM.shared.messageManager().updateLocalExtra(clientMsgNo, extraData);
+  }
+  
+  // 标记消息为重要
+  static markAsImportant(clientMsgNo: string, important: boolean): void {
+    this.addLocalTag(clientMsgNo, 'important', important);
+  }
+  
+  // 添加本地备注
+  static addLocalNote(clientMsgNo: string, note: string): void {
+    this.addLocalTag(clientMsgNo, 'note', note);
+  }
+  
+  // 设置消息提醒时间
+  static setReminder(clientMsgNo: string, reminderTime: number): void {
+    this.addLocalTag(clientMsgNo, 'reminder_time', reminderTime);
+  }
+  
+  // 批量处理远程扩展
+  static batchUpdateRemoteExtra(extraList: WKMsgExtra[]): void {
+    if (extraList.length > 0) {
+      WKIM.shared.messageManager().saveRemoteExtras(extraList);
+    }
+  }
+  
+  // 获取消息的本地扩展
+  static getLocalExtra(message: WKMsg, key: string): any {
+    if (message.localExtraMap) {
+      return message.localExtraMap[key];
+    }
+    return null;
+  }
+  
+  // 检查消息是否被标记为重要
+  static isImportant(message: WKMsg): boolean {
+    const important = this.getLocalExtra(message, 'important');
+    return important === true;
+  }
+  
+  // 获取消息备注
+  static getLocalNote(message: WKMsg): string | null {
+    const note = this.getLocalExtra(message, 'note');
+    return typeof note === 'string' ? note : null;
+  }
+}
+```
+
+### WKMsgExtra 数据结构说明
+
+```typescript
+export class WKMsgExtra {
+  // 消息ID
+  messageId = '';
+  // 频道ID
+  channelId = '';
+  // 频道类型
+  channelType: number = WKChannelType.personal;
+  // 是否已读 1.是
+  readed = 0;
+  // 已读数量
+  readedCount = 0;
+  // 未读数量
+  unreadCount = 0;
+  // 是否撤回 1.是
+  revoke = 0;
+  // 是否删除
+  isMutualDeleted = 0;
+  // 撤回者uid
+  revoker = '';
+  // 版本号
+  extraVersion = 0;
+  // 编辑时间
+  editedAt = 0;
+  // 编辑内容
+  contentEdit = '';
+  // 是否需要上传 1.是
+  needUpload = 0;
+  // 是否置顶
+  isPinned = 0;
+  // 编辑后正文
+  contentEditMsgModel?: WKMessageContent;
+}
+```
+
+## 消息已读未读
+
+消息的已读未读又称消息回执。消息回执功能可通过 setting 进行设置。
+
+```typescript
+let option = new WKSendOptions();
+option.setting.receipt = 1; // 开启回执
+// 发送消息
+WKIM.shared.messageManager().sendWithOption(textModel, channel, option);
+```
+
+当登录用户浏览过对方发送的消息时，如果对方开启了消息回执这时需将查看过的消息上传到服务器标记该消息已读。当对方或者自己上传过已读消息这时业务服务器会下发同步消息扩展的 cmd(命令)消息 `syncMessageExtra`，此时需同步最新消息扩展保存到 SDK 中。
+
+### 消息回执管理示例
+
+```typescript
+class MessageReceiptManager {
+  
+  // 发送带回执的消息
+  static sendMessageWithReceipt(content: WKMessageContent, channel: WKChannel): void {
+    const option = new WKSendOptions();
+    option.setting.receipt = 1; // 开启回执
+    
+    WKIM.shared.messageManager().sendWithOption(content, channel, option);
+  }
+  
+  // 批量标记消息为已读
+  static async markMessagesAsRead(messageIds: string[], channelId: string, channelType: number): Promise<void> {
+    // 这里需要调用业务服务器的API来标记消息已读
+    // 服务器会下发同步消息扩展的命令
+    await this.uploadReadStatus(messageIds, channelId, channelType);
+  }
+  
+  // 上传已读状态到服务器
+  private static async uploadReadStatus(messageIds: string[], channelId: string, channelType: number): Promise<void> {
+    // 实现上传逻辑
+    // 成功后服务器会下发 syncMessageExtra 命令
+  }
+  
+  // 获取消息已读数量
+  static getReadCount(message: WKMsg): number {
+    if (message.wkMsgExtra) {
+      return message.wkMsgExtra.readedCount;
+    }
+    return 0;
+  }
+  
+  // 获取消息未读数量
+  static getUnreadCount(message: WKMsg): number {
+    if (message.wkMsgExtra) {
+      return message.wkMsgExtra.unreadCount;
+    }
+    return 0;
+  }
+  
+  // 检查消息是否已读
+  static isMessageRead(message: WKMsg): boolean {
+    if (message.wkMsgExtra) {
+      return message.wkMsgExtra.readed === 1;
+    }
+    return false;
+  }
+}
+```
+
+## 消息编辑
+
+当我们给对方发送消息发现发送内容有错误时，这时无需撤回重发只需要将消息编辑即可。
+
+### 设置编辑内容
+
+```typescript
+/**
+ * 修改编辑内容
+ * @param messageId 消息服务器ID
+ * @param channelId 频道ID
+ * @param channelType 频道类型
+ * @param content 编辑后的内容
+ */
+WKIM.shared.messageManager().updateEdit(messageId: string, channelId: string, channelType: number, content: string);
+```
+
+更改 SDK 消息编辑内容后需将编辑后的内容上传到服务器，则需要监听上传消息扩展。
+
+```typescript
+WKIM.shared.config.provider.uploadMessageExtraCallback = (extra: WKMsgExtra) => {
+  // 上传到业务服务器
+};
+```
+
+### 消息编辑管理示例
+
+```typescript
+class MessageEditManager {
+  
+  // 编辑文本消息
+  static editTextMessage(messageId: string, channelId: string, channelType: number, newContent: string): void {
+    WKIM.shared.messageManager().updateEdit(messageId, channelId, channelType, newContent);
+  }
+  
+  // 设置编辑监听器
+  static setupEditListener(): void {
+    WKIM.shared.config.provider.uploadMessageExtraCallback = (extra: WKMsgExtra) => {
+      if (extra.editedAt > 0 && extra.contentEdit.length > 0) {
+        // 上传编辑内容到服务器
+        this.uploadEditedMessage(extra);
+      }
+    };
+  }
+  
+  // 上传编辑后的消息到服务器
+  private static async uploadEditedMessage(msgExtra: WKMsgExtra): Promise<void> {
+    // 实现上传逻辑
+    // 包含消息ID、编辑内容、编辑时间等信息
+  }
+  
+  // 检查消息是否被编辑过
+  static isMessageEdited(message: WKMsg): boolean {
+    return message.wkMsgExtra !== null && 
+           message.wkMsgExtra.editedAt > 0 && 
+           message.wkMsgExtra.contentEdit.length > 0;
+  }
+  
+  // 获取消息编辑内容
+  static getEditedContent(message: WKMsg): string | null {
+    if (this.isMessageEdited(message)) {
+      return message.wkMsgExtra!.contentEdit;
+    }
+    return null;
+  }
+  
+  // 获取消息编辑时间
+  static getEditedTime(message: WKMsg): number {
+    if (message.wkMsgExtra) {
+      return message.wkMsgExtra.editedAt;
+    }
+    return 0;
+  }
+}
+```
+
+## 消息回复
+
+在聊天中如果消息过多，发送消息回复就会显得消息很乱无章可循。这时就需要对某条消息进行特定的回复，即消息回复。
+
+在发送消息时，只需将消息正文 `WKMessageContent` 中的 `WKReply` 对象赋值就能达到消息回复效果。
+
+```typescript
+let textModel: WKTextContent = new WKTextContent(this.sendContent);
+textModel.reply = new WKReply();
+textModel.reply.messageId = '';
+// 设置其他字段信息
+
+// 发送消息
+WKIM.shared.messageManager().send(textModel, channel);
+```
+
+### WKReply 回复消息结构说明
+
+```typescript
+export class WKReply {
+  // 被回复的消息根ID，多级回复时的第一次回复的消息ID
+  rootMid = '';
+  // 被回复的消息ID
+  messageId = '';
+  // 被回复的MessageSeq
+  messageSeq = 0;
+  // 被回复者uid
+  fromUID = '';
+  // 被回复者名称
+  fromName = '';
+  // 被回复的消息字符串
+  contentEdit = '';
+  // 编辑时间
+  editAt = 0;
+  // 回复消息被撤回标记 1.是
+  revoke = 0;
+  // 被回复消息编辑后的内容
+  contentEditMsgModel?: WKMessageContent;
+  // 被回复的消息体
+  payload?: WKMessageContent;
+}
+```
+
+## 消息回应（点赞）
+
+### 保存
+
+```typescript
+WKIM.shared.messageManager().saveReactions(list: WKMsgReaction[]);
+```
+
+<Note>
+同一个用户对同一条消息只能做出一条回应。重复进行消息不同 emoji 的回应会做为修改回应，重复进行相同 emoji 的回应则做为删除回应
+</Note>
+
+SDK 更新消息回应后会触发消息刷新的事件。app 需监听此事件并对 UI 进行刷新。
+
+监听消息回应刷新：
+
+```typescript
+// 监听消息回应刷新
+WKIM.shared.messageManager().addRefreshReactionListener((list) => {
+  // 刷新 UI
+});
+```
+
+### 获取
+
+```typescript
+WKIM.shared.messageManager().getMsgReactions(messageId: string);
+```
+
+### WKMsgReaction 数据结构说明
+
+```typescript
+export class WKMsgReaction {
+  // 消息ID
+  messageId = "";
+  // 频道ID
+  channelId = "";
+  // 频道类型
+  channelType = WKChannelType.personal;
+  // 回应者uid
+  uid = "";
+  // 消息序号
+  seq = 0;
+  // 回应表情
+  emoji = "";
+  // 是否删除 1.是
+  isDeleted = 0;
+  // 创建时间
+  createdAt = "";
+}
+```
+
+## 下一步
+
+<CardGroup cols={2}>
+  <Card
+    title="数据源配置"
+    icon="database"
+    href="/zh/sdk/wukongim/harmonyos/datasource"
+  >
+    回到数据源配置
+  </Card>
+  <Card
+    title="消息管理"
+    icon="message-circle"
+    href="/zh/sdk/wukongim/harmonyos/message"
+  >
+    回到消息收发功能
+  </Card>
+  <Card
+    title="频道管理"
+    icon="hash"
+    href="/zh/sdk/wukongim/harmonyos/channel"
+  >
+    回到频道管理功能
+  </Card>
+  <Card
+    title="基础功能"
+    icon="foundation"
+    href="/zh/sdk/wukongim/harmonyos/base"
+  >
+    回到基础功能
+  </Card>
+</CardGroup>
+
+## 总结
+
+HarmonyOS SDK 现已完成所有核心功能文档：
+
+✅ **集成指南** - 完整的安装和配置指导  
+✅ **基础功能** - 连接管理和基础API  
+✅ **消息管理** - 消息收发和历史消息  
+✅ **频道管理** - 频道信息和成员管理  
+✅ **会话管理** - 会话列表和未读消息  
+✅ **数据源配置** - 文件上传和数据同步  
+✅ **高级功能** - 自定义消息和扩展特性  
+
+HarmonyOS SDK 文档已全面完成，为开发者提供了从入门到高级的完整技术指导！🎉

@@ -1,0 +1,334 @@
+---
+title: "Version Upgrade"
+description: "WuKongIM Docker deployment version upgrade guide"
+icon: "arrow-up"
+---
+
+WuKongIM supports smooth upgrades, ensuring service continuity and data security.
+
+## Description
+
+WuKongIM's version numbering follows the `major.minor.patch` format, for example `1.0.0`. When the patch number increases, it indicates bug fixes or minor feature updates; when the minor version increases, it indicates new features; when the major version increases, it indicates incompatible API changes.
+
+Therefore, as long as you don't upgrade major versions, the upgrade process is smooth.
+
+<Note>
+**Version Compatibility**:
+- **Patch updates** (e.g., 2.0.1 → 2.0.2): Always safe, includes bug fixes and minor improvements
+- **Minor updates** (e.g., 2.0.x → 2.1.x): Generally safe, includes new features with backward compatibility
+- **Major updates** (e.g., 2.x.x → 3.x.x): May include breaking changes, requires careful planning
+</Note>
+
+## Upgrade Steps
+
+### 1. Check Current Version
+
+First, check your current WuKongIM version:
+
+```bash
+# Check running version
+docker-compose exec wukongim /wukongim version
+
+# Or check via API
+curl http://localhost:5001/version
+```
+
+### 2. Backup Data (Recommended)
+
+Before upgrading, it's recommended to backup your data:
+
+```bash
+# Stop services
+docker-compose stop
+
+# Create backup
+sudo cp -r ./wukongim_data ./wukongim_data_backup_$(date +%Y%m%d)
+
+# Or create compressed backup
+sudo tar -czf wukongim_backup_$(date +%Y%m%d).tar.gz ./wukongim_data
+```
+
+### 3. Update Docker Compose Configuration
+
+Modify the `image` field of the `wukongim` service in `docker-compose.yml` to the new version.
+
+For example:
+
+```yaml
+version: '3.7'
+services:
+  wukongim: # WuKongIM service
+    image: registry.cn-shanghai.aliyuncs.com/wukongim/wukongim:v2.1.0 # New version number
+    # ... other configurations remain unchanged
+```
+
+### 4. Pull New Image
+
+Use the following command to get the latest image:
+
+```bash
+sudo docker-compose pull wukongim
+```
+
+### 5. Restart Services
+
+```bash
+sudo docker-compose up -d
+```
+
+### 6. Verify Upgrade
+
+After restart, verify the upgrade was successful:
+
+```bash
+# Check container status
+docker-compose ps
+
+# Check logs
+docker-compose logs wukongim
+
+# Verify version
+curl http://localhost:5001/version
+
+# Check health status
+curl http://localhost:5001/health
+```
+
+## Rolling Upgrade for Clusters
+
+For cluster deployments, perform rolling upgrades to maintain service availability:
+
+### 1. Upgrade One Node at a Time
+
+```bash
+# On node1
+cd ~/wukongim
+# Update docker-compose.yml with new version
+docker-compose pull wukongim
+docker-compose up -d
+
+# Wait for node1 to be healthy, then proceed to node2
+# Repeat for each node
+```
+
+### 2. Verify Cluster Health
+
+```bash
+# Check cluster status
+curl http://load-balancer-ip:15001/cluster/nodes
+
+# Verify all nodes are running the new version
+curl http://node1-ip:5001/version
+curl http://node2-ip:5001/version
+curl http://node3-ip:5001/version
+```
+
+## Upgrade Strategies
+
+### Blue-Green Deployment
+
+For critical production environments, consider blue-green deployment:
+
+1. **Prepare Green Environment**: Set up a new environment with the new version
+2. **Data Sync**: Ensure data is synchronized between blue and green environments
+3. **Switch Traffic**: Update load balancer to point to green environment
+4. **Verify**: Confirm everything works correctly
+5. **Cleanup**: Remove blue environment after successful verification
+
+### Canary Deployment
+
+For gradual rollout:
+
+1. **Deploy to Subset**: Upgrade only a portion of nodes
+2. **Monitor**: Watch metrics and logs for issues
+3. **Gradual Rollout**: Progressively upgrade more nodes
+4. **Full Deployment**: Complete upgrade once confident
+
+## Rollback Procedures
+
+If issues occur during upgrade, you can rollback:
+
+### 1. Quick Rollback
+
+```bash
+# Revert docker-compose.yml to previous version
+# Pull previous image
+docker-compose pull wukongim
+
+# Restart with previous version
+docker-compose up -d
+```
+
+### 2. Data Rollback (if needed)
+
+```bash
+# Stop services
+docker-compose stop
+
+# Restore backup
+sudo rm -rf ./wukongim_data
+sudo cp -r ./wukongim_data_backup_YYYYMMDD ./wukongim_data
+
+# Or restore from compressed backup
+sudo tar -xzf wukongim_backup_YYYYMMDD.tar.gz
+
+# Restart services
+docker-compose up -d
+```
+
+## Upgrade Checklist
+
+### Pre-Upgrade
+
+- [ ] Check current version and target version compatibility
+- [ ] Review release notes for breaking changes
+- [ ] Create data backup
+- [ ] Plan maintenance window
+- [ ] Notify users of potential downtime
+- [ ] Prepare rollback plan
+
+### During Upgrade
+
+- [ ] Monitor system resources
+- [ ] Watch application logs
+- [ ] Verify service health endpoints
+- [ ] Test critical functionality
+- [ ] Monitor cluster status (for multi-node)
+
+### Post-Upgrade
+
+- [ ] Verify version upgrade successful
+- [ ] Test all major features
+- [ ] Monitor performance metrics
+- [ ] Check data integrity
+- [ ] Update documentation
+- [ ] Clean up old backups (after verification period)
+
+## Troubleshooting
+
+### Common Issues
+
+**Container fails to start after upgrade**:
+```bash
+# Check logs for errors
+docker-compose logs wukongim
+
+# Check if image was pulled correctly
+docker images | grep wukongim
+
+# Verify configuration compatibility
+docker-compose config
+```
+
+**Data migration issues**:
+```bash
+# Check data directory permissions
+ls -la ./wukongim_data
+
+# Verify data integrity
+docker-compose exec wukongim ls -la /root/wukongim
+```
+
+**Cluster nodes out of sync**:
+```bash
+# Check cluster status
+curl http://localhost:5001/cluster/nodes
+
+# Restart problematic nodes
+docker-compose restart wukongim
+```
+
+### Recovery Steps
+
+1. **Stop services**: `docker-compose stop`
+2. **Restore backup**: Restore from backup created before upgrade
+3. **Revert configuration**: Use previous docker-compose.yml
+4. **Restart**: `docker-compose up -d`
+5. **Verify**: Confirm system is working correctly
+
+## Best Practices
+
+### Planning
+
+- **Test in staging**: Always test upgrades in a staging environment first
+- **Read release notes**: Understand what changes are included
+- **Schedule maintenance**: Plan upgrades during low-traffic periods
+- **Communicate**: Inform stakeholders about planned maintenance
+
+### Execution
+
+- **Monitor closely**: Watch logs and metrics during upgrade
+- **Upgrade gradually**: For clusters, upgrade one node at a time
+- **Verify thoroughly**: Test all critical functionality after upgrade
+- **Keep backups**: Maintain backups until upgrade is fully verified
+
+### Automation
+
+Consider automating upgrades for consistency:
+
+```bash
+#!/bin/bash
+# upgrade.sh - Automated upgrade script
+
+# Configuration
+NEW_VERSION="v2.1.0"
+BACKUP_DIR="./backups"
+COMPOSE_FILE="docker-compose.yml"
+
+# Create backup
+echo "Creating backup..."
+mkdir -p $BACKUP_DIR
+sudo cp -r ./wukongim_data $BACKUP_DIR/wukongim_data_$(date +%Y%m%d_%H%M%S)
+
+# Update compose file
+echo "Updating docker-compose.yml..."
+sed -i "s|wukongim:v.*|wukongim:$NEW_VERSION|g" $COMPOSE_FILE
+
+# Pull new image
+echo "Pulling new image..."
+docker-compose pull wukongim
+
+# Restart services
+echo "Restarting services..."
+docker-compose up -d
+
+# Verify upgrade
+echo "Verifying upgrade..."
+sleep 10
+curl -f http://localhost:5001/health || echo "Health check failed!"
+
+echo "Upgrade completed!"
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Monitoring Setup"
+    icon="chart-line"
+    href="/en/installation/linux/monitoring"
+  >
+    Set up monitoring for upgraded system
+  </Card>
+  <Card
+    title="Performance Tuning"
+    icon="gauge"
+    href="/en/server/configuration"
+  >
+    Optimize performance after upgrade
+  </Card>
+  <Card
+    title="Best Practices"
+    icon="shield"
+    href="/en/examples/best-practices"
+  >
+    Backup strategies and best practices
+  </Card>
+  <Card
+    title="Cluster Management"
+    icon="server"
+    href="/en/installation/docker/scaling"
+  >
+    Learn about cluster scaling and management
+  </Card>
+</CardGroup>

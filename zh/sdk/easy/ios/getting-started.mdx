@@ -1,0 +1,561 @@
+---
+title: "5分钟集成 iOS"
+description: "快速集成 WuKongIM iOS EasySDK，5分钟实现聊天功能"
+icon: "apple"
+---
+
+## 概述
+
+WuKongIM iOS EasySDK 是一个轻量级的 iOS SDK，让您能够在 5 分钟内为 iOS 应用添加实时聊天功能。本指南将带您快速完成从安装到发送第一条消息的全过程。
+
+<Note>
+  **系统要求**：iOS 12.0 或更高版本，Xcode 12.0 或更高版本，Swift 5.0 或更高版本
+</Note>
+
+## 步骤 1：安装 SDK
+
+选择以下任一方式安装 iOS EasySDK：
+
+<Tabs>
+  <Tab title="CocoaPods">
+    在 `Podfile` 中添加：
+    ```ruby
+    pod 'WuKongEasySDK', '~> 1.0.0'
+    ```
+    
+    然后运行：
+    ```bash
+    pod install
+    ```
+  </Tab>
+  <Tab title="Swift Package Manager">
+    在 Xcode 中：
+    1. File → Add Package Dependencies
+    2. 输入 URL：`https://github.com/WuKongIM/WuKongEasySDK-iOS`
+    3. 选择版本并添加到项目
+  </Tab>
+  <Tab title="手动集成">
+    1. 下载最新的 [Release](https://github.com/WuKongIM/WuKongEasySDK-iOS/releases)
+    2. 将 `WuKongEasySDK.framework` 拖入项目
+    3. 在 Target → General → Frameworks 中添加依赖
+  </Tab>
+</Tabs>
+
+## 步骤 2：基本集成
+
+### 2.1 导入 SDK
+
+```swift
+import WuKongEasySDK
+```
+
+### 2.2 初始化 SDK
+
+```swift
+// 1. 初始化 SDK
+let config = WuKongConfig(
+    serverUrl: "ws://your-wukongim-server.com:5200",
+    uid: "your_user_id",        // 您的用户 ID
+    token: "your_auth_token"    // 您的认证 Token
+    // deviceId: "optional_device_id", // 可选：设备 ID
+    // deviceFlag: .APP // 可选：设备标识，默认为 .APP
+)
+
+let easySDK = WuKongEasySDK(config: config)
+```
+
+### 2.3 监听事件
+
+```swift
+// 2. 监听各种事件
+easySDK.onConnect { result in
+    print("Event: Connected!", result)
+    // 连接成功，可以开始发送消息
+    DispatchQueue.main.async {
+        self.updateUI(connected: true)
+    }
+}
+
+easySDK.onDisconnect { disconnectInfo in
+    print("Event: Disconnected.", disconnectInfo)
+    print("Disconnect code: \(disconnectInfo.code), reason: \(disconnectInfo.reason)")
+    // 连接断开，更新UI状态
+    DispatchQueue.main.async {
+        self.updateUI(connected: false)
+    }
+}
+
+easySDK.onMessage { message in
+    print("Event: Message Received", message)
+    // 处理接收到的消息
+    DispatchQueue.main.async {
+        self.displayMessage(message)
+    }
+}
+
+easySDK.onError { error in
+    print("Event: Error Occurred", error.localizedDescription)
+    // 处理错误，可能需要更新UI或重连
+    DispatchQueue.main.async {
+        self.handleError(error)
+    }
+}
+
+// 可以为同一事件添加多个监听器
+easySDK.onMessage { message in
+    print("Second listener also received message:", message.messageId)
+    // 在这里可以添加不同的处理逻辑
+}
+```
+
+### 2.4 移除事件监听器
+
+在某些情况下，您可能需要移除事件监听器以避免内存泄漏或重复处理。iOS EasySDK 提供了移除监听器的方法。
+
+<Note>
+  **重要提醒**：在 iOS 中，事件监听器的移除需要保持对监听器的引用。建议使用类属性来存储监听器引用，以便后续移除。
+</Note>
+
+#### 正确的使用方式
+
+```swift
+class ChatManager {
+    private let easySDK: WuKongEasySDK
+
+    // 保存监听器引用
+    private var messageListener: EventListener?
+    private var connectListener: EventListener?
+    private var disconnectListener: EventListener?
+    private var errorListener: EventListener?
+
+    init(config: WuKongConfig) {
+        self.easySDK = WuKongEasySDK(config: config)
+    }
+
+    func setupEventListeners() {
+        // ✅ 正确：保存监听器引用
+        messageListener = easySDK.onMessage { [weak self] message in
+            print("处理消息:", message)
+            DispatchQueue.main.async {
+                self?.handleMessage(message)
+            }
+        }
+
+        connectListener = easySDK.onConnect { [weak self] result in
+            print("连接成功:", result)
+            DispatchQueue.main.async {
+                self?.handleConnect(result)
+            }
+        }
+
+        disconnectListener = easySDK.onDisconnect { [weak self] disconnectInfo in
+            print("连接断开:", disconnectInfo)
+            print("断开代码: \(disconnectInfo.code), 原因: \(disconnectInfo.reason)")
+            DispatchQueue.main.async {
+                self?.handleDisconnect(disconnectInfo)
+            }
+        }
+
+        errorListener = easySDK.onError { [weak self] error in
+            print("发生错误:", error)
+            DispatchQueue.main.async {
+                self?.handleError(error)
+            }
+        }
+    }
+
+    func removeEventListeners() {
+        // 移除特定的事件监听器 - 使用保存的引用
+        if let listener = messageListener {
+            easySDK.removeListener(listener)
+            messageListener = nil
+        }
+
+        if let listener = connectListener {
+            easySDK.removeListener(listener)
+            connectListener = nil
+        }
+
+        if let listener = disconnectListener {
+            easySDK.removeListener(listener)
+            disconnectListener = nil
+        }
+
+        if let listener = errorListener {
+            easySDK.removeListener(listener)
+            errorListener = nil
+        }
+    }
+
+    private func handleMessage(_ message: Message) {
+        // 处理消息逻辑
+    }
+
+    private func handleConnect(_ result: ConnectResult) {
+        // 处理连接成功逻辑
+    }
+
+    private func handleDisconnect(_ disconnectInfo: DisconnectInfo) {
+        // 处理连接断开逻辑
+        print("处理断开事件 - 代码: \(disconnectInfo.code), 原因: \(disconnectInfo.reason)")
+    }
+
+    private func handleError(_ error: Error) {
+        // 处理错误逻辑
+    }
+}
+```
+
+#### 错误的使用方式
+
+```swift
+// ❌ 错误：没有保存监听器引用，无法正确移除
+class BadChatManager {
+    private let easySDK: WuKongEasySDK
+
+    func setupEventListeners() {
+        // 这样添加的监听器无法被移除，因为没有保存引用
+        easySDK.onMessage { message in
+            print("处理消息:", message)
+        }
+
+        easySDK.onConnect { result in
+            print("连接成功:", result)
+        }
+    }
+
+    func removeEventListeners() {
+        // 无法移除上面添加的监听器，因为没有引用
+        // 只能移除所有监听器
+        easySDK.removeAllListeners()
+    }
+}
+```
+
+#### 视图控制器集成最佳实践
+
+```swift
+class ChatViewController: UIViewController {
+    private let easySDK: WuKongEasySDK
+
+    // 保存监听器引用
+    private var messageListener: EventListener?
+    private var connectListener: EventListener?
+    private var disconnectListener: EventListener?
+    private var errorListener: EventListener?
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        setupEventListeners()
+        connectToServer()
+    }
+
+    private func setupEventListeners() {
+        // 添加事件监听器并保存引用
+        messageListener = easySDK.onMessage { [weak self] message in
+            DispatchQueue.main.async {
+                self?.handleMessage(message)
+            }
+        }
+
+        connectListener = easySDK.onConnect { [weak self] result in
+            DispatchQueue.main.async {
+                self?.handleConnect(result)
+            }
+        }
+
+        disconnectListener = easySDK.onDisconnect { [weak self] disconnectInfo in
+            DispatchQueue.main.async {
+                self?.handleDisconnect(disconnectInfo)
+            }
+        }
+
+        errorListener = easySDK.onError { [weak self] error in
+            DispatchQueue.main.async {
+                self?.handleError(error)
+            }
+        }
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+
+        // 视图即将消失时清理监听器
+        removeEventListeners()
+    }
+
+    private func removeEventListeners() {
+        if let listener = messageListener {
+            easySDK.removeListener(listener)
+            messageListener = nil
+        }
+
+        if let listener = connectListener {
+            easySDK.removeListener(listener)
+            connectListener = nil
+        }
+
+        if let listener = disconnectListener {
+            easySDK.removeListener(listener)
+            disconnectListener = nil
+        }
+
+        if let listener = errorListener {
+            easySDK.removeListener(listener)
+            errorListener = nil
+        }
+    }
+
+    deinit {
+        // 确保在对象销毁时清理所有监听器
+        removeEventListeners()
+        // 或者移除所有监听器
+        // easySDK.removeAllListeners()
+    }
+
+    private func connectToServer() {
+        Task {
+            do {
+                try await easySDK.connect()
+                print("连接成功！")
+            } catch {
+                print("连接失败:", error)
+            }
+        }
+    }
+}
+```
+
+#### SwiftUI 集成示例
+
+```swift
+import SwiftUI
+
+struct ChatView: View {
+    @StateObject private var chatManager = ChatManager()
+
+    var body: some View {
+        VStack {
+            Text("聊天界面")
+            // 聊天UI组件
+        }
+        .onAppear {
+            chatManager.setupEventListeners()
+            Task {
+                await chatManager.connect()
+            }
+        }
+        .onDisappear {
+            chatManager.removeEventListeners()
+        }
+    }
+}
+
+class ChatManager: ObservableObject {
+    private let easySDK: WuKongEasySDK
+    private var messageListener: EventListener?
+    private var connectListener: EventListener?
+
+    init() {
+        let config = WuKongConfig(
+            serverUrl: "ws://your-server.com:5200",
+            uid: "user123",
+            token: "user-token"
+        )
+        self.easySDK = WuKongEasySDK(config: config)
+    }
+
+    func setupEventListeners() {
+        messageListener = easySDK.onMessage { [weak self] message in
+            DispatchQueue.main.async {
+                self?.handleMessage(message)
+            }
+        }
+
+        connectListener = easySDK.onConnect { [weak self] result in
+            DispatchQueue.main.async {
+                self?.handleConnect(result)
+            }
+        }
+    }
+
+    func removeEventListeners() {
+        if let listener = messageListener {
+            easySDK.removeListener(listener)
+            messageListener = nil
+        }
+
+        if let listener = connectListener {
+            easySDK.removeListener(listener)
+            connectListener = nil
+        }
+    }
+
+    func connect() async {
+        do {
+            try await easySDK.connect()
+        } catch {
+            print("连接失败:", error)
+        }
+    }
+
+    private func handleMessage(_ message: Message) {
+        // 处理消息
+    }
+
+    private func handleConnect(_ result: ConnectResult) {
+        // 处理连接成功
+    }
+}
+```
+
+### 2.5 连接服务器
+
+```swift
+// 4. 连接到服务器
+Task {
+    do {
+        try await easySDK.connect()
+        print("连接成功！")
+    } catch {
+        print("连接失败:", error)
+    }
+}
+```
+
+### 2.6 发送消息
+
+```swift
+// 5. 发送消息示例
+func sendMessage() async {
+    let targetChannelID = "friend_user_id" // 目标用户 ID
+    let messagePayload = MessagePayload(
+        type: 1,
+        content: "Hello from iOS EasySDK!"
+    ) // 您的自定义消息载荷
+    
+    do {
+        let result = try await easySDK.send(
+            channelId: targetChannelID,
+            channelType: .person,
+            payload: messagePayload
+        )
+        print("消息发送成功:", result)
+    } catch {
+        print("消息发送失败:", error)
+    }
+}
+```
+
+## 步骤 3：错误处理和最佳实践
+
+### 3.1 错误处理
+
+<Note>
+  **SDK 内置自动重连**：iOS EasySDK 内置了智能重连机制，无需手动实现重连逻辑。SDK 会在连接断开时自动尝试重连。
+</Note>
+
+```swift
+// 正确的连接状态监听
+easySDK.onConnect { result in
+    print("连接成功:", result)
+    // 更新UI状态，启用发送功能
+    DispatchQueue.main.async {
+        self.updateConnectionUI(connected: true)
+    }
+}
+
+easySDK.onDisconnect { disconnectInfo in
+    print("连接断开:", disconnectInfo)
+    print("断开代码: \(disconnectInfo.code), 原因: \(disconnectInfo.reason)")
+    // 更新UI状态，禁用发送功能
+    DispatchQueue.main.async {
+        self.updateConnectionUI(connected: false)
+    }
+    // SDK 会自动尝试重连，无需手动处理
+}
+
+easySDK.onError { error in
+    print("发生错误:", error)
+
+    // 根据错误类型进行处理
+    DispatchQueue.main.async {
+        switch error {
+        case WuKongError.authFailed:
+            // 认证失败，需要重新获取token
+            self.handleAuthError()
+        case WuKongError.networkError:
+            // 网络错误，显示网络提示
+            self.showNetworkError()
+        default:
+            // 其他错误
+            self.showGeneralError(error.localizedDescription)
+        }
+    }
+}
+
+// 消息发送错误处理
+func sendMessageWithErrorHandling(targetId: String, content: String) async throws {
+    do {
+        let messagePayload = MessagePayload(type: 1, content: content)
+        let result = try await easySDK.send(
+            to: targetId,
+            channelType: .person,
+            payload: messagePayload
+        )
+        print("消息发送成功:", result)
+    } catch {
+        print("消息发送失败:", error)
+
+        // 根据错误类型提供用户友好的提示
+        switch error {
+        case WuKongError.notConnected:
+            throw NSError(domain: "ChatError", code: 1001, userInfo: [
+                NSLocalizedDescriptionKey: "未连接到服务器，请检查网络连接"
+            ])
+        case WuKongError.invalidChannel:
+            throw NSError(domain: "ChatError", code: 1002, userInfo: [
+                NSLocalizedDescriptionKey: "目标用户不存在或无权限发送消息"
+            ])
+        case WuKongError.messageTooLarge:
+            throw NSError(domain: "ChatError", code: 1003, userInfo: [
+                NSLocalizedDescriptionKey: "消息内容过大，请减少内容长度"
+            ])
+        default:
+            throw NSError(domain: "ChatError", code: 1000, userInfo: [
+                NSLocalizedDescriptionKey: "发送失败: \(error.localizedDescription)"
+            ])
+        }
+    }
+}
+```
+
+## 相关资源
+
+<CardGroup cols={2}>
+  <Card title="完整示例代码" icon="code" href="https://github.com/WuKongIM/EasyJSSDK/blob/main/example/app.js">
+    查看完整的示例代码和更多功能演示
+  </Card>
+  <Card title="协议完整文档" icon="file-text" href="https://github.com/WuKongIM/WuKongIM/blob/main/pkg/jsonrpc/wukongim_rpc_schema.json">
+    查看 WuKongIM 的完整协议文档
+  </Card>
+  <Card title="GitHub 仓库" icon="github" href="https://github.com/WuKongIM/EasyJSSDK">
+    访问 EasyJSSDK 的 GitHub 仓库
+  </Card>
+  <Card title="问题反馈" icon="bug" href="https://github.com/WuKongIM/EasyJSSDK/issues">
+    报告问题或提出建议
+  </Card>
+</CardGroup>
+
+## 下一步
+
+恭喜！您已经成功集成了 WuKongIM iOS EasySDK。现在您可以：
+
+1. **扩展功能**：添加群组聊天、文件传输等功能
+2. **自定义 UI**：根据您的应用设计定制聊天界面
+3. **集成到项目**：将聊天功能集成到您的现有项目中
+4. **性能优化**：根据实际使用情况优化性能
+
+<Tip>
+  如果您需要更复杂的功能或更高的性能要求，建议考虑使用完整版的 WuKongIMSDK。
+</Tip>

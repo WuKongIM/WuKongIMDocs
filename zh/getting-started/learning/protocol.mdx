@@ -1,0 +1,345 @@
+---
+title: "二进制协议"
+description: "WuKongIM 通信协议详细规范和报文结构说明"
+icon: "code"
+---
+
+# WuKongIM协议
+
+<Info>
+WuKongIM 协议是一个高效的二进制通信协议，专为即时通讯场景设计。本文档详细描述了协议的报文结构、控制类型和编码规范。
+</Info>
+
+---
+
+## 📋 控制报文结构
+
+每个 WuKongIM 控制报文都由以下三个部分组成：
+
+| 参数名          | 类型   | 说明     |
+| :-------------- | :----- | :------- |
+| Fixed header    | 1 byte | 固定报头 |
+| Variable header | bytes  | 可变报头 |
+| Payload         | bytes  | 消息体   |
+
+---
+
+## 🔧 固定报头
+
+每个 WuKongIM 控制报文都包含一个固定报头，用于标识报文类型和长度信息。
+
+| Bit | 7 | 6 | 5 | 4 | 3 | 2 | 1 | 0 |
+|-----|---|---|---|---|---|---|---|---|
+| byte 1 | WuKongIM控制报文的类型 | WuKongIM控制报文的类型 | WuKongIM控制报文的类型 | WuKongIM控制报文的类型 | 用于指定控制报文类型的标志位 | 用于指定控制报文类型的标志位 | 用于指定控制报文类型的标志位 | 用于指定控制报文类型的标志位 |
+| byte 2... | 剩余长度 | 剩余长度 | 剩余长度 | 剩余长度 | 剩余长度 | 剩余长度 | 剩余长度 | 剩余长度 |
+
+### 📝 WuKongIM 控制报文类型
+
+<Note>
+WuKongIM 协议定义了10种不同的控制报文类型，每种类型都有特定的用途和数据结构。
+</Note>
+
+| 名字 | 值 | 描述 |
+|------|----|----|
+| Reserved | 0 | 保留位 |
+| CONNECT | 1 | 客户端请求连接到服务器(c2s) |
+| CONNACK | 2 | 服务端收到连接请求后确认的报文(s2c) |
+| SEND | 3 | 发送消息(c2s) |
+| SENDACK | 4 | 收到消息确认的报文(s2c) |
+| RECV | 5 | 收取消息(s2c) |
+| RECVACK | 6 | 收取消息确认(c2s) |
+| PING | 7 | ping请求 |
+| PONG | 8 | 对ping请求的相应 |
+| DISCONNECT | 9 | 请求断开连接 |
+
+### 🏷️ 控制报文标志位
+
+不同的协议报文使用不同的标志位来控制消息行为：
+
+Send和Recv协议中的标志位
+
+| bit | 3 | 2 | 1 | 0 |
+|-----|---|---|---|---|
+| byte | DUP | SyncOnce | RedDot | NoPersist |
+
+Connack协议中的标志位
+
+| bit | 3 | 2 | 1 | 0 |
+|-----|---|---|---|---|
+| byte | Reserved | Reserved | Reserved | HasServerVersion |
+
+
+Chunk协议中的标志位
+
+| bit | 3 | 2 | 1 | 0 |
+|-----|---|---|---|---|
+| byte | Reserved | Reserved | Reserved | End |
+
+<Tip>
+**标志位说明**：
+- **DUP**: 是否是重复的消息(客户端重发消息的时候需要将DUP标记为1)
+- **SyncOnce**: 只同步一次 在多端设备的情况下 如果有一个设备拉取过此消息，其他设备将不会再拉取到此消息（比如加好友消息）
+- **RedDot**: 客户端收到消息是否显示红点
+- **NoPersist**: 是否不存储此消息
+- **Reserved**: 保留位
+- **HasServerVersion**: 是否有服务端版本号
+- **End**: 是否是结束的消息块
+</Tip>
+
+### 📏 剩余长度编码
+
+<Warning>
+剩余长度字段表示在当前消息中剩余的字节数，包含可变头部和负荷(内容)。这是一个可变长度编码字段。
+</Warning>
+
+**编码规则**：
+- 单个字节最大值：`01111111` (0x7F, 127)
+- 第八位（最高位）为 1 表示还有后续字节
+- 最多允许 4 个字节表示剩余长度
+- 最大长度：`0xFF,0xFF,0xFF,0x7F` = 268,435,455 byte = 256MB
+
+**字节范围**：
+
+| Digits | From                               | To                                   |
+| ------ | ---------------------------------- | ------------------------------------ |
+| 1      | 0 (0x00)                           | 127 (0x7F)                           |
+| 2      | 128 (0x80, 0x01)                   | 16 383 (0xFF, 0x7F)                  |
+| 3      | 16 384 (0x80, 0x80, 0x01)          | 2 097 151 (0xFF, 0xFF, 0x7F)         |
+| 4      | 2 097 152 (0x80, 0x80, 0x80, 0x01) | 268 435 455 (0xFF, 0xFF, 0xFF, 0x7F) |
+
+<Note>
+**编码理解**：
+- 第1字节基数：1
+- 第2字节基数：128 (2^7)
+- 第3字节基数：128×128 = 2^14
+- 第4字节基数：128×128×128 = 2^21
+</Note>
+
+**编码示例**：
+
+表达 321 = 65 + 2×128 (2字节)：`11000001 00000010`
+
+```
+第一个字节 193 (11000001)：
+  - 最高位为1，表示还有后续字节
+  - 低7位为1000001 (65)
+
+第二个字节 2 (00000010)：
+  - 最高位为0，表示结束
+  - 低7位为0000010 (2)
+
+计算：321 = 65 + 2 × 128 = 65 + 256
+```
+
+<Tip>
+**字节顺序**：第一个字节是低位，后续字节是高位，但字节内部是低位在右，高位在左。
+</Tip>
+
+### 🔤 字符串 UTF-8 编码
+
+WuKongIM 采用修改版的 UTF-8 编码格式：
+
+| bit | 7 | 6 | 5 | 4 | 3 | 2 | 1 | 0 |
+|-----|---|---|---|---|---|---|---|---|
+| byte 1 | String Length MSB | String Length MSB | String Length MSB | String Length MSB | String Length MSB | String Length MSB | String Length MSB | String Length MSB |
+| byte 2 | String Length MSB | String Length MSB | String Length MSB | String Length MSB | String Length MSB | String Length MSB | String Length MSB | String Length MSB |
+| bytes 3... | Encoded Character Data | Encoded Character Data | Encoded Character Data | Encoded Character Data | Encoded Character Data | Encoded Character Data | Encoded Character Data | Encoded Character Data |
+
+---
+
+## 🔄 可变报头
+
+<Info>
+某些控制报文包含一个可变报头部分，位于固定报头和有效载荷之间。可变报头的内容根据报文类型的不同而不同。
+</Info>
+
+---
+
+---
+
+# 📡 协议报文规范
+
+## 🔌 CONNECT 连接报文
+
+<Note>
+客户端向服务端发起连接请求时使用的报文格式。
+</Note>
+
+| 参数名 | 类型 | 说明 |
+|--------|------|------|
+| Packet Type | 0.5 byte | 报文类型(1) |
+| Flag | 0.5 byte | 标示位 |
+| Remaining Length | ... byte | 报文剩余长度 |
+| Protocol Version | int8 | 协议版本号 |
+| Device Flag | int8 | 设备标示(同标示同账号互踢) |
+| Device ID | string | 设备唯一ID |
+| UID | string | 用户ID |
+| Token | string | 用户的token |
+| Client Timestamp | int64 | 客户端当前时间戳(13位时间戳,到毫秒) |
+| Client Key | string | 客户端KEY (客户端KEY (base64编码的DH公钥)) |
+
+## ✅ CONNACK 连接确认
+
+<Warning>
+CONNACK 报文由服务端发送，作为对客户端 CONNECT 报文的响应。如果客户端在合理时间内没有收到 CONNACK 报文，应该关闭网络连接。
+</Warning>
+
+| 参数名 | 类型 | 说明 |
+|--------|------|------|
+| Packet Type | 0.5 byte | 报文类型(2) |
+| Flag | 0.5 byte | 标示位 |
+| Remaining Length | ... byte | 报文剩余长度 |
+| ServerVersion | uint8 | 服务器支持的最大版本 flag包含HasServerVersion的时候有效 |
+| Time Diff | int64 | 客户端时间与服务器的差值，单位毫秒。 |
+| Reason Code | uint8 | 连接原因码（见附件） |
+| Server Key | string | 服务端base64的DH公钥 |
+| Salt | string | 安全码 |
+
+## 📤 SEND 发送消息
+
+<Note>
+客户端向服务端发送消息时使用的报文格式。
+</Note>
+
+| 参数名 | 类型 | 说明 |
+|--------|------|------|
+| Packet Type | 0.5 byte | 报文类型(3) |
+| Flag | 0.5 byte | 标示位 |
+| Remaining Length | ... byte | 报文剩余长度 |
+| Setting | 1 byte | 消息设置 |
+| Client Seq | uint32 | 客户端消息序列号(由客户端生成，每个客户端唯一) |
+| Client Msg No | string | 客户端唯一标示，用于客户端消息去重 |
+| StreamNo | string | 流式消息编号（setting里需要开启Stream） |
+| Channel Id | string | 频道ID（如果是个人频道ChannelId为个人的UID） |
+| Channel Type | int8 | 频道类型（1.个人 2.群组） |
+| Expire | uint32 | 消息过期时间（单位秒） version>=3 |
+| Msg Key | string | 用于验证此消息是否合法（仿中间人篡改） |
+| Topic | string | 话题ID（只有setting开启了topic才有此字段） |
+| Payload | ... byte | 消息内容 |
+
+## ✅ SENDACK 发送消息确认
+
+<Note>
+服务端对客户端发送消息的确认响应。
+</Note>
+
+| 参数名 | 类型 | 说明 |
+|--------|------|------|
+| Packet Type | 0.5 byte | 报文类型(4) |
+| Flag | 0.5 byte | 标示位 |
+| Remaining Length | ... byte | 报文剩余长度 |
+| Message ID | uint64 | 服务端的消息ID(全局唯一) |
+| Client Seq | uint32 | 客户端消息序列号 |
+| Message Seq | uint32 | 消息序号（有序递增，频道唯一） |
+| Reason Code | uint8 | 发送原因代码 1表示成功 |
+
+## 📥 RECV 收消息
+
+<Note>
+服务端向客户端推送消息时使用的报文格式。
+</Note>
+
+| 参数名 | 类型 | 说明 |
+|--------|------|------|
+| Packet Type | 0.5 byte | 报文类型(5) |
+| Flag | 0.5 byte | 标示位 |
+| Remaining Length | ... byte | 报文剩余长度 |
+| Setting | 1 byte | 消息设置（见下 版本4有效） |
+| Msg Key | string | 用于验证此消息是否合法（仿中间人篡改） |
+| From UID | string | 发送者UID |
+| Channel ID | string | 频道ID |
+| Channel Type | int8 | 频道类型 |
+| Expire | uint32 | 消息过期时间（单位秒） version>=3 |
+| Client Msg No | string | 客户端唯一标示，用于客户端消息去重 |
+| StreamNo | string | 流式消息编号，根据setting是否开启stream判断是否有此字段 |
+| StreamId | uint32 | 流序号，根据setting是否开启stream判断是否有此字段 |
+| Message ID | uint64 | 服务端的消息ID(全局唯一) |
+| Message Seq | uint32 | 服务端的消息序列号(有序递增，频道唯一) |
+| Message Timestamp | int32 | 服务器消息时间戳(10位，到秒) |
+| Topic | string | 话题ID（只有setting开启了topic才有此字段） |
+| Payload | ... byte | 消息内容 |
+
+## ✅ RECVACK 收消息确认
+
+<Note>
+客户端对服务端推送消息的确认响应。
+</Note>
+
+| 参数名 | 类型 | 说明 |
+|--------|------|------|
+| Packet Type | 0.5 byte | 报文类型(6) |
+| Flag | 0.5 byte | 标示位 |
+| Remaining Length | ... byte | 报文剩余长度 |
+| Message ID | uint64 | 服务端的消息ID(全局唯一) |
+| Message Seq | uint32 | 序列号 |
+
+## 🏓 PING
+
+<Note>
+客户端发送的心跳请求报文，用于保持连接活跃。
+</Note>
+
+| 参数名 | 类型 | 说明 |
+|--------|------|------|
+| Packet Type | 0.5 byte | 报文类型(7) |
+| Flag | 0.5 byte | 标示位 |
+
+## 🏓 PONG
+
+<Note>
+服务端对客户端 PING 请求的响应报文。
+</Note>
+
+| 参数名 | 类型 | 说明 |
+|--------|------|------|
+| Packet Type | 0.5 byte | 报文类型(8) |
+| Flag | 0.5 byte | 标示位 |
+
+## 🔌 DISCONNECT
+
+<Warning>
+客户端或服务端请求断开连接时使用的报文格式。
+</Warning>
+
+| 参数名 | 类型 | 说明 |
+|--------|------|------|
+| Packet Type | 0.5 byte | 报文类型(9) |
+| Flag | 0.5 byte | 标示位 |
+| Remaining Length | ... byte | 报文剩余长度 |
+| ReasonCode | uint8 | 原因代码 |
+| Reason | string | 原因 |
+
+---
+
+# ⚙️ 消息设置
+
+## 📊 消息设置位字段
+
+<Info>
+消息设置为 1 byte (8 bit)，用于控制消息的各种行为特性。
+</Info>
+
+| bit | 7 | 6 | 5 | 4 | 3 | 2 | 1 | 0 |
+|-----|---|---|---|---|---|---|---|---|
+| byte | Receipt | Reserved | Signal | NoEncrypt | Topic | Reserved | Stream | Reserved |
+
+## 🔧 设置位说明
+
+<Tip>
+**各位功能说明**：
+
+- **Receipt**: 消息已读回执，此标记表示此消息需要已读回执
+- **Reserved**: 保留位，暂未用到
+- **Signal**: 加密标记
+- **NoEncrypt**: 消息是否不开启加密
+- **Topic**: 消息是否包含 topic（如果为 1 则发送包和接受包都将包含 topic 字段）
+- **Reserved**: 保留位，暂未用到
+- **Stream**: 流式消息标记
+- **Reserved**: 保留位，暂未用到
+</Tip>
+
+---
+
+<Note>
+**完整协议文档**: 本文档包含了 WuKongIM 协议的核心部分。完整的协议规范还包括 Payload 推荐结构、普通消息格式、系统消息格式等详细内容，请参考源文档获取完整信息。
+</Note>

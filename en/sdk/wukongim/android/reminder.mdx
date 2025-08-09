@@ -1,0 +1,507 @@
+---
+title: "Reminder Management"
+description: "WuKongIM Android SDK reminder management functionality, handling conversation reminders and notifications"
+icon: "bell"
+---
+
+Reminder management is responsible for handling various reminder information in conversations, such as @mentions and group audits. Conversation reminders currently only support server-issued commands, and clients only need to listen for sync conversation reminders and refresh conversation messages.
+
+## Get Reminders
+
+### Get Reminders for Specific Conversation
+
+<CodeGroup>
+```java Java
+// Get reminders for specific conversation
+WKIM.getInstance().getReminderManager().getReminders(channelId, channelType);
+```
+
+```kotlin Kotlin
+// Get reminders for specific conversation
+WKIM.getInstance().reminderManager.getReminders(channelId, channelType)
+```
+</CodeGroup>
+
+### Get Reminders by Type
+
+<CodeGroup>
+```java Java
+// Get reminders by type
+WKIM.getInstance().getReminderManager().getRemindersWithType(String channelID, byte channelType, int type);
+```
+
+```kotlin Kotlin
+// Get reminders by type
+WKIM.getInstance().reminderManager.getRemindersWithType(channelID, channelType, type);
+```
+</CodeGroup>
+
+### Complete Retrieval Example
+
+```java
+public class ReminderHelper {
+    
+    // Get all @mention reminders
+    public List<WKReminder> getMentionReminders(String channelId, byte channelType) {
+        return WKIM.getInstance().getReminderManager().getRemindersWithType(channelId, channelType, 1);
+    }
+    
+    // Get group audit reminders
+    public List<WKReminder> getAuditReminders(String channelId, byte channelType) {
+        return WKIM.getInstance().getReminderManager().getRemindersWithType(channelId, channelType, 2);
+    }
+    
+    // Get all unfinished reminders
+    public List<WKReminder> getUnfinishedReminders(String channelId, byte channelType) {
+        List<WKReminder> allReminders = WKIM.getInstance().getReminderManager().getReminders(channelId, channelType);
+        List<WKReminder> unfinishedReminders = new ArrayList<>();
+        
+        if (allReminders != null) {
+            for (WKReminder reminder : allReminders) {
+                if (reminder.done == 0) { // 0 means unfinished
+                    unfinishedReminders.add(reminder);
+                }
+            }
+        }
+        
+        return unfinishedReminders;
+    }
+    
+    // Count reminders by type
+    public Map<Integer, Integer> getReminderCountByType(String channelId, byte channelType) {
+        List<WKReminder> allReminders = WKIM.getInstance().getReminderManager().getReminders(channelId, channelType);
+        Map<Integer, Integer> countMap = new HashMap<>();
+        
+        if (allReminders != null) {
+            for (WKReminder reminder : allReminders) {
+                if (reminder.done == 0) { // Only count unfinished ones
+                    countMap.put(reminder.type, countMap.getOrDefault(reminder.type, 0) + 1);
+                }
+            }
+        }
+        
+        return countMap;
+    }
+    
+    // Get latest reminder
+    public WKReminder getLatestReminder(String channelId, byte channelType) {
+        List<WKReminder> reminders = WKIM.getInstance().getReminderManager().getReminders(channelId, channelType);
+        
+        if (reminders == null || reminders.isEmpty()) {
+            return null;
+        }
+        
+        // Sort by version number, get the latest
+        WKReminder latestReminder = reminders.get(0);
+        for (WKReminder reminder : reminders) {
+            if (reminder.version > latestReminder.version) {
+                latestReminder = reminder;
+            }
+        }
+        
+        return latestReminder;
+    }
+}
+```
+
+## Save Reminders
+
+<CodeGroup>
+```java Java
+// Save reminders
+WKIM.getInstance().getReminderManager().saveOrUpdateReminders(List<WKReminder> reminderList);
+```
+
+```kotlin Kotlin
+// Save reminders
+WKIM.getInstance().reminderManager.saveOrUpdateReminders(list)
+```
+</CodeGroup>
+
+### Save Operation Example
+
+```java
+public class ReminderManager {
+    
+    // Batch save reminders
+    public void saveReminders(List<WKReminder> reminders) {
+        if (reminders != null && !reminders.isEmpty()) {
+            WKIM.getInstance().getReminderManager().saveOrUpdateReminders(reminders);
+            Log.d("ReminderManager", "Saved " + reminders.size() + " reminders");
+        }
+    }
+    
+    // Create and save @mention reminder
+    public void createMentionReminder(String channelId, byte channelType, String messageId, 
+                                    long messageSeq, String mentionedBy, String text) {
+        WKReminder reminder = new WKReminder();
+        reminder.reminderID = System.currentTimeMillis(); // Use timestamp as ID
+        reminder.messageID = messageId;
+        reminder.channelID = channelId;
+        reminder.channelType = channelType;
+        reminder.messageSeq = messageSeq;
+        reminder.type = 1; // @mention type
+        reminder.uid = mentionedBy;
+        reminder.text = text;
+        reminder.version = System.currentTimeMillis();
+        reminder.done = 0; // Unfinished
+        reminder.needUpload = 0; // No need to upload
+        reminder.publisher = mentionedBy;
+        
+        // Save single reminder
+        List<WKReminder> reminderList = new ArrayList<>();
+        reminderList.add(reminder);
+        saveReminders(reminderList);
+    }
+    
+    // Mark reminder as done
+    public void markReminderAsDone(long reminderId) {
+        // Here you need to get the reminder first, then update status
+        // Actual implementation might need more direct update methods
+        Log.d("ReminderManager", "Marked reminder " + reminderId + " as done");
+    }
+    
+    // Clean up expired reminders
+    public void cleanupExpiredReminders(String channelId, byte channelType, long expireTime) {
+        List<WKReminder> allReminders = WKIM.getInstance().getReminderManager().getReminders(channelId, channelType);
+        List<WKReminder> validReminders = new ArrayList<>();
+        
+        if (allReminders != null) {
+            for (WKReminder reminder : allReminders) {
+                if (reminder.version > expireTime) {
+                    validReminders.add(reminder);
+                }
+            }
+            
+            // Re-save valid reminders
+            if (validReminders.size() != allReminders.size()) {
+                saveReminders(validReminders);
+                Log.d("ReminderManager", "Cleaned up " + (allReminders.size() - validReminders.size()) + " expired reminders");
+            }
+        }
+    }
+}
+```
+
+## Event Listening
+
+### Listen for New Reminders
+
+<CodeGroup>
+```java Java
+// Listen for new reminders
+WKIM.getInstance().getReminderManager().addOnNewReminderListener("key", new INewReminderListener() {
+    @Override
+    public void newReminder(List<WKReminder> list) {
+        // Handle new reminders
+        handleNewReminders(list);
+    }
+});
+
+// Remove listener
+WKIM.getInstance().getReminderManager().removeNewReminderListener("key");
+```
+
+```kotlin Kotlin
+// Listen for new reminders
+WKIM.getInstance().reminderManager.addOnNewReminderListener("key", object : INewReminderListener {
+    override fun newReminder(list: List<WKReminder>) {
+        // Handle new reminders
+        handleNewReminders(list)
+    }
+})
+
+// Remove listener
+WKIM.getInstance().reminderManager.removeNewReminderListener("key");
+```
+</CodeGroup>
+
+<Note>
+The key is a unique identifier for the listener, can be any string. The same key must be used when adding and removing listeners.
+</Note>
+
+### Complete Listening Example
+
+```java
+public class ReminderListener {
+    
+    private static final String LISTENER_KEY = "ReminderListener";
+    
+    public void initialize() {
+        // Add new reminder listener
+        WKIM.getInstance().getReminderManager().addOnNewReminderListener(LISTENER_KEY, this::handleNewReminders);
+    }
+    
+    private void handleNewReminders(List<WKReminder> reminders) {
+        if (reminders == null || reminders.isEmpty()) {
+            return;
+        }
+        
+        Log.d("ReminderListener", "Received " + reminders.size() + " new reminders");
+        
+        for (WKReminder reminder : reminders) {
+            switch (reminder.type) {
+                case 1: // @mention
+                    handleMentionReminder(reminder);
+                    break;
+                case 2: // Group audit
+                    handleAuditReminder(reminder);
+                    break;
+                default:
+                    handleUnknownReminder(reminder);
+                    break;
+            }
+        }
+        
+        // Update UI
+        updateReminderUI(reminders);
+        
+        // Send notifications
+        sendReminderNotifications(reminders);
+    }
+    
+    private void handleMentionReminder(WKReminder reminder) {
+        Log.d("ReminderListener", "Handle @mention: " + reminder.text);
+        
+        // Update @mention status in conversation list
+        updateConversationMentionStatus(reminder.channelID, reminder.channelType, true);
+        
+        // Send local notification
+        sendMentionNotification(reminder);
+    }
+    
+    private void handleAuditReminder(WKReminder reminder) {
+        Log.d("ReminderListener", "Handle audit reminder: " + reminder.text);
+        
+        // Update group management interface
+        updateGroupAuditStatus(reminder.channelID);
+        
+        // Send audit notification
+        sendAuditNotification(reminder);
+    }
+    
+    private void handleUnknownReminder(WKReminder reminder) {
+        Log.w("ReminderListener", "Unknown reminder type: " + reminder.type);
+    }
+    
+    private void updateReminderUI(List<WKReminder> reminders) {
+        // Notify UI to update reminder status
+        Intent intent = new Intent("com.app.REMINDER_UPDATED");
+        intent.putExtra("reminder_count", reminders.size());
+        LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
+    }
+    
+    private void sendReminderNotifications(List<WKReminder> reminders) {
+        for (WKReminder reminder : reminders) {
+            if (shouldShowNotification(reminder)) {
+                showReminderNotification(reminder);
+            }
+        }
+    }
+    
+    private boolean shouldShowNotification(WKReminder reminder) {
+        // Check if notification should be shown
+        // Can decide based on user settings, app state, etc.
+        return !isAppInForeground() && reminder.done == 0;
+    }
+    
+    private void showReminderNotification(WKReminder reminder) {
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setContentTitle(getReminderTitle(reminder))
+                .setContentText(reminder.text)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setAutoCancel(true);
+        
+        // Set click intent
+        Intent intent = new Intent(context, ChatActivity.class);
+        intent.putExtra("channel_id", reminder.channelID);
+        intent.putExtra("channel_type", reminder.channelType);
+        intent.putExtra("message_id", reminder.messageID);
+        
+        PendingIntent pendingIntent = PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+        builder.setContentIntent(pendingIntent);
+        
+        NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        notificationManager.notify((int) reminder.reminderID, builder.build());
+    }
+    
+    private String getReminderTitle(WKReminder reminder) {
+        switch (reminder.type) {
+            case 1:
+                return "Someone mentioned you";
+            case 2:
+                return "Group audit";
+            default:
+                return "New reminder";
+        }
+    }
+    
+    public void destroy() {
+        WKIM.getInstance().getReminderManager().removeNewReminderListener(LISTENER_KEY);
+    }
+}
+```
+
+## WKReminder Data Structure
+
+### Reminder Properties
+
+```java
+public class WKReminder {
+    public long reminderID;     // Reminder ID
+    public String messageID;    // Message ID
+    public String channelID;    // Channel ID
+    public byte channelType;    // Channel type
+    public long messageSeq;     // Message sequence number
+    public int type;            // Reminder type [1=@mention][2=group audit] etc.
+    public String uid;          // User ID
+    public String text;         // Reminder content
+    public Map data;            // Custom data included in reminder
+    public long version;        // Version number for incremental sync
+    public int done;            // 0=unfinished 1=finished
+    public int needUpload;      // 0=no need to upload 1=need to upload
+    public String publisher;    // Publisher
+}
+```
+
+### Property Description
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `reminderID` | long | Unique reminder identifier |
+| `messageID` | String | Associated message ID |
+| `channelID` | String | Channel ID |
+| `channelType` | byte | Channel type |
+| `messageSeq` | long | Message sequence number |
+| `type` | int | Reminder type (1=@mention, 2=group audit, etc.) |
+| `uid` | String | Related user ID |
+| `text` | String | Reminder display text |
+| `data` | Map | Custom data |
+| `version` | long | Version number for incremental sync |
+| `done` | int | Completion status (0=unfinished, 1=finished) |
+| `needUpload` | int | Whether needs upload (0=no, 1=yes) |
+| `publisher` | String | Publisher ID |
+
+### Reminder Type Description
+
+| Type Value | Description | Use Case |
+|------------|-------------|----------|
+| `1` | @mention | Someone mentioned current user in group chat |
+| `2` | Group audit | Items that group admin needs to audit |
+| Others | Custom reminders | Extended based on business needs |
+
+## Best Practices
+
+### 1. Reminder Status Management
+
+```java
+public class ReminderStatusManager {
+    
+    // Get unread reminder count
+    public int getUnreadReminderCount(String channelId, byte channelType) {
+        List<WKReminder> reminders = WKIM.getInstance().getReminderManager().getReminders(channelId, channelType);
+        int count = 0;
+        
+        if (reminders != null) {
+            for (WKReminder reminder : reminders) {
+                if (reminder.done == 0) {
+                    count++;
+                }
+            }
+        }
+        
+        return count;
+    }
+    
+    // Check if has @mention reminder
+    public boolean hasMentionReminder(String channelId, byte channelType) {
+        List<WKReminder> mentionReminders = WKIM.getInstance().getReminderManager()
+                .getRemindersWithType(channelId, channelType, 1);
+        
+        if (mentionReminders != null) {
+            for (WKReminder reminder : mentionReminders) {
+                if (reminder.done == 0) {
+                    return true;
+                }
+            }
+        }
+        
+        return false;
+    }
+    
+    // Get reminder summary text
+    public String getReminderSummary(String channelId, byte channelType) {
+        Map<Integer, Integer> countMap = getReminderCountByType(channelId, channelType);
+        
+        if (countMap.isEmpty()) {
+            return "";
+        }
+        
+        StringBuilder summary = new StringBuilder();
+        
+        if (countMap.containsKey(1)) {
+            summary.append("[Someone mentioned you]");
+        }
+        
+        if (countMap.containsKey(2)) {
+            if (summary.length() > 0) {
+                summary.append(" ");
+            }
+            summary.append("[Group audit]");
+        }
+        
+        return summary.toString();
+    }
+}
+```
+
+### 2. Memory Management
+
+```java
+@Override
+protected void onDestroy() {
+    super.onDestroy();
+    
+    // Remove reminder listeners
+    WKIM.getInstance().getReminderManager().removeNewReminderListener("ActivityKey");
+    
+    // Clean up local broadcast receivers
+    if (reminderReceiver != null) {
+        LocalBroadcastManager.getInstance(this).unregisterReceiver(reminderReceiver);
+    }
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Advanced Features"
+    icon="cog"
+    href="/en/sdk/wukongim/android/advance"
+  >
+    Explore advanced features and optimizations
+  </Card>
+  <Card
+    title="Data Source Configuration"
+    icon="database"
+    href="/en/sdk/wukongim/android/datasource"
+  >
+    Return to data source configuration
+  </Card>
+  <Card
+    title="Conversation Management"
+    icon="users"
+    href="/en/sdk/wukongim/android/conversation"
+  >
+    Return to conversation management functionality
+  </Card>
+  <Card
+    title="Command Management"
+    icon="terminal"
+    href="/en/sdk/wukongim/android/cmd"
+  >
+    Return to command management functionality
+  </Card>
+</CardGroup>

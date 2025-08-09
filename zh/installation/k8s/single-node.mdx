@@ -1,0 +1,286 @@
+---
+title: "单节点部署"
+description: "使用 Helm 在 Kubernetes 集群中部署 WuKongIM 单节点实例"
+icon: "server"
+---
+
+在 Kubernetes 集群中部署 WuKongIM 单节点实例，适用于开发、测试和小规模生产环境。
+
+## 部署特点
+
+**优点**：
+- 高可用性和容灾能力强
+- 支持在线扩容
+- 多副本间实时自动备份
+- 负载均衡，无需手动配置
+- 快速伸缩
+
+**适用场景**：
+- 对数据安全要求高的应用
+- 大型应用
+- 需要快速部署的环境
+
+<Warning>
+  **注意**：当前 WuKongIM 支持热扩容，暂不支持热缩容！
+</Warning>
+
+## 前提条件
+
+- Kubernetes 集群 1.19+
+- kubectl 已配置并能访问集群
+- Helm 3.0+
+- 至少 2GB 可用内存和 2 CPU 核心
+
+## 部署步骤
+
+### 1. 添加 Helm 仓库
+
+```bash
+helm repo add wukongim https://wukongim.github.io/helm/
+```
+
+### 2. 更新 Helm 仓库
+
+```bash
+helm repo update
+```
+
+### 3. 搜索可用的 Chart
+
+```bash
+helm search repo wukongim
+```
+
+### 4. 部署 WuKongIM
+
+```bash
+# 单节点部署（副本数为 1）
+helm install wkim wukongim/wukongim \
+  -n wukongim \
+  --create-namespace \
+  --version 0.1.0 \
+  --set replicaCount=1
+```
+
+**可选参数**：
+- `replicaCount=1`：副本数量（默认为 2）
+- `externalIP=<IP地址>`：外部 IP 地址
+
+### 5. 查看安装状态
+
+```bash
+helm status wkim -n wukongim
+```
+
+### 6. 验证部署
+
+```bash
+# 检查 Pod 状态
+kubectl get pods -n wukongim
+
+# 检查服务状态
+kubectl get svc -n wukongim
+
+# 查看日志
+kubectl logs -l app.kubernetes.io/name=wukongim -n wukongim
+```
+
+## 访问服务
+
+### 端口转发访问
+
+```bash
+# API 服务
+kubectl port-forward svc/wkim-wukongim 5001:5001 -n wukongim
+
+# WebSocket 服务
+kubectl port-forward svc/wkim-wukongim 5200:5200 -n wukongim
+
+# Demo 界面
+kubectl port-forward svc/wkim-wukongim 5172:5172 -n wukongim
+
+# 管理界面
+kubectl port-forward svc/wkim-wukongim 5300:5300 -n wukongim
+```
+
+### 访问地址
+
+- **API 端点**：http://localhost:5001
+- **WebSocket**：ws://localhost:5200
+- **Demo 界面**：http://localhost:5172
+- **管理界面**：http://localhost:5300
+
+## 配置选项
+
+### 常用 Helm 参数
+
+```bash
+# 完整配置示例
+helm install wkim wukongim/wukongim \
+  -n wukongim \
+  --create-namespace \
+  --version 0.1.0 \
+  --set replicaCount=1 \
+  --set image.tag=v2.0.0 \
+  --set service.type=LoadBalancer \
+  --set persistence.enabled=true \
+  --set persistence.size=20Gi \
+  --set resources.requests.memory=2Gi \
+  --set resources.requests.cpu=1000m
+```
+
+### 主要配置参数
+
+| 参数 | 描述 | 默认值 |
+|------|------|--------|
+| `replicaCount` | 副本数量 | `2` |
+| `image.tag` | 镜像版本 | `latest` |
+| `service.type` | 服务类型 | `ClusterIP` |
+| `persistence.enabled` | 启用持久化存储 | `true` |
+| `persistence.size` | 存储大小 | `10Gi` |
+| `externalIP` | 外部 IP 地址 | `""` |
+
+## 扩容操作
+
+### 扩容到多节点
+
+```bash
+# 扩容到 3 个副本
+helm upgrade wkim wukongim/wukongim \
+  -n wukongim \
+  --version 0.1.0 \
+  --set replicaCount=3
+```
+
+### 验证扩容
+
+```bash
+# 检查 Pod 数量
+kubectl get pods -n wukongim
+
+# 检查集群状态
+kubectl port-forward svc/wkim-wukongim 5001:5001 -n wukongim &
+curl http://localhost:5001/cluster/nodes
+```
+
+## 故障排除
+
+### 常见问题
+
+**Pod 启动失败**：
+```bash
+# 查看 Pod 状态
+kubectl get pods -n wukongim
+
+# 查看详细信息
+kubectl describe pod <pod-name> -n wukongim
+
+# 查看日志
+kubectl logs <pod-name> -n wukongim
+```
+
+**服务无法访问**：
+```bash
+# 检查服务状态
+kubectl get svc -n wukongim
+
+# 检查端点
+kubectl get endpoints -n wukongim
+
+# 测试服务连通性
+kubectl exec -it <pod-name> -n wukongim -- wget -qO- http://localhost:5001/health
+```
+
+**存储问题**：
+```bash
+# 检查 PVC 状态
+kubectl get pvc -n wukongim
+
+# 查看存储详情
+kubectl describe pvc <pvc-name> -n wukongim
+```
+
+### 日志查看
+
+```bash
+# 查看实时日志
+kubectl logs -f deployment/wkim-wukongim -n wukongim
+
+# 查看所有副本日志
+kubectl logs -l app.kubernetes.io/name=wukongim -n wukongim
+
+# 查看历史日志
+kubectl logs deployment/wkim-wukongim -n wukongim --previous
+```
+
+## 升级和维护
+
+### 升级版本
+
+```bash
+# 更新 Helm 仓库
+helm repo update
+
+# 搜索新版本
+helm search repo wukongim
+
+# 升级到新版本
+helm upgrade wkim wukongim/wukongim \
+  -n wukongim \
+  --version <新版本号>
+```
+
+### 备份数据
+
+```bash
+# 创建数据快照
+kubectl exec -n wukongim deployment/wkim-wukongim -- \
+  tar czf /tmp/backup-$(date +%Y%m%d).tar.gz /data
+
+# 复制备份文件到本地
+kubectl cp wukongim/<pod-name>:/tmp/backup-$(date +%Y%m%d).tar.gz \
+  ./wukongim-backup-$(date +%Y%m%d).tar.gz
+```
+
+## 卸载
+
+```bash
+# 卸载 WuKongIM
+helm uninstall wkim -n wukongim
+
+# 删除命名空间（可选）
+kubectl delete namespace wukongim
+```
+
+## 下一步
+
+<CardGroup cols={2}>
+  <Card
+    title="多节点部署"
+    icon="server"
+    href="/zh/installation/k8s/multi-node"
+  >
+    部署高可用集群
+  </Card>
+  <Card
+    title="服务器配置"
+    icon="gear"
+    href="/zh/server/configuration"
+  >
+    详细配置选项
+  </Card>
+  <Card
+    title="Docker 部署"
+    icon="docker"
+    href="/zh/installation/docker/single-node"
+  >
+    Docker 部署方式
+  </Card>
+  <Card
+    title="API 文档"
+    icon="code"
+    href="/zh/api/introduction"
+  >
+    开始使用 API
+  </Card>
+</CardGroup>

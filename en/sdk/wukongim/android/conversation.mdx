@@ -1,0 +1,428 @@
+---
+title: "Conversation Management"
+description: "WuKongIM Android SDK conversation management functionality, including conversation lists, unread messages and conversation monitoring"
+icon: "messages-square"
+---
+
+The recent conversation manager is responsible for managing the user's recent conversation list, including getting conversations, listening for conversation changes, deleting conversations, and other functions.
+
+<Note>
+Need to implement recent conversation data source: [Recent Conversation Data Source](/en/sdk/wukongim/android/datasource#recent-conversation-data-source)
+</Note>
+
+## Get Recent Conversation List
+
+### Get All Recent Conversations
+
+<CodeGroup>
+```java Java
+// Query all recent conversations
+WKIM.getInstance().getConversationManager().getAll();
+```
+
+```kotlin Kotlin
+// Query all recent conversations
+WKIM.getInstance().conversationManager.getAll()
+```
+</CodeGroup>
+
+### Complete Usage Example
+
+```java
+public class ConversationListActivity extends AppCompatActivity {
+    
+    private List<WKUIConversationMsg> conversationList = new ArrayList<>();
+    private ConversationAdapter conversationAdapter;
+    private RecyclerView recyclerView;
+    
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_conversation_list);
+        
+        setupRecyclerView();
+        setupConversationListeners();
+        loadConversations();
+    }
+    
+    private void setupConversationListeners() {
+        // Listen for conversation refresh
+        WKIM.getInstance().getConversationManager().addOnRefreshMsgListener("ConversationList", 
+            new IRefreshConversationMsg() {
+                @Override
+                public void onRefreshConversationMsg(WKUIConversationMsg wkUIConversationMsg, boolean isEnd) {
+                    // wkUIConversationMsg: recent conversation message content
+                    // If UI already has this conversation, update it; otherwise add to UI
+                    // isEnd: to prevent frequent UI refreshes, refresh UI only when isEnd is true
+                    if (isEnd) {
+                        runOnUiThread(() -> {
+                            updateConversationInList(wkUIConversationMsg);
+                        });
+                    }
+                }
+            });
+        
+        // Listen for conversation deletion
+        WKIM.getInstance().getConversationManager().addOnDeleteMsgListener("ConversationList", 
+            new IDeleteConversationMsg() {
+                @Override
+                public void onDelete(String channelID, byte channelType) {
+                    runOnUiThread(() -> {
+                        removeConversationFromList(channelID, channelType);
+                    });
+                }
+            });
+    }
+    
+    private void loadConversations() {
+        // Get all recent conversations
+        List<WKUIConversationMsg> conversations = WKIM.getInstance().getConversationManager().getAll();
+        
+        if (conversations != null) {
+            conversationList.clear();
+            conversationList.addAll(conversations);
+            
+            // Sort by time
+            Collections.sort(conversationList, (o1, o2) -> 
+                Long.compare(o2.lastMsgTimestamp, o1.lastMsgTimestamp));
+            
+            conversationAdapter.notifyDataSetChanged();
+            updateTotalUnreadCount();
+        }
+    }
+    
+    private void updateConversationInList(WKUIConversationMsg newConversation) {
+        // Check if conversation already exists
+        int existingIndex = -1;
+        for (int i = 0; i < conversationList.size(); i++) {
+            WKUIConversationMsg existing = conversationList.get(i);
+            if (existing.getWkChannel().channelID.equals(newConversation.getWkChannel().channelID) &&
+                existing.getWkChannel().channelType == newConversation.getWkChannel().channelType) {
+                existingIndex = i;
+                break;
+            }
+        }
+        
+        if (existingIndex >= 0) {
+            // Update existing conversation
+            conversationList.set(existingIndex, newConversation);
+            conversationAdapter.notifyItemChanged(existingIndex);
+        } else {
+            // Add new conversation
+            conversationList.add(0, newConversation);
+            conversationAdapter.notifyItemInserted(0);
+        }
+        
+        // Re-sort
+        Collections.sort(conversationList, (o1, o2) -> 
+            Long.compare(o2.lastMsgTimestamp, o1.lastMsgTimestamp));
+        conversationAdapter.notifyDataSetChanged();
+        
+        updateTotalUnreadCount();
+    }
+    
+    private void removeConversationFromList(String channelID, byte channelType) {
+        for (int i = 0; i < conversationList.size(); i++) {
+            WKUIConversationMsg conversation = conversationList.get(i);
+            if (conversation.getWkChannel().channelID.equals(channelID) &&
+                conversation.getWkChannel().channelType == channelType) {
+                conversationList.remove(i);
+                conversationAdapter.notifyItemRemoved(i);
+                break;
+            }
+        }
+        updateTotalUnreadCount();
+    }
+    
+    private void updateTotalUnreadCount() {
+        int totalUnread = 0;
+        for (WKUIConversationMsg conversation : conversationList) {
+            totalUnread += conversation.unreadCount;
+        }
+        
+        // Update app badge
+        updateAppBadge(totalUnread);
+        
+        // Update TabBar badge
+        updateTabBadge(totalUnread);
+    }
+    
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        // Remove listeners
+        WKIM.getInstance().getConversationManager().removeOnRefreshMsgListener("ConversationList");
+        WKIM.getInstance().getConversationManager().removeOnDeleteMsgListener("ConversationList");
+    }
+}
+```
+
+## New Message Listening
+
+Only when opening the app for the first time, you need to sync the recent conversation list. Subsequent changes to the recent conversation list are obtained through listening.
+
+<CodeGroup>
+```java Java
+// Listen for recent conversation message refresh
+WKIM.getInstance().getConversationManager().addOnRefreshMsgListener("key", new IRefreshConversationMsg() {
+    @Override
+    public void onRefreshConversationMsg(WKUIConversationMsg wkUIConversationMsg, boolean isEnd) {
+        // wkUIConversationMsg: recent conversation message content
+        // If UI already has this conversation, update it; otherwise add to UI
+        // isEnd: to prevent frequent UI refreshes, refresh UI only when isEnd is true
+        if (isEnd) {
+            runOnUiThread(() -> {
+                handleConversationUpdate(wkUIConversationMsg);
+            });
+        }
+    }
+});
+
+// Remove listener when exiting page
+WKIM.getInstance().getConversationManager().removeOnRefreshMsgListener("key");
+```
+
+```kotlin Kotlin
+// Listen for recent conversation message refresh
+WKIM.getInstance().conversationManager.addOnRefreshMsgListener("key") { wkUIConversationMsg, isEnd ->
+    // wkUIConversationMsg: recent conversation message content
+    // If UI already has this conversation, update it; otherwise add to UI
+    // isEnd: to prevent frequent UI refreshes, refresh UI only when isEnd is true
+    if (isEnd) {
+        runOnUiThread {
+            handleConversationUpdate(wkUIConversationMsg)
+        }
+    }
+}
+
+// Remove listener when exiting page
+WKIM.getInstance().conversationManager.removeOnRefreshMsgListener("key")
+```
+</CodeGroup>
+
+## Remove Recent Conversations
+
+### Delete Conversation
+
+<CodeGroup>
+```java Java
+// Delete a recent conversation
+WKIM.getInstance().getConversationManager().deleteWitchChannel(String channelId, byte channelType);
+```
+
+```kotlin Kotlin
+// Delete a recent conversation
+WKIM.getInstance().conversationManager.deleteWitchChannel(channelId, channelType)
+```
+</CodeGroup>
+
+### Listen for Deletion
+
+This method is called when deleting a recent conversation:
+
+<CodeGroup>
+```java Java
+// Listen for recent conversation message deletion
+WKIM.getInstance().getConversationManager().addOnDeleteMsgListener("key", new IDeleteConversationMsg() {
+    @Override
+    public void onDelete(String channelID, byte channelType) {
+        // channelID: chat channel ID
+        // channelType: chat channel type
+        runOnUiThread(() -> {
+            handleConversationDeleted(channelID, channelType);
+        });
+    }
+});
+
+// Remove listener when exiting page
+WKIM.getInstance().getConversationManager().removeOnDeleteMsgListener("key");
+```
+
+```kotlin Kotlin
+// Listen for recent conversation message deletion
+WKIM.getInstance().conversationManager.addOnDeleteMsgListener("key") { channelID, channelType ->
+    // channelID: chat channel ID
+    // channelType: chat channel type
+    runOnUiThread {
+        handleConversationDeleted(channelID, channelType)
+    }
+}
+
+// Remove listener when exiting page
+WKIM.getInstance().conversationManager.removeOnDeleteMsgListener("key")
+```
+</CodeGroup>
+
+## Common Methods
+
+<CodeGroup>
+```java Java
+// Query all recent conversations
+WKIM.getInstance().getConversationManager().getAll();
+
+// Update message red dot
+WKIM.getInstance().getConversationManager().updateRedDot(String channelID, byte channelType, int redDot);
+
+// Delete a conversation
+WKIM.getInstance().getConversationManager().deleteMsg(String channelId, byte channelType);
+```
+
+```kotlin Kotlin
+// Query all recent conversations
+WKIM.getInstance().conversationManager.getAll()
+
+// Update message red dot
+WKIM.getInstance().conversationManager.updateRedDot(channelID, channelType, redDot)
+
+// Delete a conversation
+WKIM.getInstance().conversationManager.deleteMsg(channelId, channelType)
+```
+</CodeGroup>
+
+### Common Operations Example
+
+```java
+public class ConversationManager {
+    
+    // Update red dot status
+    public void updateRedDotStatus(String channelID, byte channelType, boolean hasRedDot) {
+        int redDot = hasRedDot ? 1 : 0;
+        WKIM.getInstance().getConversationManager().updateRedDot(channelID, channelType, redDot);
+    }
+    
+    // Clear unread count
+    public void clearUnreadCount(String channelID, byte channelType) {
+        // Clear unread count by updating red dot status
+        updateRedDotStatus(channelID, channelType, false);
+        
+        // Also call server API
+        ApiManager.clearUnreadCount(channelID, channelType, new ApiCallback<Void>() {
+            @Override
+            public void onSuccess(Void result) {
+                // Clear successful
+            }
+            
+            @Override
+            public void onError(int code, String message) {
+                // Clear failed
+            }
+        });
+    }
+    
+    // Get total unread count
+    public int getTotalUnreadCount() {
+        List<WKUIConversationMsg> conversations = WKIM.getInstance().getConversationManager().getAll();
+        int totalUnread = 0;
+        
+        if (conversations != null) {
+            for (WKUIConversationMsg conversation : conversations) {
+                totalUnread += conversation.unreadCount;
+            }
+        }
+        
+        return totalUnread;
+    }
+    
+    // Get conversations by type
+    public List<WKUIConversationMsg> getConversationsByType(byte channelType) {
+        List<WKUIConversationMsg> allConversations = WKIM.getInstance().getConversationManager().getAll();
+        List<WKUIConversationMsg> filteredConversations = new ArrayList<>();
+        
+        if (allConversations != null) {
+            for (WKUIConversationMsg conversation : allConversations) {
+                if (conversation.getWkChannel().channelType == channelType) {
+                    filteredConversations.add(conversation);
+                }
+            }
+        }
+        
+        return filteredConversations;
+    }
+}
+```
+
+## WKUIConversationMsg Data Structure
+
+### Conversation Message Properties
+
+```java
+public class WKUIConversationMsg {
+    // Last message timestamp
+    public long lastMsgTimestamp;
+    
+    // Message channel - channel info, may be null
+    // If null, call WKChannelManager's fetchChannelInfo(channelID, channelType) to trigger channel info change
+    private WKChannel wkChannel;
+    
+    // Message content
+    private WKMsg wkMsg;
+    
+    // Unread message count
+    public int unreadCount;
+    
+    // Remote extensions
+    private WKConversationMsgExtra remoteMsgExtra;
+    
+    // Local extension fields
+    public HashMap<String, Object> localExtraMap;
+    
+    // Recent conversation reminder items like [someone @you] [group audit] etc.
+    public List<WKReminder> getReminderList() {
+        // ...
+    }
+    
+    // Get remote extensions
+    public WKConversationMsgExtra getRemoteMsgExtra() {
+        // ...
+    }
+    
+    // Conversation channel info
+    public WKChannel getWkChannel() {
+        // ...
+    }
+}
+```
+
+### Property Description
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `lastMsgTimestamp` | long | Last message timestamp |
+| `wkChannel` | WKChannel | Message channel information |
+| `wkMsg` | WKMsg | Last message content |
+| `unreadCount` | int | Unread message count |
+| `remoteMsgExtra` | WKConversationMsgExtra | Remote extension information |
+| `localExtraMap` | HashMap | Local extension fields |
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Data Source Configuration"
+    icon="database"
+    href="/en/sdk/wukongim/android/datasource"
+  >
+    Learn how to configure conversation data sources
+  </Card>
+  <Card
+    title="Channel Member Management"
+    icon="user-group"
+    href="/en/sdk/wukongim/android/channel-member"
+  >
+    Manage channel member information
+  </Card>
+  <Card
+    title="Reminder Management"
+    icon="bell"
+    href="/en/sdk/wukongim/android/reminder"
+  >
+    Manage message reminder functionality
+  </Card>
+  <Card
+    title="Message Management"
+    icon="message-circle"
+    href="/en/sdk/wukongim/android/message"
+  >
+    Return to message handling functionality
+  </Card>
+</CardGroup>

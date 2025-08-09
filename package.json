@@ -1,46 +1,24 @@
 {
-  "name": "wukongim-doc",
+  "name": "wukongim-mintlify-docs",
   "version": "1.0.0",
-  "description": "wukongim文档",
+  "description": "WuKongIM Documentation powered by Mintlify",
   "keywords": [
     "WuKongIM",
-    "WuKong",
-    "WuKongIM",
-    "IM"
+    "IM",
+    "instant messaging",
+    "documentation",
+    "mintlify"
   ],
-	"type": "module",
   "scripts": {
-    "dev": "vitepress dev",
-    "build": "vitepress build",
-    "serve": "vitepress serve"
-  },
-  "dependencies": {
-    "@iconify-json/carbon": "^1.1.31",
-    "@iconify-json/logos": "^1.1.42",
-    "@iconify-json/mdi": "^1.1.66",
-    "@iconify-json/ph": "^1.1.12",
-    "@iconify-json/twemoji": "^1.1.15",
-    "@iconify-json/vscode-icons": "^1.1.33",
-    "vitepress": "1.1.0",
-    "vue": "^3.4.22"
+    "dev": "mint dev",
+    "build": "mint build",
+    "preview": "mint preview"
   },
   "devDependencies": {
-    "@types/node": "^18.15.13",
-    "markdown-it-custom-attrs": "^1.0.2",
-    "typescript": "^5.0.4",
-    "unocss": "^0.59.3",
-    "vite": "^5.2.9"
-  },
-  "pnpm": {
-    "peerDependencyRules": {
-      "ignoreMissing": [
-        "@algolia/client-search"
-      ]
-    }
+    "mint": "^4.0.0"
   },
   "engines": {
-    "node": "^14.18.0 || >=18.0.0"
+    "node": ">=18.0.0"
   },
-  "packageManager": "pnpm@9.0.0",
   "license": "ISC"
 }

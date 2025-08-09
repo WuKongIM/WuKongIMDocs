@@ -1,0 +1,205 @@
+---
+title: "Force Device Quit"
+description: "Force user device to quit/disconnect"
+api: "POST /user/device_quit"
+---
+
+## Overview
+
+Force a specified user's device to quit/disconnect, used for administrators to kick out users or handle abnormal connections.
+
+## Request Body
+
+### Required Parameters
+
+<ParamField body="uid" type="string" required>
+User ID
+</ParamField>
+
+### Optional Parameters
+
+<ParamField body="device_flag" type="integer">
+Device identifier, used to specify a particular device type
+- `0` - App (Android, iPhone, iPad devices)
+- `1` - Web (Browser, Web applications)  
+- `2` - Desktop (Desktop applications)
+
+If not specified, all devices for the user will be disconnected.
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "http://localhost:5001/user/device_quit" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "uid": "user123",
+    "device_flag": 1
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5001/user/device_quit', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    uid: 'user123',
+    device_flag: 1
+  })
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+
+data = {
+    "uid": "user123",
+    "device_flag": 1
+}
+
+response = requests.post('http://localhost:5001/user/device_quit', json=data)
+result = response.json()
+print(result)
+```
+
+```go Go
+package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    data := map[string]interface{}{
+        "uid":         "user123",
+        "device_flag": 1,
+    }
+    
+    jsonData, _ := json.Marshal(data)
+    
+    resp, err := http.Post(
+        "http://localhost:5001/user/device_quit",
+        "application/json",
+        bytes.NewBuffer(jsonData),
+    )
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    var result map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Printf("%+v\n", result)
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json Success Response
+{
+  "status": "ok"
+}
+```
+</ResponseExample>
+
+## Response Fields
+
+<ResponseField name="status" type="string" required>
+Operation status, returns `"ok"` on success
+</ResponseField>
+
+## Status Codes
+
+| Status Code | Description |
+|-------------|-------------|
+| 200 | Device quit successfully |
+| 400 | Request parameter error |
+| 404 | User does not exist or device not connected |
+| 500 | Internal server error |
+
+## Use Cases
+
+### Administrative Control
+
+**Kick Violating Users**:
+```javascript
+// Kick user from all devices
+await forceDeviceQuit("violating_user");
+
+// Kick user from specific device type
+await forceDeviceQuit("violating_user", 1); // Web only
+```
+
+**Session Management**:
+```javascript
+// Force logout from web sessions for security
+await forceDeviceQuit("user123", 1);
+```
+
+### Security Management
+
+**Suspicious Activity**:
+```javascript
+// Disconnect suspicious connections
+const suspiciousUsers = ["user1", "user2"];
+for (const uid of suspiciousUsers) {
+    await forceDeviceQuit(uid);
+}
+```
+
+**Account Compromise**:
+```javascript
+// Emergency disconnect all devices
+await forceDeviceQuit("compromised_user");
+```
+
+### Multi-Device Management
+
+**Device Limit Enforcement**:
+```javascript
+// Enforce single device policy
+async function enforceSingleDevice(uid, allowedDeviceFlag) {
+    // Get current online devices
+    const status = await getUserOnlineStatus([uid]);
+    
+    if (status[0]?.online && status[0].device_flag !== allowedDeviceFlag) {
+        // Disconnect other devices
+        await forceDeviceQuit(uid, status[0].device_flag);
+    }
+}
+```
+
+**Platform Migration**:
+```javascript
+// Force users to migrate to new platform
+async function migrateFromOldPlatform(userIds) {
+    for (const uid of userIds) {
+        // Disconnect old platform (device_flag: 0)
+        await forceDeviceQuit(uid, 0);
+    }
+}
+```
+
+## Best Practices
+
+1. **Logging**: Always log device quit operations for audit purposes
+2. **Notification**: Notify users when their devices are forcibly disconnected
+3. **Reason Codes**: Include reason codes for different disconnect scenarios
+4. **Rate Limiting**: Implement rate limiting to prevent abuse
+5. **Permission Check**: Verify administrator permissions before allowing device quit
+6. **Graceful Handling**: Allow users to reconnect after resolving issues
+
+## Security Considerations
+
+- **Admin Only**: This API should only be accessible to system administrators
+- **Audit Trail**: Maintain detailed logs of all forced disconnections
+- **User Notification**: Consider notifying users about forced disconnections
+- **Reason Documentation**: Document reasons for forced disconnections
+- **Appeal Process**: Provide a process for users to appeal disconnections

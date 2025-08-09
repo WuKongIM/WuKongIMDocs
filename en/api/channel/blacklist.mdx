@@ -1,0 +1,500 @@
+---
+title: "Add Channel Blacklist"
+description: "Add users to channel blacklist"
+api: "POST /channel/blacklist_add"
+---
+
+## Overview
+
+Add users to channel blacklist. Users added to the blacklist will be unable to join the channel or send messages.
+
+## Request Body
+
+### Required Parameters
+
+<ParamField body="channel_id" type="string" required>
+Channel ID
+</ParamField>
+
+<ParamField body="channel_type" type="integer" required>
+Channel type
+- `1` - Personal channel
+- `2` - Group channel
+</ParamField>
+
+<ParamField body="uids" type="array" required>
+List of user IDs to add to blacklist
+<ParamField body="uids[]" type="string">
+User ID
+</ParamField>
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "http://localhost:5001/channel/blacklist_add" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "channel_id": "group123",
+    "channel_type": 2,
+    "uids": ["user456", "user789"]
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5001/channel/blacklist_add', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    channel_id: 'group123',
+    channel_type: 2,
+    uids: ['user456', 'user789']
+  })
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+
+data = {
+    "channel_id": "group123",
+    "channel_type": 2,
+    "uids": ["user456", "user789"]
+}
+
+response = requests.post('http://localhost:5001/channel/blacklist_add', json=data)
+result = response.json()
+print(result)
+```
+
+```go Go
+package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    data := map[string]interface{}{
+        "channel_id":   "group123",
+        "channel_type": 2,
+        "uids":         []string{"user456", "user789"},
+    }
+    
+    jsonData, _ := json.Marshal(data)
+    
+    resp, err := http.Post(
+        "http://localhost:5001/channel/blacklist_add",
+        "application/json",
+        bytes.NewBuffer(jsonData),
+    )
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    var result map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Printf("%+v\n", result)
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json Success Response
+{
+  "status": "ok"
+}
+```
+</ResponseExample>
+
+## Response Fields
+
+<ResponseField name="status" type="string" required>
+Operation status, returns `"ok"` on success
+</ResponseField>
+
+## Status Codes
+
+| Status Code | Description |
+|-------------|-------------|
+| 200 | Blacklist operation successful |
+| 400 | Request parameter error |
+| 403 | No management permission |
+| 404 | Channel does not exist |
+| 500 | Internal server error |
+
+## Blacklist Mechanism
+
+### Restriction Scope
+
+Users added to the blacklist will face the following restrictions:
+
+| Operation | Restriction Effect | Description |
+|-----------|-------------------|-------------|
+| Send Messages | Prohibited | Cannot send any messages in the channel |
+| Join Channel | Blocked | Cannot join or rejoin the channel |
+| View Messages | Limited | May have limited access to channel content |
+
+### Permission Hierarchy
+
+Blacklist has higher priority than other permission settings:
+
+1. **Blacklist** > Whitelist > Regular member permissions
+2. **Administrator permissions** > Blacklist (Administrators are not restricted by blacklist)
+3. **System users** > Blacklist (System users are not restricted by blacklist)
+
+## Use Cases
+
+### Violation Handling
+
+**Handle Content Violations**:
+```javascript
+// Add users to blacklist for content violations
+async function handleContentViolation(channelId, channelType, violatingUsers, reason) {
+    try {
+        // Add to blacklist
+        await addToBlacklist({
+            channel_id: channelId,
+            channel_type: channelType,
+            uids: violatingUsers
+        });
+        
+        // Log violation
+        await logViolation({
+            channel_id: channelId,
+            channel_type: channelType,
+            violating_users: violatingUsers,
+            reason: reason,
+            action: 'blacklisted',
+            timestamp: new Date().toISOString()
+        });
+        
+        // Notify users about blacklisting
+        for (const userId of violatingUsers) {
+            await notifyUser(userId, {
+                type: 'blacklisted',
+                channel_id: channelId,
+                reason: reason,
+                appeal_process: 'Contact administrators to appeal'
+            });
+        }
+        
+        console.log(`Added ${violatingUsers.length} users to blacklist for: ${reason}`);
+    } catch (error) {
+        console.error('Failed to handle content violation:', error);
+    }
+}
+
+// Usage
+await handleContentViolation(
+    'group123', 
+    2, 
+    ['user456', 'user789'], 
+    'Inappropriate content sharing'
+);
+```
+
+### Spam and Abuse Prevention
+
+**Anti-Spam Management**:
+```javascript
+// Automated spam detection and blacklisting
+class SpamDetector {
+    constructor(channelId, channelType) {
+        this.channelId = channelId;
+        this.channelType = channelType;
+        this.messageHistory = new Map();
+        this.spamThresholds = {
+            messagesPerMinute: 10,
+            duplicateMessages: 3,
+            linkSpamCount: 5
+        };
+    }
+    
+    async analyzeMessage(userId, messageContent) {
+        const now = Date.now();
+        const userHistory = this.messageHistory.get(userId) || {
+            messages: [],
+            duplicates: new Map(),
+            linkCount: 0
+        };
+        
+        // Add current message
+        userHistory.messages.push({
+            content: messageContent,
+            timestamp: now
+        });
+        
+        // Clean old messages (older than 1 minute)
+        userHistory.messages = userHistory.messages.filter(
+            msg => now - msg.timestamp < 60000
+        );
+        
+        // Check for spam patterns
+        const spamDetected = this.detectSpamPatterns(userHistory, messageContent);
+        
+        if (spamDetected.isSpam) {
+            await this.handleSpamUser(userId, spamDetected.reasons);
+        }
+        
+        this.messageHistory.set(userId, userHistory);
+    }
+    
+    detectSpamPatterns(userHistory, messageContent) {
+        const reasons = [];
+        
+        // Check message frequency
+        if (userHistory.messages.length > this.spamThresholds.messagesPerMinute) {
+            reasons.push('High message frequency');
+        }
+        
+        // Check for duplicate messages
+        const duplicateCount = userHistory.messages.filter(
+            msg => msg.content === messageContent
+        ).length;
+        
+        if (duplicateCount > this.spamThresholds.duplicateMessages) {
+            reasons.push('Duplicate message spam');
+        }
+        
+        // Check for link spam
+        const linkCount = (messageContent.match(/https?:\/\/\S+/g) || []).length;
+        if (linkCount > 2) {
+            userHistory.linkCount += linkCount;
+            if (userHistory.linkCount > this.spamThresholds.linkSpamCount) {
+                reasons.push('Link spam');
+            }
+        }
+        
+        return {
+            isSpam: reasons.length > 0,
+            reasons: reasons
+        };
+    }
+    
+    async handleSpamUser(userId, reasons) {
+        try {
+            // Add to blacklist
+            await addToBlacklist({
+                channel_id: this.channelId,
+                channel_type: this.channelType,
+                uids: [userId]
+            });
+            
+            // Log spam incident
+            await logSpamIncident({
+                channel_id: this.channelId,
+                user_id: userId,
+                reasons: reasons,
+                action: 'auto_blacklisted',
+                timestamp: new Date().toISOString()
+            });
+            
+            console.log(`Auto-blacklisted user ${userId} for spam: ${reasons.join(', ')}`);
+        } catch (error) {
+            console.error(`Failed to blacklist spam user ${userId}:`, error);
+        }
+    }
+}
+
+// Usage
+const spamDetector = new SpamDetector('group123', 2);
+
+// Analyze incoming messages
+await spamDetector.analyzeMessage('user456', 'Buy now! Click here: http://spam.com');
+```
+
+### Moderation Tools
+
+**Advanced Moderation System**:
+```javascript
+// Comprehensive moderation system
+class ChannelModerator {
+    constructor(channelId, channelType) {
+        this.channelId = channelId;
+        this.channelType = channelType;
+        this.moderationRules = {
+            profanityFilter: true,
+            linkRestriction: true,
+            capsLockLimit: 0.7, // 70% caps lock threshold
+            mentionSpamLimit: 5
+        };
+    }
+    
+    async moderateUser(userId, violations) {
+        const severity = this.calculateViolationSeverity(violations);
+        
+        switch (severity) {
+            case 'low':
+                await this.issueWarning(userId, violations);
+                break;
+            case 'medium':
+                await this.temporaryRestriction(userId, violations);
+                break;
+            case 'high':
+                await this.addToBlacklist(userId, violations);
+                break;
+        }
+    }
+    
+    calculateViolationSeverity(violations) {
+        const severityScores = {
+            'profanity': 2,
+            'spam': 3,
+            'harassment': 4,
+            'inappropriate_content': 3,
+            'link_spam': 2,
+            'caps_abuse': 1
+        };
+        
+        const totalScore = violations.reduce((sum, violation) => 
+            sum + (severityScores[violation.type] || 1), 0
+        );
+        
+        if (totalScore >= 6) return 'high';
+        if (totalScore >= 3) return 'medium';
+        return 'low';
+    }
+    
+    async addToBlacklist(userId, violations) {
+        try {
+            await addToBlacklist({
+                channel_id: this.channelId,
+                channel_type: this.channelType,
+                uids: [userId]
+            });
+            
+            // Create moderation record
+            await createModerationRecord({
+                channel_id: this.channelId,
+                user_id: userId,
+                action: 'blacklisted',
+                violations: violations,
+                moderator: 'system',
+                timestamp: new Date().toISOString(),
+                appeal_deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+            });
+            
+            // Notify user
+            await notifyUser(userId, {
+                type: 'blacklisted',
+                channel_id: this.channelId,
+                violations: violations,
+                appeal_process: 'You can appeal this decision within 7 days'
+            });
+            
+            console.log(`User ${userId} blacklisted for violations:`, violations);
+        } catch (error) {
+            console.error(`Failed to blacklist user ${userId}:`, error);
+        }
+    }
+    
+    async issueWarning(userId, violations) {
+        await createModerationRecord({
+            channel_id: this.channelId,
+            user_id: userId,
+            action: 'warning',
+            violations: violations,
+            moderator: 'system',
+            timestamp: new Date().toISOString()
+        });
+        
+        await notifyUser(userId, {
+            type: 'warning',
+            channel_id: this.channelId,
+            violations: violations,
+            message: 'Please follow channel guidelines'
+        });
+    }
+    
+    async temporaryRestriction(userId, violations) {
+        // Implement temporary restriction logic
+        // This might involve a separate temporary blacklist system
+        console.log(`Temporary restriction for user ${userId}:`, violations);
+    }
+}
+```
+
+### Batch Blacklist Management
+
+**Bulk Blacklist Operations**:
+```javascript
+// Manage blacklists in bulk
+async function bulkBlacklistManagement(operations) {
+    const results = [];
+    
+    for (const operation of operations) {
+        try {
+            switch (operation.action) {
+                case 'add':
+                    await addToBlacklist({
+                        channel_id: operation.channelId,
+                        channel_type: operation.channelType,
+                        uids: operation.userIds
+                    });
+                    break;
+                    
+                case 'remove':
+                    await removeFromBlacklist({
+                        channel_id: operation.channelId,
+                        channel_type: operation.channelType,
+                        uids: operation.userIds
+                    });
+                    break;
+            }
+            
+            results.push({
+                operation: operation,
+                success: true
+            });
+        } catch (error) {
+            results.push({
+                operation: operation,
+                success: false,
+                error: error.message
+            });
+        }
+    }
+    
+    return results;
+}
+
+// Usage
+const operations = [
+    {
+        action: 'add',
+        channelId: 'group123',
+        channelType: 2,
+        userIds: ['spammer1', 'spammer2'],
+        reason: 'Spam detection'
+    },
+    {
+        action: 'remove',
+        channelId: 'group456',
+        channelType: 2,
+        userIds: ['reformed_user'],
+        reason: 'Appeal approved'
+    }
+];
+
+const results = await bulkBlacklistManagement(operations);
+console.log('Bulk operation results:', results);
+```
+
+## Best Practices
+
+1. **Clear Policies**: Establish clear guidelines for blacklisting users
+2. **Documentation**: Document all blacklist actions with reasons
+3. **Appeal Process**: Provide a clear appeal process for blacklisted users
+4. **Graduated Response**: Use warnings before blacklisting when appropriate
+5. **Regular Review**: Periodically review blacklists and remove outdated entries
+6. **Notification**: Inform users when they are blacklisted and why
+7. **Audit Trail**: Maintain detailed logs of all blacklist operations

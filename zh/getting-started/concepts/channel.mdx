@@ -1,0 +1,221 @@
+---
+title: "频道"
+description: "WuKongIM 频道的核心结构和管理方法"
+icon: "hash"
+---
+
+## 概念解释
+
+### 什么是频道？
+
+频道（Channel）是 WuKongIM 中消息传输的载体，定义了消息的发送目标和接收范围。每个频道都有唯一的标识符和类型，用于组织和管理不同的通讯场景。
+
+### 为什么频道很重要？
+
+- **消息路由**：频道决定了消息发送到哪里，是消息传输的基础
+- **权限控制**：不同类型的频道有不同的权限和管理规则
+- **场景区分**：通过频道类型区分一对一聊天和群组聊天等不同场景
+
+### 与其他概念的关系
+
+- **消息（Message）**：所有消息都必须指定目标频道才能发送
+- **用户（User）**：用户通过频道进行交流，可以是频道的创建者或参与者
+- **会话（Conversation）**：每个会话对应一个频道，会话列表实际上是用户参与的频道列表
+
+## 核心结构
+
+频道是消息传输的载体，包含以下核心属性：
+
+| 属性 | 类型 | 说明 |
+|------|------|------|
+| `channel_id` | string | 频道唯一标识符 |
+| `channel_type` | integer | 频道类型（1=个人，2=群组） |
+| `large` | integer | 大频道标识（0=否，1=是） |
+| `ban` | integer | 禁用状态（0=否，1=是） |
+| `disband` | integer | 解散状态（0=否，1=是） |
+
+### 频道类型
+
+- **个人频道 (1)**：一对一私聊
+- **群组频道 (2)**：多人群组聊天
+- **客服频道(3)**： 客服频道，不做权限判断
+- **社区频道(4)**:  社区频道，类似discord的频道
+- **社区话题频道(5)**: 社区话题频道，类似discord的频道下的子频道
+- **资讯频道(6)**:  资讯频道（有临时订阅者的概念，查看资讯的时候加入临时订阅，退出资讯的时候退出临时订阅）
+- **直播频道(9)**:  直播频道(直播频道不会保存最近会话数据) 
+- **访客频道(10)**:  访客频道 (频道id即为访客id，此频道只支持一个访客订阅者，多个客服订阅者，可以取代客服频道用于客服场景) 
+- **单聊Agent频道(11)**:  单聊Agent频道（AI Agent频道，频道ID内部结构为UID@AgentID的结构，类似单聊频道，此频道会针对于AI Agent场景做优化）
+- **群聊Agent频道(12)**:  群聊Agent频道（AI Agent群聊频道，类似群聊频道，此频道会针对于多Agent协同场景做优化）
+
+### 频道示例
+
+```json
+{
+  "channel_id": "group123",
+  "channel_type": 2,
+  "large": 1,
+  "ban": 0,
+  "disband": 0
+}
+```
+
+## 相关 API 端点
+
+| 端点 | 方法 | 说明 |
+|------|------|------|
+| `/channel` | POST | 创建频道 |
+| `/channel/info` | POST | 获取频道信息 |
+| `/channel/delete` | DELETE | 删除频道 |
+| `/channel/subscriber_add` | POST | 添加订阅者 |
+| `/channel/subscriber_remove` | POST | 移除订阅者 |
+| `/channel/messagesync` | POST | 同步频道消息 |
+
+## EasySDK 代码示例
+
+### 发送消息到不同类型频道
+
+<CodeGroup>
+```javascript Web
+import { WKIM, WKIMChannelType } from 'easyjssdk';
+
+const im = WKIM.init("ws://your-server.com:5200", {
+  uid: "your_user_id",
+  token: "your_token"
+});
+
+// 发送到个人频道（一对一聊天）
+const personalPayload = {
+  type: 1,
+  content: "Hello!"
+};
+await im.send("user123", WKIMChannelType.Person, personalPayload);
+
+// 发送到群组频道（群聊）
+const groupPayload = {
+  type: 1,
+  content: "Hello everyone!"
+};
+await im.send("group123", WKIMChannelType.Group, groupPayload);
+```
+
+```swift iOS
+import WuKongEasySDK
+
+let config = WuKongConfig(
+    serverUrl: "ws://your-server.com:5200",
+    uid: "your_user_id",
+    token: "your_token"
+)
+let easySDK = WuKongEasySDK(config: config)
+
+// 发送到个人频道（一对一聊天）
+let personalPayload = MessagePayload(
+    type: 1,
+    content: "Hello!"
+)
+try await easySDK.send(
+    channelId: "user123",
+    channelType: .person,
+    payload: personalPayload
+)
+
+// 发送到群组频道（群聊）
+let groupPayload = MessagePayload(
+    type: 1,
+    content: "Hello everyone!"
+)
+try await easySDK.send(
+    channelId: "group123",
+    channelType: .group,
+    payload: groupPayload
+)
+```
+
+```kotlin Android
+import com.githubim.easysdk.WuKongEasySDK
+import com.githubim.easysdk.WuKongConfig
+import com.githubim.easysdk.WuKongChannelType
+
+val config = WuKongConfig.Builder()
+    .serverUrl("ws://your-server.com:5200")
+    .uid("your_user_id")
+    .token("your_token")
+    .build()
+val easySDK = WuKongEasySDK.getInstance()
+easySDK.init(this, config)
+
+// 发送到个人频道（一对一聊天）
+val personalPayload = MessagePayload(
+    type = 1,
+    content = "Hello!"
+)
+easySDK.send(
+    channelId = "user123",
+    channelType = WuKongChannelType.PERSON,
+    payload = personalPayload
+)
+
+// 发送到群组频道（群聊）
+val groupPayload = MessagePayload(
+    type = 1,
+    content = "Hello everyone!"
+)
+easySDK.send(
+    channelId = "group123",
+    channelType = WuKongChannelType.GROUP,
+    payload = groupPayload
+)
+```
+
+```dart Flutter
+import 'package:wukong_easy_sdk/wukong_easy_sdk.dart';
+
+final config = WuKongConfig(
+  serverUrl: "ws://your-server.com:5200",
+  uid: "your_user_id",
+  token: "your_token",
+);
+final easySDK = WuKongEasySDK.getInstance();
+await easySDK.init(config);
+
+// 发送到个人频道（一对一聊天）
+final personalPayload = MessagePayload(
+  type: 1,
+  content: "Hello!",
+);
+await easySDK.send(
+  channelId: "user123",
+  channelType: WuKongChannelType.person,
+  payload: personalPayload,
+);
+
+// 发送到群组频道（群聊）
+final groupPayload = MessagePayload(
+  type: 1,
+  content: "Hello everyone!",
+);
+await easySDK.send(
+  channelId: "group123",
+  channelType: WuKongChannelType.group,
+  payload: groupPayload,
+);
+```
+</CodeGroup>
+
+### 频道类型说明
+
+<Note>
+**个人频道 (person)**：
+- `channelId` 为对方用户的 ID
+- 用于一对一私聊
+- 例如：发送给用户 "user123"，channelId 就是 "user123"
+
+**群组频道 (group)**：
+- `channelId` 为群组的 ID
+- 用于多人群组聊天
+- 例如：发送到群组 "group123"，channelId 就是 "group123"
+</Note>
+
+<Note>
+  频道通过 `channel_id` 和 `channel_type` 组合唯一标识，是消息传输的基础载体。
+</Note>

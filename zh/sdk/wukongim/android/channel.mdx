@@ -1,0 +1,512 @@
+---
+title: "频道管理"
+description: "WuKongIM Android SDK 频道管理功能，包括频道信息获取、更新和监听"
+icon: "hash"
+---
+
+频道(Channel)在 WuKongIM 中是一个比较抽象的概念。发送消息都是先发送给频道，频道根据自己的配置规则进行投递消息，频道分频道和频道详情。
+
+<Note>
+需要实现获取频道资料的数据源: [获取频道资料数据源](/zh/sdk/wukongim/android/datasource#频道资料数据源)
+</Note>
+
+## 频道资料管理
+
+### 获取频道资料
+
+获取 channel 信息，先获取内存，如果没有再从数据库获取：
+
+<CodeGroup>
+```java Java
+// 获取channel信息 先获取内存 如果没有再从数据库获取
+WKIM.getInstance().getChannelManager().getChannel(String channelID, byte channelType);
+```
+
+```kotlin Kotlin
+// 获取channel信息 先获取内存 如果没有再从数据库获取
+WKIM.getInstance().channelManager.getChannel(channelID, channelType)
+```
+</CodeGroup>
+
+### 强制刷新频道资料
+
+从远程服务器获取 channel 信息：
+
+<CodeGroup>
+```java Java
+// 从远程服务器获取channel信息
+WKIM.getInstance().getChannelManager().fetchChannelInfo(String channelID, byte channelType);
+```
+
+```kotlin Kotlin
+// 从远程服务器获取channel信息
+WKIM.getInstance().channelManager.fetchChannelInfo(channelID, channelType)
+```
+</CodeGroup>
+
+### 完整使用示例
+
+```java
+public class ChatActivity extends AppCompatActivity {
+    
+    private String channelID;
+    private byte channelType;
+    private WKChannel currentChannel;
+    
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_chat);
+        
+        // 添加频道刷新监听
+        WKIM.getInstance().getChannelManager().addOnRefreshChannelInfo("ChatActivity", new IRefreshChannel() {
+            @Override
+            public void onRefreshChannel(WKChannel channel, boolean isEnd) {
+                if (channel.channelID.equals(channelID) && channel.channelType == channelType) {
+                    runOnUiThread(() -> {
+                        currentChannel = channel;
+                        updateChannelUI();
+                    });
+                }
+            }
+        });
+        
+        // 加载频道信息
+        loadChannelInfo();
+    }
+    
+    private void loadChannelInfo() {
+        // 先从本地获取
+        currentChannel = WKIM.getInstance().getChannelManager().getChannel(channelID, channelType);
+        
+        if (currentChannel != null) {
+            // 本地有数据，直接使用
+            updateChannelUI();
+        } else {
+            // 本地没有数据，从服务器获取
+            WKIM.getInstance().getChannelManager().fetchChannelInfo(channelID, channelType);
+            showLoadingState();
+        }
+    }
+    
+    private void updateChannelUI() {
+        // 更新标题
+        setTitle(currentChannel.channelRemark != null ? currentChannel.channelRemark : currentChannel.channelName);
+        
+        // 更新头像
+        loadAvatar(currentChannel.avatar);
+        
+        // 更新置顶状态
+        updateTopStatus(currentChannel.top == 1);
+        
+        // 更新免打扰状态
+        updateMuteStatus(currentChannel.mute == 1);
+        
+        hideLoadingState();
+    }
+    
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        // 移除监听器
+        WKIM.getInstance().getChannelManager().removeRefreshChannelInfo("ChatActivity");
+    }
+}
+```
+
+## 事件监听
+
+### 刷新频道资料监听
+
+<CodeGroup>
+```java Java
+// 监听channel刷新事件
+WKIM.getInstance().getChannelManager().addOnRefreshChannelInfo("key", new IRefreshChannel() {
+    @Override
+    public void onRefreshChannel(WKChannel channel, boolean isEnd) {
+        // 处理频道信息更新
+        runOnUiThread(() -> {
+            updateChannelInfo(channel);
+        });
+    }
+});
+
+// 移除监听
+WKIM.getInstance().getChannelManager().removeRefreshChannelInfo("key");
+```
+
+```kotlin Kotlin
+// 监听channel刷新事件
+WKIM.getInstance().channelManager.addOnRefreshChannelInfo("key", object : IRefreshChannel {
+    override fun onRefreshChannel(channel: WKChannel, isEnd: Boolean) {
+        // 处理频道信息更新
+        runOnUiThread {
+            updateChannelInfo(channel)
+        }
+    }
+})
+
+// 移除监听
+WKIM.getInstance().channelManager.removeRefreshChannelInfo("key")
+```
+</CodeGroup>
+
+<Note>
+key为监听的唯一标识，可以为任意字符串，添加监听和移出监听时需要传入相同的key
+</Note>
+
+### 频道头像更新监听
+
+<CodeGroup>
+```java Java
+// 监听频道头像更新事件
+WKIM.getInstance().getChannelManager().addOnRefreshChannelAvatar(new IRefreshChannelAvatar() {
+    @Override
+    public void onRefreshChannelAvatar(String channelID, byte channelType) {
+        // 头像需要本地修改
+        String key = UUID.randomUUID().toString().replace("-", "");
+        WKIM.getInstance().getChannelManager().updateAvatarCacheKey(channelID, channelType, key);
+        
+        // 刷新UI中的头像
+        runOnUiThread(() -> {
+            refreshChannelAvatar(channelID, channelType);
+        });
+    }
+});
+```
+
+```kotlin Kotlin
+// 监听频道头像更新事件
+WKIM.getInstance().channelManager.addOnUpdateChannelAvatar("key", object : IRefreshChannelAvatar {
+    override fun onRefreshChannelAvatar(channelID: String, channelType: Int) {
+        // 头像需要本地修改
+        val key = UUID.randomUUID().toString().replace("-", "")
+        WKIM.getInstance().channelManager.updateAvatarCacheKey(channelID, channelType, key)
+        
+        // 刷新UI中的头像
+        runOnUiThread {
+            refreshChannelAvatar(channelID, channelType)
+        }
+    }
+})
+
+// 移除监听
+WKIM.getInstance().channelManager.removeUpdateChannelAvatar("key")
+```
+</CodeGroup>
+
+## 常用操作方法
+
+### 修改备注
+
+<CodeGroup>
+```java Java
+// 修改频道备注
+WKIM.getInstance().getChannelManager().updateRemark(String channelID, byte channelType, String remark);
+```
+
+```kotlin Kotlin
+// 修改频道备注
+WKIM.getInstance().channelManager.updateRemark(channelID, channelType, remark)
+```
+</CodeGroup>
+
+### 置顶/取消置顶
+
+<CodeGroup>
+```java Java
+// 置顶频道 1.置顶 0.取消置顶
+WKIM.getInstance().getChannelManager().updateTop(String channelID, byte channelType, int isTop);
+```
+
+```kotlin Kotlin
+// 置顶频道
+WKIM.getInstance().channelManager.setTopChannel(channelID, channelType, isTop)
+```
+</CodeGroup>
+
+### 保存频道资料
+
+<CodeGroup>
+```java Java
+// 保存频道资料
+WKIM.getInstance().getChannelManager().saveOrUpdateChannel(WKChannel channel);
+
+// 批量保存频道资料
+WKIM.getInstance().getChannelManager().saveOrUpdateChannels(List<WKChannel> list);
+```
+
+```kotlin Kotlin
+// 保存频道资料
+WKIM.getInstance().channelManager.saveOrUpdateChannel(channel)
+
+// 批量保存频道资料
+WKIM.getInstance().channelManager.saveOrUpdateChannels(list)
+```
+</CodeGroup>
+
+### 操作示例
+
+```java
+public class ChannelSettingsActivity extends AppCompatActivity {
+    
+    private WKChannel channel;
+    
+    // 修改频道备注
+    private void updateChannelRemark(String newRemark) {
+        WKIM.getInstance().getChannelManager().updateRemark(
+            channel.channelID, 
+            channel.channelType, 
+            newRemark
+        );
+        
+        // 同时调用服务器API同步
+        ApiManager.updateChannelRemark(channel.channelID, channel.channelType, newRemark, 
+            new ApiCallback<Void>() {
+                @Override
+                public void onSuccess(Void result) {
+                    runOnUiThread(() -> {
+                        showToast("备注修改成功");
+                        // 更新本地显示
+                        channel.channelRemark = newRemark;
+                        updateUI();
+                    });
+                }
+                
+                @Override
+                public void onError(int code, String message) {
+                    runOnUiThread(() -> {
+                        showToast("备注修改失败: " + message);
+                    });
+                }
+            });
+    }
+    
+    // 切换置顶状态
+    private void toggleTopStatus() {
+        int newTopStatus = channel.top == 1 ? 0 : 1;
+        
+        WKIM.getInstance().getChannelManager().updateTop(
+            channel.channelID, 
+            channel.channelType, 
+            newTopStatus
+        );
+        
+        // 同时调用服务器API同步
+        ApiManager.updateChannelTop(channel.channelID, channel.channelType, newTopStatus == 1,
+            new ApiCallback<Void>() {
+                @Override
+                public void onSuccess(Void result) {
+                    runOnUiThread(() -> {
+                        channel.top = newTopStatus;
+                        updateTopButton();
+                        showToast(newTopStatus == 1 ? "已置顶" : "已取消置顶");
+                    });
+                }
+                
+                @Override
+                public void onError(int code, String message) {
+                    runOnUiThread(() -> {
+                        // 恢复原状态
+                        WKIM.getInstance().getChannelManager().updateTop(
+                            channel.channelID, 
+                            channel.channelType, 
+                            channel.top
+                        );
+                        showToast("操作失败: " + message);
+                    });
+                }
+            });
+    }
+    
+    // 批量更新频道信息
+    private void batchUpdateChannels(List<WKChannel> channels) {
+        // 批量保存到本地
+        WKIM.getInstance().getChannelManager().saveOrUpdateChannels(channels);
+        
+        // 通知UI更新
+        runOnUiThread(() -> {
+            notifyChannelListChanged();
+        });
+    }
+}
+```
+
+## WKChannel 数据结构
+
+### 频道属性
+
+```java
+public class WKChannel {
+    // 频道ID
+    public String channelID;
+    
+    // 频道类型 1.为单聊 2.为群聊
+    public byte channelType;
+    
+    // 频道名称
+    public String channelName;
+    
+    // 频道备注(频道的备注名称，个人的话就是个人备注，群的话就是群别名)
+    public String channelRemark;
+    
+    // 频道头像
+    public String avatar;
+    
+    // 是否置顶
+    public int top;
+    
+    // 免打扰
+    public int mute;
+    
+    // 是否禁言
+    public int forbidden;
+    
+    // 远程扩展
+    public HashMap remoteExtraMap;
+    
+    // 本地扩展字段
+    public HashMap extraMap;
+}
+```
+
+### 属性说明
+
+| 属性 | 类型 | 说明 |
+|------|------|------|
+| `channelID` | String | 频道唯一标识 |
+| `channelType` | byte | 频道类型（1=单聊，2=群聊） |
+| `channelName` | String | 频道名称 |
+| `channelRemark` | String | 频道备注（个人备注或群别名） |
+| `avatar` | String | 频道头像URL |
+| `top` | int | 是否置顶（1=置顶，0=不置顶） |
+| `mute` | int | 是否免打扰（1=免打扰，0=不免打扰） |
+| `forbidden` | int | 是否禁言（1=禁言，0=不禁言） |
+| `remoteExtraMap` | HashMap | 远程扩展字段 |
+| `extraMap` | HashMap | 本地扩展字段 |
+
+## 最佳实践
+
+### 1. 频道信息缓存策略
+
+```java
+public class ChannelInfoManager {
+    
+    private Map<String, WKChannel> channelCache = new ConcurrentHashMap<>();
+    
+    public WKChannel getChannelWithCache(String channelID, byte channelType) {
+        String key = channelID + "_" + channelType;
+        
+        // 先从内存缓存获取
+        WKChannel channel = channelCache.get(key);
+        if (channel != null) {
+            return channel;
+        }
+        
+        // 从SDK获取
+        channel = WKIM.getInstance().getChannelManager().getChannel(channelID, channelType);
+        if (channel != null) {
+            channelCache.put(key, channel);
+            return channel;
+        }
+        
+        // 触发网络请求
+        WKIM.getInstance().getChannelManager().fetchChannelInfo(channelID, channelType);
+        return null;
+    }
+    
+    public void updateChannelCache(WKChannel channel) {
+        String key = channel.channelID + "_" + channel.channelType;
+        channelCache.put(key, channel);
+    }
+    
+    public void clearCache() {
+        channelCache.clear();
+    }
+}
+```
+
+### 2. 频道状态管理
+
+```java
+public class ChannelStatusHelper {
+    
+    public static String getDisplayName(WKChannel channel) {
+        // 优先显示备注，没有备注显示名称
+        return !TextUtils.isEmpty(channel.channelRemark) ? 
+               channel.channelRemark : channel.channelName;
+    }
+    
+    public static boolean isTopChannel(WKChannel channel) {
+        return channel.top == 1;
+    }
+    
+    public static boolean isMuteChannel(WKChannel channel) {
+        return channel.mute == 1;
+    }
+    
+    public static boolean isForbiddenChannel(WKChannel channel) {
+        return channel.forbidden == 1;
+    }
+    
+    public static String getChannelTypeText(byte channelType) {
+        switch (channelType) {
+            case 1:
+                return "单聊";
+            case 2:
+                return "群聊";
+            default:
+                return "未知";
+        }
+    }
+}
+```
+
+### 3. 内存管理
+
+```java
+@Override
+protected void onDestroy() {
+    super.onDestroy();
+    
+    // 移除所有频道相关监听器
+    WKIM.getInstance().getChannelManager().removeRefreshChannelInfo("ActivityKey");
+    WKIM.getInstance().getChannelManager().removeUpdateChannelAvatar("ActivityKey");
+    
+    // 清理引用
+    currentChannel = null;
+}
+```
+
+## 下一步
+
+<CardGroup cols={2}>
+  <Card
+    title="频道成员管理"
+    icon="user-group"
+    href="/zh/sdk/wukongim/android/channel-member"
+  >
+    学习如何管理频道成员
+  </Card>
+  <Card
+    title="会话管理"
+    icon="users"
+    href="/zh/sdk/wukongim/android/conversation"
+  >
+    处理会话列表和未读消息
+  </Card>
+  <Card
+    title="数据源配置"
+    icon="database"
+    href="/zh/sdk/wukongim/android/datasource"
+  >
+    配置频道数据源
+  </Card>
+  <Card
+    title="消息管理"
+    icon="message-circle"
+    href="/zh/sdk/wukongim/android/message"
+  >
+    回到消息处理功能
+  </Card>
+</CardGroup>

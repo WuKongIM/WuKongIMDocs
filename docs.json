@@ -1,0 +1,748 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "WuKongIM",
+  "description": "High-performance distributed instant messaging service documentation",
+  "colors": {
+    "primary": "#3B82F6",
+    "light": "#F8FAFC",
+    "dark": "#0F172A"
+  },
+  "logo": {
+    "light": "/images/logo-light.png",
+    "dark": "/images/logo-dark.png",
+    "href": "https://github.com/WuKongIM/WuKongIM"
+  },
+  "favicon": "/images/favicon.png",
+  "icons": {
+    "library": "lucide"
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "GitHub",
+        "href": "https://github.com/WuKongIM/WuKongIM",
+        "icon": "github"
+      }
+    ]
+  },
+  "navigation": {
+    "languages": [
+      {
+        "language": "en",
+        "global": {
+          "anchors": [
+            {
+              "anchor": "Chat Demo",
+              "href": "http://imdemo.githubim.com/",
+              "icon": "globe"
+            },
+            {
+              "anchor": "Admin Demo",
+              "href": "http://monitor.githubim.com/web/",
+              "icon": "discourse"
+            },
+            {
+              "anchor": "Releases",
+              "href": "https://github.com/WuKongIM/WuKongIM/releases",
+              "icon": "tag"
+            },
+            {
+              "anchor": "Legacy Docs",
+              "href": "http://oldv2.githubim.com/",
+              "icon": "book"
+            }
+          ]
+        },
+        "tabs": [
+          {
+            "tab": "Getting Started",
+            "icon": "rocket",
+            "pages": [
+              "en/index",
+              "en/getting-started/stress-report",
+              {
+                "group": "Installation & Configuration",
+                "pages": [
+                  "en/installation/overview",
+                  {
+                    "group": "Docker Deployment (Recommended)",
+                    "pages": [
+                      "en/installation/docker/single-node",
+                      "en/installation/docker/multi-node",
+                      "en/installation/docker/scaling",
+                      "en/installation/docker/upgrade"
+                    ]
+                  },
+                  {
+                    "group": "Linux Deployment",
+                    "pages": [
+                      "en/installation/linux/single-node",
+                      "en/installation/linux/multi-node",
+                      "en/installation/linux/scaling",
+                      "en/installation/linux/monitoring",
+                      "en/installation/linux/upgrade"
+                    ]
+                  },
+                  {
+                    "group": "Kubernetes Deployment (beta)",
+                    "pages": [
+                      "en/installation/k8s/single-node",
+                      "en/installation/k8s/multi-node",
+                      "en/installation/k8s/scaling",
+                      "en/installation/k8s/upgrade"
+                    ]
+                  },
+                  "en/server/configuration"
+                ]
+              },
+              {
+                "group": "Core Concepts",
+                "pages": [
+                  "en/getting-started/concepts/message",
+                  "en/getting-started/concepts/channel",
+                  "en/getting-started/concepts/user",
+                  "en/getting-started/concepts/device",
+                  "en/getting-started/concepts/conversation"
+                ]
+              },
+              {
+                "group": "Learning",
+                "pages": [
+                  "en/getting-started/learning/offline-messages",
+                  "en/getting-started/learning/system-integration",
+                  "en/getting-started/learning/protocol",
+                  "en/getting-started/learning/jsonrpc",
+                  "en/getting-started/learning/stress-testing",
+                  "en/getting-started/learning/plugin-development"
+                ]
+              }
+            ]
+          },
+          {
+            "tab": "API",
+            "icon": "chevrons-left-right-ellipsis",
+            "pages": [
+              "en/api/introduction",
+              {
+                "group": "Route Management",
+                "icon": "route",
+                "pages": [
+                  "en/api/route/get-address",
+                  "en/api/route/batch-address"
+                ]
+              },
+              {
+                "group": "Message Management",
+                "icon": "message-square",
+                "pages": [
+                  "en/api/message/send",
+                  "en/api/message/batch-send",
+                  "en/api/message/message-sync",
+                  "en/api/message/max-message-seq",
+                  "en/api/message/user-search",
+                  "en/api/message/batch-search",
+                  "en/api/message/single-search"
+                ]
+              },
+              {
+                "group": "Channel Management",
+                "icon": "hash",
+                "pages": [
+                  "en/api/channel/create",
+                  "en/api/channel/info",
+                  "en/api/channel/add-subscribers",
+                  "en/api/channel/remove-subscribers",
+                  "en/api/channel/delete",
+                  "en/api/channel/blacklist",
+                  "en/api/channel/whitelist",
+                  "en/api/channel/get-whitelist"
+                ]
+              },
+              {
+                "group": "User Management",
+                "icon": "users",
+                "pages": [
+                  "en/api/user/token",
+                  "en/api/user/device-quit",
+                  "en/api/user/online-status",
+                  "en/api/user/system-uids",
+                  "en/api/user/add-system-uids",
+                  "en/api/user/remove-system-uids"
+                ]
+              },
+              {
+                "group": "Conversation Management",
+                "icon": "messages-square",
+                "pages": [
+                  "en/api/conversation/sync",
+                  "en/api/conversation/clear-unread",
+                  "en/api/conversation/set-unread",
+                  "en/api/conversation/delete"
+                ]
+              },
+              {
+                "group": "Connection Management",
+                "icon": "link",
+                "pages": [
+                  "en/api/connection/remove",
+                  "en/api/connection/kick"
+                ]
+              },
+              {
+                "group": "Stream Messages",
+                "icon": "zap",
+                "pages": [
+                  "en/api/stream/open",
+                  "en/api/stream/write",
+                  "en/api/stream/close"
+                ]
+              },
+              {
+                "group": "Monitoring",
+                "icon": "activity",
+                "pages": [
+                  "en/api/monitoring/connections",
+                  "en/api/monitoring/variables"
+                ]
+              },
+              {
+                "group": "System",
+                "icon": "settings",
+                "pages": [
+                  "en/api/system/health",
+                  "en/api/system/migrate"
+                ]
+              },
+              {
+                "group": "Integration APIs",
+                "icon": "webhook",
+                "pages": [
+                  "en/api/webhook"
+                ]
+              },
+              {
+                "group": "Administrator",
+                "icon": "shield",
+                "pages": [
+                  "en/api/manager/login"
+                ]
+              }
+            ]
+          },
+          {
+            "tab": "SDK",
+            "icon": "code",
+            "pages": [
+              "en/sdk/overview",
+              "en/sdk/source-code",
+              {
+                "group": "WuKongEasySDK",
+                "icon": "rocket",
+                "pages": [
+                  "en/sdk/easy/overview",
+                  "en/sdk/easy/ios/getting-started",
+                  "en/sdk/easy/android/getting-started",
+                  "en/sdk/easy/flutter/getting-started",
+                  "en/sdk/easy/javascript/getting-started"
+                ]
+              },
+              {
+                "group": "WuKongIMSDK",
+                "icon": "library-big",
+                "pages": [
+                  {
+                    "group": "iOS SDK",
+                    "pages": [
+                      "en/sdk/wukongim/ios/intro",
+                      "en/sdk/wukongim/ios/integration",
+                      "en/sdk/wukongim/ios/connection",
+                      "en/sdk/wukongim/ios/chat",
+                      "en/sdk/wukongim/ios/channel",
+                      "en/sdk/wukongim/ios/conversation",
+                      "en/sdk/wukongim/ios/media",
+                      "en/sdk/wukongim/ios/advanced"
+                    ]
+                  },
+                  {
+                    "group": "Android SDK",
+                    "pages": [
+                      "en/sdk/wukongim/android/intro",
+                      "en/sdk/wukongim/android/integration",
+                      "en/sdk/wukongim/android/base",
+                      "en/sdk/wukongim/android/message",
+                      "en/sdk/wukongim/android/channel",
+                      "en/sdk/wukongim/android/channel-member",
+                      "en/sdk/wukongim/android/conversation",
+                      "en/sdk/wukongim/android/cmd",
+                      "en/sdk/wukongim/android/datasource",
+                      "en/sdk/wukongim/android/reminder",
+                      "en/sdk/wukongim/android/advance"
+                    ]
+                  },
+                  {
+                    "group": "Flutter SDK",
+                    "pages": [
+                      "en/sdk/wukongim/flutter/intro",
+                      "en/sdk/wukongim/flutter/integration",
+                      "en/sdk/wukongim/flutter/base",
+                      "en/sdk/wukongim/flutter/message",
+                      "en/sdk/wukongim/flutter/channel",
+                      "en/sdk/wukongim/flutter/channel_member",
+                      "en/sdk/wukongim/flutter/conversation",
+                      "en/sdk/wukongim/flutter/cmd",
+                      "en/sdk/wukongim/flutter/datasource",
+                      "en/sdk/wukongim/flutter/reminder",
+                      "en/sdk/wukongim/flutter/advance"
+                    ]
+                  },
+                  {
+                    "group": "HarmonyOS SDK",
+                    "pages": [
+                      "en/sdk/wukongim/harmonyos/intro",
+                      "en/sdk/wukongim/harmonyos/integration",
+                      "en/sdk/wukongim/harmonyos/base",
+                      "en/sdk/wukongim/harmonyos/message",
+                      "en/sdk/wukongim/harmonyos/channel",
+                      "en/sdk/wukongim/harmonyos/channel_member",
+                      "en/sdk/wukongim/harmonyos/conversation",
+                      "en/sdk/wukongim/harmonyos/cmd",
+                      "en/sdk/wukongim/harmonyos/datasource",
+                      "en/sdk/wukongim/harmonyos/reminder",
+                      "en/sdk/wukongim/harmonyos/advance"
+                    ]
+                  },
+                  {
+                    "group": "Web SDK",
+                    "pages": [
+                      "en/sdk/wukongim/javascript/intro",
+                      "en/sdk/wukongim/javascript/integration",
+                      "en/sdk/wukongim/javascript/base",
+                      "en/sdk/wukongim/javascript/chat",
+                      "en/sdk/wukongim/javascript/channel",
+                      "en/sdk/wukongim/javascript/conversation",
+                      "en/sdk/wukongim/javascript/datasource",
+                      "en/sdk/wukongim/javascript/advance"
+                    ]
+                  },
+                  {
+                    "group": "Other SDKs",
+                    "pages": [
+                      "en/sdk/wukongim/uniapp/intro",
+                      "en/sdk/wukongim/miniprogram/intro"
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "tab": "AI Agents (Future Feature)",
+            "icon": "brain",
+            "pages": [
+              {
+                "group": "Introduction",
+                "pages": [
+                  "en/ai/overview"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "language": "zh",
+        "global": {
+          "anchors": [
+            {
+              "anchor": "聊天演示",
+              "href": "http://imdemo.githubim.com/",
+              "icon": "globe"
+            },
+            {
+              "anchor": "后台演示",
+              "href": "http://monitor.githubim.com/web/",
+              "icon": "discourse"
+            },
+            {
+              "anchor": "Releases",
+              "href": "https://github.com/WuKongIM/WuKongIM/releases",
+              "icon": "tag"
+            },
+            {
+              "anchor": "旧版文档",
+              "href": "http://oldv2.githubim.com/",
+              "icon": "book"
+            }
+          ]
+        },
+        "tabs": [
+          {
+            "tab": "快速开始",
+            "icon": "rocket",
+            "pages": [
+              "zh/index",
+              "zh/getting-started/stress-report",
+              "zh/getting-started/wechat",
+              {
+                "group": "安装配置",
+                "pages": [
+                  "zh/installation/overview",
+                  {
+                    "group": "Docker部署（推荐）",
+                    "pages": [
+                      "zh/installation/docker/single-node",
+                      "zh/installation/docker/multi-node",
+                      "zh/installation/docker/scaling",
+                      "zh/installation/docker/upgrade"
+                    ]
+                  },
+                  {
+                    "group": "Linux部署",
+                    "pages": [
+                      "zh/installation/linux/single-node",
+                      "zh/installation/linux/multi-node",
+                      "zh/installation/linux/scaling",
+                      "zh/installation/linux/monitoring",
+                      "zh/installation/linux/upgrade"
+                    ]
+                  },
+                  {
+                    "group": "Kubernetes部署（beta）",
+                    "pages": [
+                      "zh/installation/k8s/single-node",
+                      "zh/installation/k8s/multi-node",
+                      "zh/installation/k8s/scaling",
+                      "zh/installation/k8s/upgrade"
+                    ]
+                  },
+                  "zh/server/configuration"
+                ]
+              },
+              {
+                "group": "核心概念",
+                "pages": [
+                  "zh/getting-started/concepts/message",
+                  "zh/getting-started/concepts/channel",
+                  "zh/getting-started/concepts/user",
+                  "zh/getting-started/concepts/device",
+                  "zh/getting-started/concepts/conversation"
+                ]
+              },
+              {
+                "group": "学习",
+                "pages": [
+                  "zh/getting-started/learning/offline-messages",
+                  "zh/getting-started/learning/system-integration",
+                  "zh/getting-started/learning/protocol",
+                  "zh/getting-started/learning/jsonrpc",
+                  "zh/getting-started/learning/stress-testing",
+                  "zh/getting-started/learning/plugin-development"
+                ]
+              }
+            ]
+          },
+          {
+            "tab": "API文档",
+            "icon": "chevrons-left-right-ellipsis",
+            "pages": [
+              "zh/api/introduction",
+              {
+                "group": "路由管理",
+                "icon": "route",
+                "pages": [
+                  "zh/api/route/get-address",
+                  "zh/api/route/batch-address"
+                ]
+              },
+              {
+                "group": "消息管理",
+                "icon": "message-square",
+                "pages": [
+                  "zh/api/message/send",
+                  "zh/api/message/batch-send",
+                  "zh/api/message/message-sync",
+                  "zh/api/message/max-message-seq",
+                  "zh/api/message/user-search",
+                  "zh/api/message/batch-search",
+                  "zh/api/message/single-search"
+                ]
+              },
+              {
+                "group": "频道管理",
+                "icon": "hash",
+                "pages": [
+                  "zh/api/channel/create",
+                  "zh/api/channel/info",
+                  "zh/api/channel/add-subscribers",
+                  "zh/api/channel/remove-subscribers",
+                  "zh/api/channel/delete",
+                  "zh/api/channel/blacklist",
+                  "zh/api/channel/whitelist",
+                  "zh/api/channel/get-whitelist"
+                ]
+              },
+              {
+                "group": "用户管理",
+                "icon": "users",
+                "pages": [
+                  "zh/api/user/token",
+                  "zh/api/user/device-quit",
+                  "zh/api/user/online-status",
+                  "zh/api/user/system-uids",
+                  "zh/api/user/add-system-uids",
+                  "zh/api/user/remove-system-uids"
+                ]
+              },
+              {
+                "group": "会话管理",
+                "icon": "messages-square",
+                "pages": [
+                  "zh/api/conversation/sync",
+                  "zh/api/conversation/clear-unread",
+                  "zh/api/conversation/set-unread",
+                  "zh/api/conversation/delete"
+                ]
+              },
+              {
+                "group": "连接管理",
+                "icon": "link",
+                "pages": [
+                  "zh/api/connection/remove",
+                  "zh/api/connection/kick"
+                ]
+              },
+              {
+                "group": "流消息",
+                "icon": "zap",
+                "pages": [
+                  "zh/api/stream/open",
+                  "zh/api/stream/write",
+                  "zh/api/stream/close"
+                ]
+              },
+              {
+                "group": "流消息",
+                "icon": "zap",
+                "pages": [
+                  "zh/api/stream/open",
+                  "zh/api/stream/write",
+                  "zh/api/stream/close"
+                ]
+              },
+              {
+                "group": "监控",
+                "icon": "activity",
+                "pages": [
+                  "zh/api/monitoring/connections",
+                  "zh/api/monitoring/variables"
+                ]
+              },
+              {
+                "group": "系统",
+                "icon": "settings",
+                "pages": [
+                  "zh/api/system/health",
+                  "zh/api/system/migrate"
+                ]
+              },
+              {
+                "group": "集成接口",
+                "icon": "webhook",
+                "pages": [
+                  "zh/api/webhook"
+                ]
+              },
+              {
+                "group": "管理员",
+                "icon": "shield",
+                "pages": [
+                  "zh/api/manager/login"
+                ]
+              }
+            ]
+          },
+          {
+            "tab": "SDK文档",
+            "icon": "code",
+            "pages": [
+              "zh/sdk/overview",
+              "zh/sdk/source-code",
+              {
+                "group": "WuKongEasySDK",
+                "icon": "rocket",
+                "pages": [
+                  "zh/sdk/easy/overview",
+                  "zh/sdk/easy/ios/getting-started",
+                  "zh/sdk/easy/android/getting-started",
+                  "zh/sdk/easy/flutter/getting-started",
+                  "zh/sdk/easy/javascript/getting-started"
+                ]
+              },
+              {
+                "group": "WuKongIMSDK",
+                "icon": "library-big",
+                "pages": [
+                  {
+                    "group": "iOS SDK",
+                    "pages": [
+                      "zh/sdk/wukongim/ios/intro",
+                      "zh/sdk/wukongim/ios/integration",
+                      "zh/sdk/wukongim/ios/connection",
+                      "zh/sdk/wukongim/ios/chat",
+                      "zh/sdk/wukongim/ios/channel",
+                      "zh/sdk/wukongim/ios/conversation",
+                      "zh/sdk/wukongim/ios/media",
+                      "zh/sdk/wukongim/ios/advanced"
+                    ]
+                  },
+                  {
+                    "group": "Android SDK",
+                    "pages": [
+                      "zh/sdk/wukongim/android/intro",
+                      "zh/sdk/wukongim/android/integration",
+                      "zh/sdk/wukongim/android/base",
+                      "zh/sdk/wukongim/android/message",
+                      "zh/sdk/wukongim/android/channel",
+                      "zh/sdk/wukongim/android/channel-member",
+                      "zh/sdk/wukongim/android/conversation",
+                      "zh/sdk/wukongim/android/cmd",
+                      "zh/sdk/wukongim/android/datasource",
+                      "zh/sdk/wukongim/android/reminder",
+                      "zh/sdk/wukongim/android/advance"
+                    ]
+                  },
+                  {
+                    "group": "Flutter SDK",
+                    "pages": [
+                      "zh/sdk/wukongim/flutter/intro",
+                      "zh/sdk/wukongim/flutter/integration",
+                      "zh/sdk/wukongim/flutter/base",
+                      "zh/sdk/wukongim/flutter/message",
+                      "zh/sdk/wukongim/flutter/channel",
+                      "zh/sdk/wukongim/flutter/channel_member",
+                      "zh/sdk/wukongim/flutter/conversation",
+                      "zh/sdk/wukongim/flutter/cmd",
+                      "zh/sdk/wukongim/flutter/datasource",
+                      "zh/sdk/wukongim/flutter/reminder",
+                      "zh/sdk/wukongim/flutter/advance"
+                    ]
+                  },
+                  {
+                    "group": "HarmonyOS SDK",
+                    "pages": [
+                      "zh/sdk/wukongim/harmonyos/intro",
+                      "zh/sdk/wukongim/harmonyos/integration",
+                      "zh/sdk/wukongim/harmonyos/base",
+                      "zh/sdk/wukongim/harmonyos/message",
+                      "zh/sdk/wukongim/harmonyos/channel",
+                      "zh/sdk/wukongim/harmonyos/channel_member",
+                      "zh/sdk/wukongim/harmonyos/conversation",
+                      "zh/sdk/wukongim/harmonyos/cmd",
+                      "zh/sdk/wukongim/harmonyos/datasource",
+                      "zh/sdk/wukongim/harmonyos/reminder",
+                      "zh/sdk/wukongim/harmonyos/advance"
+                    ]
+                  },
+                  {
+                    "group": "Web SDK",
+                    "pages": [
+                      "zh/sdk/wukongim/javascript/intro",
+                      "zh/sdk/wukongim/javascript/integration",
+                      "zh/sdk/wukongim/javascript/base",
+                      "zh/sdk/wukongim/javascript/chat",
+                      "zh/sdk/wukongim/javascript/channel",
+                      "zh/sdk/wukongim/javascript/conversation",
+                      "zh/sdk/wukongim/javascript/datasource",
+                      "zh/sdk/wukongim/javascript/advance"
+                    ]
+                  },
+                  {
+                    "group": "其他 SDK",
+                    "pages": [
+                      "zh/sdk/wukongim/uniapp/intro",
+                      "zh/sdk/wukongim/miniprogram/intro"
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "tab": "AI Agents(未来特性)",
+            "icon": "brain",
+            "pages": [
+              {
+                "group": "介绍",
+                "pages": [
+                  "zh/ai/overview"
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/WuKongIM/WuKongIM",
+      "website": "https://githubim.com"
+    },
+    "links": [
+      {
+        "header": "Resources",
+        "items": [
+          {
+            "label": "GitHub Repository",
+            "href": "https://github.com/WuKongIM/WuKongIM"
+          },
+          {
+            "label": "Live Demo",
+            "href": "http://imdemo.githubim.com/"
+          },
+          {
+            "label": "Monitoring Demo",
+            "href": "http://monitor.githubim.com/web"
+          }
+        ]
+      },
+      {
+        "header": "Community",
+        "items": [
+          {
+            "label": "Discussions",
+            "href": "https://github.com/WuKongIM/WuKongIM/discussions"
+          },
+          {
+            "label": "Issues",
+            "href": "https://github.com/WuKongIM/WuKongIM/issues"
+          },
+          {
+            "label": "Releases",
+            "href": "https://github.com/WuKongIM/WuKongIM/releases"
+          }
+        ]
+      }
+    ]
+  },
+  "search": {
+    "prompt": "Search WuKongIM documentation..."
+  },
+  "contextual": {
+    "options": [
+      "copy",
+      "view",
+      "chatgpt",
+      "claude"
+    ]
+  },
+  "seo": {
+    "indexing": "navigable"
+  },
+  "integrations": {
+    "amplitude": {
+      "apiKey": "282fb0af78e9e0124b3c459b2e48b4b1"
+    }
+  }
+}

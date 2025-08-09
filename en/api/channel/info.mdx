@@ -1,0 +1,166 @@
+---
+title: "Update Channel Info"
+description: "Update or add channel basic information"
+api: "POST /channel/info"
+---
+
+## Overview
+
+Update or add basic information for channels, including channel type, large group identifier, mute status, etc.
+
+## Request Body
+
+### Required Parameters
+
+<ParamField body="channel_id" type="string" required>
+Channel ID
+</ParamField>
+
+<ParamField body="channel_type" type="integer" required>
+Channel type
+- `1` - Personal channel
+- `2` - Group channel
+</ParamField>
+
+### Optional Parameters
+
+<ParamField body="ban" type="integer" default={0}>
+Whether to mute
+- `0` - Allow speaking
+- `1` - Mute all members
+</ParamField>
+
+<ParamField body="disband" type="integer" default={0}>
+Whether to disband channel
+- `1` - Disband channel (irreversible)
+</ParamField>
+
+<ParamField body="send_ban" type="integer" default={0}>
+Whether to prohibit sending messages (0=not prohibited, 1=prohibited). When prohibited, all members in the channel cannot send messages. Personal channels can receive messages but cannot send messages.
+</ParamField>
+
+<ParamField body="allow_stranger" type="integer" default={0}>
+Whether to allow strangers to send messages (0=not allowed, 1=allowed) (this configuration currently only supports personal channels)
+Personal channel: If AllowStranger is 1, strangers can send messages to the current user. For example: if the current account needs to accept stranger messages, channel_id is the current user's uid
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "http://localhost:5001/channel/info" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "channel_id": "group123",
+    "channel_type": 2,
+    "large": 1,
+    "ban": 0
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5001/channel/info', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    channel_id: 'group123',
+    channel_type: 2,
+    large: 1,
+    ban: 0
+  })
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+
+data = {
+    "channel_id": "group123",
+    "channel_type": 2,
+    "large": 1,
+    "ban": 0
+}
+
+response = requests.post('http://localhost:5001/channel/info', json=data)
+result = response.json()
+print(result)
+```
+
+```go Go
+package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    data := map[string]interface{}{
+        "channel_id":   "group123",
+        "channel_type": 2,
+        "large":        1,
+        "ban":          0,
+    }
+    
+    jsonData, _ := json.Marshal(data)
+    
+    resp, err := http.Post(
+        "http://localhost:5001/channel/info",
+        "application/json",
+        bytes.NewBuffer(jsonData),
+    )
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    var result map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Printf("%+v\n", result)
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json Success Response
+{
+  "status": "ok"
+}
+```
+</ResponseExample>
+
+## Response Fields
+
+<ResponseField name="status" type="string" required>
+Operation status, returns `"ok"` on success
+</ResponseField>
+
+## Status Codes
+
+| Status Code | Description |
+|-------------|-------------|
+| 200 | Channel info updated successfully |
+| 400 | Request parameter error |
+| 404 | Channel does not exist |
+| 500 | Internal server error |
+
+## Parameter Details
+
+### Channel Type (channel_type)
+
+| Value | Type | Description | Features |
+|-------|------|-------------|----------|
+| 1 | Personal channel | One-on-one private chat | Only two members, no group features |
+| 2 | Group channel | Multi-user group chat | Supports multiple members, group management features |
+
+### Mute Status (ban)
+
+| Value | Description | Scope | Management Permission |
+|-------|-------------|-------|----------------------|
+| 0 | Allow speaking | All members can send messages normally | Group owner and admins can modify |
+| 1 | Mute all | Only admins can send messages | Only group owner can modify |

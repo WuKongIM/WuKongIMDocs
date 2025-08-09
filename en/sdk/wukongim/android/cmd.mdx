@@ -1,0 +1,454 @@
+---
+title: "Command Management"
+description: "WuKongIM Android SDK command management functionality, handling command messages sent from the server"
+icon: "terminal"
+---
+
+CMD (Command) messages are special message types that can only be sent from the server to the client for parsing, used to implement server-to-client control instructions and system notifications.
+
+## Listen for CMD Messages
+
+### Basic Listening
+
+<CodeGroup>
+```java Java
+WKIM.getInstance().getCMDManager().addCmdListener("key", cmd -> {
+    // Handle cmd message
+    handleCommand(cmd);
+});
+
+// Remove listener
+WKIM.getInstance().getCMDManager().removeCmdListener("key");
+```
+
+```kotlin Kotlin
+WKIM.getInstance().cmdManager.addCmdListener("key") { cmd ->
+    // Handle cmd message
+    handleCommand(cmd)
+}
+
+// Remove listener
+WKIM.getInstance().cmdManager.removeCmdListener("key")
+```
+</CodeGroup>
+
+### Complete Usage Example
+
+```java
+public class CommandManager {
+    
+    private static final String LISTENER_KEY = "CommandManager";
+    
+    public void initialize() {
+        // Add command listener
+        WKIM.getInstance().getCMDManager().addCmdListener(LISTENER_KEY, this::handleCommand);
+    }
+    
+    private void handleCommand(WKCMD cmd) {
+        if (cmd == null || cmd.cmdKey == null) {
+            return;
+        }
+        
+        Log.d("CommandManager", "Received command: " + cmd.cmdKey);
+        
+        switch (cmd.cmdKey) {
+            case "user_status_change":
+                handleUserStatusChange(cmd.paramJsonObject);
+                break;
+                
+            case "group_member_update":
+                handleGroupMemberUpdate(cmd.paramJsonObject);
+                break;
+                
+            case "system_notification":
+                handleSystemNotification(cmd.paramJsonObject);
+                break;
+                
+            case "force_logout":
+                handleForceLogout(cmd.paramJsonObject);
+                break;
+                
+            case "message_recall":
+                handleMessageRecall(cmd.paramJsonObject);
+                break;
+                
+            case "typing_status":
+                handleTypingStatus(cmd.paramJsonObject);
+                break;
+                
+            case "online_status":
+                handleOnlineStatus(cmd.paramJsonObject);
+                break;
+                
+            default:
+                Log.w("CommandManager", "Unknown command type: " + cmd.cmdKey);
+                handleUnknownCommand(cmd);
+                break;
+        }
+    }
+    
+    // Handle user status change
+    private void handleUserStatusChange(JSONObject params) {
+        try {
+            String userId = params.getString("user_id");
+            int status = params.getInt("status");
+            
+            // Update user status
+            UserStatusManager.updateUserStatus(userId, status);
+            
+            // Notify UI update
+            EventBus.getDefault().post(new UserStatusChangedEvent(userId, status));
+            
+        } catch (JSONException e) {
+            Log.e("CommandManager", "Failed to parse user status change command", e);
+        }
+    }
+    
+    // Handle group member update
+    private void handleGroupMemberUpdate(JSONObject params) {
+        try {
+            String groupId = params.getString("group_id");
+            String action = params.getString("action"); // add, remove, update
+            JSONArray members = params.getJSONArray("members");
+            
+            switch (action) {
+                case "add":
+                    // Add group members
+                    handleGroupMemberAdd(groupId, members);
+                    break;
+                case "remove":
+                    // Remove group members
+                    handleGroupMemberRemove(groupId, members);
+                    break;
+                case "update":
+                    // Update group member info
+                    handleGroupMemberInfoUpdate(groupId, members);
+                    break;
+            }
+            
+        } catch (JSONException e) {
+            Log.e("CommandManager", "Failed to parse group member update command", e);
+        }
+    }
+    
+    // Handle system notification
+    private void handleSystemNotification(JSONObject params) {
+        try {
+            String title = params.getString("title");
+            String content = params.getString("content");
+            String type = params.optString("type", "info");
+            
+            // Show system notification
+            NotificationHelper.showSystemNotification(title, content, type);
+            
+        } catch (JSONException e) {
+            Log.e("CommandManager", "Failed to parse system notification command", e);
+        }
+    }
+    
+    // Handle force logout
+    private void handleForceLogout(JSONObject params) {
+        try {
+            String reason = params.optString("reason", "Account logged in from another device");
+            
+            // Clear local data
+            clearLocalData();
+            
+            // Disconnect
+            WKIM.getInstance().getConnectionManager().disconnect();
+            
+            // Navigate to login page
+            Intent intent = new Intent(context, LoginActivity.class);
+            intent.putExtra("logout_reason", reason);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            context.startActivity(intent);
+            
+        } catch (Exception e) {
+            Log.e("CommandManager", "Failed to handle force logout command", e);
+        }
+    }
+    
+    // Handle message recall
+    private void handleMessageRecall(JSONObject params) {
+        try {
+            String messageId = params.getString("message_id");
+            String channelId = params.getString("channel_id");
+            byte channelType = (byte) params.getInt("channel_type");
+            
+            // Update local message status
+            MessageManager.recallMessage(messageId, channelId, channelType);
+            
+            // Notify UI update
+            EventBus.getDefault().post(new MessageRecalledEvent(messageId, channelId, channelType));
+            
+        } catch (JSONException e) {
+            Log.e("CommandManager", "Failed to parse message recall command", e);
+        }
+    }
+    
+    // Handle typing status
+    private void handleTypingStatus(JSONObject params) {
+        try {
+            String channelId = params.getString("channel_id");
+            byte channelType = (byte) params.getInt("channel_type");
+            String userId = params.getString("user_id");
+            boolean isTyping = params.getBoolean("is_typing");
+            
+            // Update typing status
+            TypingStatusManager.updateTypingStatus(channelId, channelType, userId, isTyping);
+            
+            // Notify UI update
+            EventBus.getDefault().post(new TypingStatusEvent(channelId, channelType, userId, isTyping));
+            
+        } catch (JSONException e) {
+            Log.e("CommandManager", "Failed to parse typing status command", e);
+        }
+    }
+    
+    // Handle online status
+    private void handleOnlineStatus(JSONObject params) {
+        try {
+            JSONArray users = params.getJSONArray("users");
+            
+            for (int i = 0; i < users.length(); i++) {
+                JSONObject user = users.getJSONObject(i);
+                String userId = user.getString("user_id");
+                boolean isOnline = user.getBoolean("is_online");
+                long lastSeen = user.optLong("last_seen", 0);
+                
+                // Update online status
+                OnlineStatusManager.updateOnlineStatus(userId, isOnline, lastSeen);
+            }
+            
+            // Notify UI update
+            EventBus.getDefault().post(new OnlineStatusUpdatedEvent());
+            
+        } catch (JSONException e) {
+            Log.e("CommandManager", "Failed to parse online status command", e);
+        }
+    }
+    
+    // Handle unknown command
+    private void handleUnknownCommand(WKCMD cmd) {
+        // Log unknown command for debugging and extension
+        Log.w("CommandManager", "Received unknown command: " + cmd.cmdKey + ", params: " + cmd.paramJsonObject);
+        
+        // Can send to server for statistics
+        AnalyticsManager.trackUnknownCommand(cmd.cmdKey);
+    }
+    
+    // Clean up resources
+    public void destroy() {
+        WKIM.getInstance().getCMDManager().removeCmdListener(LISTENER_KEY);
+    }
+    
+    // Clear local data
+    private void clearLocalData() {
+        // Clear user info
+        UserManager.clearUserData();
+        
+        // Clear conversation list
+        ConversationManager.clearConversations();
+        
+        // Clear message cache
+        MessageManager.clearMessageCache();
+        
+        // Clear other local data
+        PreferenceManager.clearAllData();
+    }
+}
+```
+
+## WKCMD Data Structure
+
+### Command Object Properties
+
+```java
+public class WKCMD {
+    // Command ID
+    public String cmdKey;
+    
+    // Command parameters
+    public JSONObject paramJsonObject;
+}
+```
+
+### Property Description
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `cmdKey` | String | Command unique identifier, used to distinguish different types of commands |
+| `paramJsonObject` | JSONObject | Command parameters, containing data required for command execution |
+
+## Common Command Types
+
+### System Commands
+
+| Command Type | Description | Parameter Example |
+|--------------|-------------|-------------------|
+| `force_logout` | Force logout | `{"reason": "Account logged in from another device"}` |
+| `system_notification` | System notification | `{"title": "System Maintenance", "content": "System will be maintained tonight"}` |
+| `server_config_update` | Server configuration update | `{"config_key": "max_file_size", "value": "100MB"}` |
+
+### User-Related Commands
+
+| Command Type | Description | Parameter Example |
+|--------------|-------------|-------------------|
+| `user_status_change` | User status change | `{"user_id": "123", "status": 1}` |
+| `online_status` | Online status update | `{"users": [{"user_id": "123", "is_online": true}]}` |
+| `user_info_update` | User info update | `{"user_id": "123", "nickname": "New Nickname"}` |
+
+### Message-Related Commands
+
+| Command Type | Description | Parameter Example |
+|--------------|-------------|-------------------|
+| `message_recall` | Message recall | `{"message_id": "msg123", "channel_id": "ch123"}` |
+| `typing_status` | Typing status | `{"channel_id": "ch123", "user_id": "123", "is_typing": true}` |
+| `message_read` | Message read | `{"channel_id": "ch123", "message_id": "msg123"}` |
+
+### Group-Related Commands
+
+| Command Type | Description | Parameter Example |
+|--------------|-------------|-------------------|
+| `group_member_update` | Group member update | `{"group_id": "g123", "action": "add", "members": [...]}` |
+| `group_info_update` | Group info update | `{"group_id": "g123", "name": "New Group Name"}` |
+| `group_permission_change` | Group permission change | `{"group_id": "g123", "user_id": "123", "role": "admin"}` |
+
+## Best Practices
+
+### 1. Command Handler Pattern
+
+```java
+public abstract class CommandHandler {
+    protected String commandType;
+    
+    public CommandHandler(String commandType) {
+        this.commandType = commandType;
+    }
+    
+    public abstract void handle(JSONObject params);
+    
+    public boolean canHandle(String cmdKey) {
+        return commandType.equals(cmdKey);
+    }
+}
+
+public class CommandDispatcher {
+    private Map<String, CommandHandler> handlers = new HashMap<>();
+    
+    public void registerHandler(CommandHandler handler) {
+        handlers.put(handler.commandType, handler);
+    }
+    
+    public void dispatch(WKCMD cmd) {
+        CommandHandler handler = handlers.get(cmd.cmdKey);
+        if (handler != null) {
+            handler.handle(cmd.paramJsonObject);
+        } else {
+            Log.w("CommandDispatcher", "No handler found for command: " + cmd.cmdKey);
+        }
+    }
+}
+
+// Usage example
+CommandDispatcher dispatcher = new CommandDispatcher();
+dispatcher.registerHandler(new UserStatusCommandHandler());
+dispatcher.registerHandler(new MessageRecallCommandHandler());
+dispatcher.registerHandler(new SystemNotificationCommandHandler());
+
+WKIM.getInstance().getCMDManager().addCmdListener("Dispatcher", dispatcher::dispatch);
+```
+
+### 2. Asynchronous Processing
+
+```java
+public class AsyncCommandManager {
+    private ExecutorService executorService = Executors.newCachedThreadPool();
+    
+    public void initialize() {
+        WKIM.getInstance().getCMDManager().addCmdListener("AsyncManager", this::handleCommandAsync);
+    }
+    
+    private void handleCommandAsync(WKCMD cmd) {
+        executorService.execute(() -> {
+            try {
+                processCommand(cmd);
+            } catch (Exception e) {
+                Log.e("AsyncCommandManager", "Command processing exception", e);
+            }
+        });
+    }
+    
+    private void processCommand(WKCMD cmd) {
+        // Time-consuming command processing logic
+        switch (cmd.cmdKey) {
+            case "sync_data":
+                syncDataFromServer(cmd.paramJsonObject);
+                break;
+            case "update_cache":
+                updateLocalCache(cmd.paramJsonObject);
+                break;
+        }
+    }
+    
+    public void destroy() {
+        WKIM.getInstance().getCMDManager().removeCmdListener("AsyncManager");
+        executorService.shutdown();
+    }
+}
+```
+
+### 3. Memory Management
+
+```java
+@Override
+protected void onDestroy() {
+    super.onDestroy();
+    
+    // Remove all command listeners
+    WKIM.getInstance().getCMDManager().removeCmdListener("ActivityKey");
+    
+    // Clean up command dispatcher
+    if (commandDispatcher != null) {
+        commandDispatcher.clear();
+    }
+    
+    // Clean up async tasks
+    if (executorService != null && !executorService.isShutdown()) {
+        executorService.shutdown();
+    }
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Data Source Configuration"
+    icon="database"
+    href="/en/sdk/wukongim/android/datasource"
+  >
+    Learn how to configure data sources
+  </Card>
+  <Card
+    title="Reminder Management"
+    icon="bell"
+    href="/en/sdk/wukongim/android/reminder"
+  >
+    Handle message reminder functionality
+  </Card>
+  <Card
+    title="Advanced Features"
+    icon="cog"
+    href="/en/sdk/wukongim/android/advance"
+  >
+    Explore advanced features and optimizations
+  </Card>
+  <Card
+    title="Conversation Management"
+    icon="users"
+    href="/en/sdk/wukongim/android/conversation"
+  >
+    Return to conversation management functionality
+  </Card>
+</CardGroup>

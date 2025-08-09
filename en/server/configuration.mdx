@@ -1,0 +1,475 @@
+---
+title: "Server Configuration"
+description: "Complete WuKongIM server configuration guide"
+icon: "settings"
+---
+
+WuKongIM supports both YAML configuration files and environment variables. Environment variables take precedence over configuration files.
+
+## Basic Server Configuration
+
+<CodeGroup>
+```yaml YAML Configuration
+# Basic server configuration
+mode: "release"                       # Run mode: debug, test, release, bench
+addr: "tcp://0.0.0.0:5100"           # TCP listen address
+httpAddr: "0.0.0.0:5001"             # HTTP API listen address
+wsAddr: "ws://0.0.0.0:5200"          # WebSocket listen address
+wssAddr: "wss://0.0.0.0:5210"        # Secure WebSocket address
+rootDir: "./wukongimdata"             # Data storage directory
+ginMode: "release"                    # Gin framework mode
+deadlockCheck: false                  # Deadlock detection
+pprofOn: false                        # pprof performance analysis
+```
+
+```bash Environment Variables
+WK_MODE=release
+WK_ADDR=tcp://0.0.0.0:5100
+WK_HTTPADDR=0.0.0.0:5001
+WK_WSADDR=ws://0.0.0.0:5200
+WK_WSSADDR=wss://0.0.0.0:5210
+WK_ROOTDIR=./wukongimdata
+WK_GINMODE=release
+WK_DEADLOCKCHECK=false
+WK_PPROFON=false
+```
+</CodeGroup>
+
+## Admin Authentication Configuration
+
+<CodeGroup>
+```yaml YAML Configuration
+# Admin authentication configuration
+tokenAuthOn: false                    # Enable admin token authentication
+managerUID: "____manager"             # Admin user ID
+managerToken: ""                      # Admin API token
+whitelistOffOfPerson: true            # Disable personal whitelist verification
+```
+
+```bash Environment Variables
+WK_TOKENAUTHON=false
+WK_MANAGERUID=____manager
+WK_MANAGERTOKEN=
+WK_WHITELISTOFFOFPERSON=true
+```
+</CodeGroup>
+
+## External Access Configuration
+
+<CodeGroup>
+```yaml YAML Configuration
+# External access configuration
+external:
+  ip: ""                              # External IP address
+  tcpAddr: ""                         # External TCP address
+  wsAddr: ""                          # External WebSocket address
+  wssAddr: ""                         # External secure WebSocket address
+  monitorAddr: ""                     # External monitor address
+  apiUrl: ""                          # External API URL
+```
+
+```bash Environment Variables
+WK_EXTERNAL_IP=
+WK_EXTERNAL_TCPADDR=
+WK_EXTERNAL_WSADDR=
+WK_EXTERNAL_WSSADDR=
+WK_EXTERNAL_MONITORADDR=
+WK_EXTERNAL_APIURL=
+```
+</CodeGroup>
+
+## SSL/TLS Configuration
+
+<CodeGroup>
+```yaml YAML Configuration
+# SSL/TLS configuration
+wssConfig:
+  certFile: ""                        # SSL certificate file path
+  keyFile: ""                         # SSL private key file path
+```
+
+```bash Environment Variables
+WK_WSSCONFIG_CERTFILE=
+WK_WSSCONFIG_KEYFILE=
+```
+</CodeGroup>
+
+## Logging Configuration
+
+<CodeGroup>
+```yaml YAML Configuration
+# Logging configuration
+logger:
+  level: 0                            # Log level: 0=auto, 1=debug, 2=info, 3=warn, 4=error
+  dir: "./logs"                       # Log directory
+  lineNum: false                      # Show line numbers
+```
+
+```bash Environment Variables
+WK_LOGGER_LEVEL=0
+WK_LOGGER_DIR=./logs
+WK_LOGGER_LINENUM=false
+```
+</CodeGroup>
+
+## Monitoring Configuration
+
+<CodeGroup>
+```yaml YAML Configuration
+# Monitoring configuration
+monitor:
+  on: true                            # Enable monitoring
+  addr: "0.0.0.0:5300"               # Monitor listen address
+
+# Demo interface configuration
+demo:
+  on: true                            # Enable demo interface
+  addr: "0.0.0.0:5172"               # Demo interface address
+```
+
+```bash Environment Variables
+WK_MONITOR_ON=true
+WK_MONITOR_ADDR=0.0.0.0:5300
+WK_DEMO_ON=true
+WK_DEMO_ADDR=0.0.0.0:5172
+```
+</CodeGroup>
+
+## Channel Configuration
+
+<CodeGroup>
+```yaml YAML Configuration
+# Channel configuration
+channel:
+  cacheCount: 1000                    # Channel cache count
+  createIfNoExist: true               # Auto-create non-existent channels
+  subscriberCompressOfCount: 0        # Subscriber compression threshold
+
+# Temporary channel configuration
+tmpChannel:
+  suffix: "@tmp"                      # Temporary channel suffix
+  cacheCount: 500                     # Temporary channel cache count
+```
+
+```bash Environment Variables
+WK_CHANNEL_CACHECOUNT=1000
+WK_CHANNEL_CREATEIFNOEXIST=true
+WK_CHANNEL_SUBSCRIBERCOMPRESSOFCOUNT=0
+WK_TMPCHANNEL_SUFFIX=@tmp
+WK_TMPCHANNEL_CACHECOUNT=500
+```
+</CodeGroup>
+
+## User Authentication Configuration
+
+<CodeGroup>
+```yaml YAML Configuration
+# User authentication configuration
+auth:
+  on: true                            # Enable user authentication
+  kind: "jwt"                         # Authentication method: jwt, none
+  users:                              # User list (for username/password auth)
+    - "admin:pwd:*"                   # Admin user
+    - "guest:guest:[*:r]"             # Read-only user
+
+# JWT configuration
+jwt:
+  secret: ""                          # JWT secret (32-character random string)
+  expire: "30d"                       # Token expiration time
+```
+
+```bash Environment Variables
+WK_AUTH_ON=true
+WK_AUTH_KIND=jwt
+WK_AUTH_USERS="admin:pwd:* guest:guest:[*:r]"
+WK_JWT_SECRET=
+WK_JWT_EXPIRE=30d
+```
+</CodeGroup>
+
+## Webhook Configuration
+
+<CodeGroup>
+```yaml YAML Configuration
+# Webhook configuration
+webhook:
+  httpAddr: ""                        # Webhook HTTP address
+  grpcAddr: ""                        # Webhook gRPC address
+  msgNotifyEventPushInterval: "500ms" # Message notification push interval
+  msgNotifyEventRetryMaxCount: 5      # Max retry count for push failures
+  msgNotifyEventCountPerPush: 100     # Message count limit per push
+  focusEvents:                        # Focused event types
+    - "msg.offline"
+    - "msg.notify"
+    - "user.onlinestatus"
+```
+
+```bash Environment Variables
+WK_WEBHOOK_HTTPADDR=
+WK_WEBHOOK_GRPCADDR=
+WK_WEBHOOK_MSGNOTIFYEVENTPUSHINTERVAL=500ms
+WK_WEBHOOK_MSGNOTIFYEVENTRETRYMAXCOUNT=5
+WK_WEBHOOK_MSGNOTIFYEVENTCOUNTperpush=100
+WK_WEBHOOK_FOCUSEVENTS="msg.offline msg.notify user.onlinestatus"
+```
+</CodeGroup>
+
+## Datasource Configuration
+
+<CodeGroup>
+```yaml YAML Configuration
+# Datasource configuration
+datasource:
+  addr: ""                            # Datasource address
+  channelInfoOn: false                # Enable channel info datasource
+```
+
+```bash Environment Variables
+WK_DATASOURCE_ADDR=
+WK_DATASOURCE_CHANNELINFOON=false
+```
+</CodeGroup>
+
+## Conversation Configuration
+
+<CodeGroup>
+```yaml YAML Configuration
+# Recent conversation configuration
+conversation:
+  on: true                            # Enable recent conversations
+  cacheExpire: "1d"                   # Cache expiration time
+  syncInterval: "5m"                  # Save interval
+  syncOnce: 100                       # Sync save count
+  userMaxCount: 1000                  # Max conversation count per user
+```
+
+```bash Environment Variables
+WK_CONVERSATION_ON=true
+WK_CONVERSATION_CACHEEXPIRE=1d
+WK_CONVERSATION_SYNCINTERVAL=5m
+WK_CONVERSATION_SYNCONCE=100
+WK_CONVERSATION_USERMAXCOUNT=1000
+```
+</CodeGroup>
+
+## Message Retry Configuration
+
+<CodeGroup>
+```yaml YAML Configuration
+# Message retry configuration
+messageRetry:
+  interval: "60s"                     # Retry interval
+  scanInterval: "5s"                  # Scan interval
+  maxCount: 5                         # Max retry count
+
+# User message queue configuration
+userMsgQueueMaxSize: 0                # User message queue max size, 0 for unlimited
+```
+
+```bash Environment Variables
+WK_MESSAGERETRY_INTERVAL=60s
+WK_MESSAGERETRY_SCANINTERVAL=5s
+WK_MESSAGERETRY_MAXCOUNT=5
+WK_USERMSGQUEUEMAXSIZE=0
+```
+</CodeGroup>
+
+## Tracing Configuration
+
+<CodeGroup>
+```yaml YAML Configuration
+# Data tracing configuration
+trace:
+  prometheusApiUrl: ""                # Prometheus API URL
+```
+
+```bash Environment Variables
+WK_TRACE_PROMETHEUSAPIURL=
+```
+</CodeGroup>
+
+## Cluster Configuration
+
+<CodeGroup>
+```yaml YAML Configuration
+# Cluster configuration
+cluster:
+  nodeId: 1001                        # Node ID
+  addr: "tcp://0.0.0.0:11110"        # Distributed listen address
+  serverAddr: ""                      # Inter-node communication address
+  apiUrl: ""                          # Node HTTP address
+  slotCount: 64                       # Slot count
+  slotReplicaCount: 3                 # Slot replica count
+  channelReplicaCount: 3              # Channel replica count
+  initNodes:                          # Initial node list
+    - "1001@192.168.1.12:11110"
+    - "1002@192.168.1.13:11110"
+    - "1003@192.168.1.14:11110"
+  seed:                               # Cluster seed nodes
+    - "1001@192.168.1.12:11110"
+```
+
+```bash Environment Variables
+WK_CLUSTER_NODEID=1001
+WK_CLUSTER_ADDR=tcp://0.0.0.0:11110
+WK_CLUSTER_SERVERADDR=
+WK_CLUSTER_APIURL=
+WK_CLUSTER_SLOTCOUNT=64
+WK_CLUSTER_SLOTREPLICACOUNT=3
+WK_CLUSTER_CHANNELREPLICACOUNT=3
+WK_CLUSTER_INITNODES="1001@192.168.1.12:11110 1002@192.168.1.13:11110 1003@192.168.1.14:11110"
+WK_CLUSTER_SEED="1001@192.168.1.12:11110"
+```
+</CodeGroup>
+
+## Plugin Configuration
+
+<CodeGroup>
+```yaml YAML Configuration
+# Plugin configuration
+plugin:
+  socketPath: "./wukongimdata/1/wukongim.sock"  # Plugin Unix Socket address
+  install:                                      # Default installed plugin list
+    - "https://gitee.com/WuKongDev/plugins/releases/download/latest/wk.plugin.ai-example-${os}-${arch}.wkp"
+    - "https://gitee.com/WuKongDev/plugins/releases/download/latest/wk.plugin.ai-volcengine-${os}-${arch}.wkp"
+```
+
+```bash Environment Variables
+WK_PLUGIN_SOCKETPATH=./wukongimdata/1/wukongim.sock
+WK_PLUGIN_INSTALL="https://gitee.com/WuKongDev/plugins/releases/download/latest/wk.plugin.ai-example-${os}-${arch}.wkp https://gitee.com/WuKongDev/plugins/releases/download/latest/wk.plugin.ai-volcengine-${os}-${arch}.wkp"
+```
+</CodeGroup>
+
+## Configuration Examples
+
+### Production Environment
+
+```yaml
+# Production configuration
+mode: "release"
+tokenAuthOn: true
+managerUID: "admin"
+managerToken: "prod-secure-token-2024"
+
+external:
+  ip: "203.0.113.1"
+  wssAddr: "wss://yourdomain.com:5210"
+
+wssConfig:
+  certFile: "/etc/letsencrypt/live/yourdomain.com/fullchain.pem"
+  keyFile: "/etc/letsencrypt/live/yourdomain.com/privkey.pem"
+
+logger:
+  level: 3
+  dir: "/var/log/wukongim"
+
+auth:
+  on: true
+  kind: "jwt"
+
+jwt:
+  secret: "your-production-jwt-secret-32-chars"
+  expire: "7d"
+
+monitor:
+  on: true
+
+demo:
+  on: false
+```
+
+### Development Environment
+
+```yaml
+# Development configuration
+mode: "debug"
+tokenAuthOn: false
+
+logger:
+  level: 1
+  lineNum: true
+
+auth:
+  on: true
+  kind: "jwt"
+  users:
+    - "dev:dev123:*"
+    - "test:test123:[*:r]"
+
+jwt:
+  secret: "dev-jwt-secret-for-testing-only"
+  expire: "24h"
+
+monitor:
+  on: true
+
+demo:
+  on: true
+```
+
+## Docker Compose Configuration
+
+```yaml
+version: '3.7'
+services:
+  wukongim:
+    image: wukongim/wukongim:latest
+    environment:
+      # Basic configuration
+      - "WK_MODE=release"
+      - "WK_TOKENAUTHON=true"
+      - "WK_MANAGERTOKEN=secure-token-123"
+
+      # External access
+      - "WK_EXTERNAL_IP=203.0.113.1"
+      - "WK_EXTERNAL_WSSADDR=wss://yourdomain.com:5210"
+
+      # SSL configuration
+      - "WK_WSSCONFIG_CERTFILE=/etc/ssl/certs/wukongim.crt"
+      - "WK_WSSCONFIG_KEYFILE=/etc/ssl/private/wukongim.key"
+
+      # User authentication
+      - "WK_AUTH_ON=true"
+      - "WK_AUTH_KIND=jwt"
+      - "WK_JWT_SECRET=your-secure-jwt-secret-32-characters"
+
+    ports:
+      - "5001:5001"   # HTTP API
+      - "5100:5100"   # TCP
+      - "5200:5200"   # WebSocket
+      - "5210:5210"   # WSS
+      - "5300:5300"   # Monitor
+
+    volumes:
+      - "./data:/root/wukongim"
+      - "./certs:/etc/ssl/certs:ro"
+      - "./private:/etc/ssl/private:ro"
+```
+
+## Environment Variable Rules
+
+- **Prefix**: All environment variables start with `WK_`
+- **Hierarchy**: Use underscore `_` to separate configuration levels
+- **Case**: Use all uppercase letters
+- **Array Format**: Use space-separated values, e.g., `WK_AUTH_USERS="user1:pass1 user2:pass2"`
+- **Boolean Values**: Use `true` or `false`
+- **Priority**: Environment variables > Configuration file > Default values
+
+## Configuration Validation
+
+Validate configuration before startup:
+```bash
+# Check configuration syntax
+./wukongim --config wukongim.yaml --validate
+
+# Check configuration on startup
+./wukongim --config wukongim.yaml --check-config
+```
+
+## Security Recommendations
+
+- Production environments must enable `tokenAuthOn`
+- Use 32-character random string for JWT secret
+- Regularly rotate admin tokens and JWT secrets
+- Set SSL certificate file permissions to 600
+- Disable unnecessary demo interfaces and debug features

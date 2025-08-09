@@ -1,0 +1,110 @@
+---
+title: "获取频道白名单"
+description: "获取频道白名单用户列表"
+api: "GET /channel/whitelist"
+---
+
+## 概述
+
+获取指定频道的白名单用户列表，返回所有在白名单中的用户 ID。
+
+## 查询参数
+
+<ParamField query="channel_id" type="string" required>
+频道 ID
+</ParamField>
+
+<ParamField query="channel_type" type="integer" required>
+频道类型
+- `1` - 个人频道
+- `2` - 群组频道
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X GET "http://localhost:5001/channel/whitelist?channel_id=group123&channel_type=2"
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5001/channel/whitelist?channel_id=group123&channel_type=2');
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+
+params = {
+    'channel_id': 'group123',
+    'channel_type': 2
+}
+
+response = requests.get('http://localhost:5001/channel/whitelist', params=params)
+data = response.json()
+print(data)
+```
+
+```go Go
+package main
+
+import (
+    "encoding/json"
+    "fmt"
+    "net/http"
+    "net/url"
+)
+
+func main() {
+    baseURL := "http://localhost:5001/channel/whitelist"
+    params := url.Values{}
+    params.Add("channel_id", "group123")
+    params.Add("channel_type", "2")
+    
+    fullURL := baseURL + "?" + params.Encode()
+    
+    resp, err := http.Get(fullURL)
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    var result []string
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Printf("%+v\n", result)
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json 成功响应
+[
+  "user456",
+  "user789",
+  "user101"
+]
+```
+
+```json 空白名单
+[]
+```
+</ResponseExample>
+
+## 响应字段
+
+<ResponseField name="whitelist" type="array" required>
+白名单用户 ID 列表
+<ResponseField name="whitelist[]" type="string">
+用户 ID
+</ResponseField>
+</ResponseField>
+
+## 状态码
+
+| 状态码 | 说明 |
+|--------|------|
+| 200 | 成功获取白名单 |
+| 400 | 请求参数错误 |
+| 403 | 没有查看权限 |
+| 404 | 频道不存在 |
+| 500 | 服务器内部错误 |
+

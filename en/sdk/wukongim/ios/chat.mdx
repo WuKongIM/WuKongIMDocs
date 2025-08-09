@@ -1,0 +1,428 @@
+---
+title: "Chat Management"
+description: "WuKongIM iOS SDK chat management functionality, including message sending/receiving, message history and message extensions"
+icon: "message-square"
+---
+
+The chat manager is responsible for message data management, such as: message sending, message receiving, message updates, etc.
+
+<Note>
+This documentation only covers core methods. For more details, check the `[WKSDK shared].chatManager` interface in the code.
+</Note>
+
+## Online Message Sending and Receiving
+
+### Sending Messages
+
+#### Basic Send Method
+
+```objc
+/**
+ Send message (send and save message)
+
+ @param content Message content
+ @param channel Target channel (personal channel, group channel, customer service channel, etc.)
+ */
+[[WKSDK shared].chatManager sendMessage:(WKMessageContent*)content channel:(WKChannel*)channel];
+```
+
+#### Send Example
+
+```objc
+// Send message "hello" to user A
+WKChannel *channel = [[WKChannel alloc] initWith:@"A" channelType:WK_PERSON];
+
+// Send to group g1
+// WKChannel *channel = [[WKChannel alloc] initWith:@"g1" channelType:WK_GROUP];
+
+// Build a text message object
+WKTextContent *content = [[WKTextContent alloc] initWithContent:@"hello"];
+
+// Send this text message to the specified channel
+[[WKSDK shared].chatManager sendMessage:content channel:channel];
+```
+
+### Message Listening
+
+#### Add Listener
+
+```objc
+[WKSDK.shared.chatManager addDelegate:self]; // WKChatManagerDelegate
+```
+
+#### WKChatManagerDelegate Description
+
+```objc
+// ------ WKChatManagerDelegate  ------
+/**
+ Received message notification
+ @param message Received message
+ @param left Remaining message count, can refresh UI when left is 0 to avoid frequent UI refreshes causing lag
+ */
+- (void)onRecvMessages:(WKMessage*)message left:(NSInteger)left;
+
+/**
+ Message update notification
+ @param message Changed message
+ */
+-(void) onMessageUpdate:(WKMessage*) message;
+
+/**
+ Message delete notification
+ @param message Deleted message
+ */
+-(void) onMessageDelete:(WKMessage*) message;
+
+/**
+ Message status update
+ @param message Message with updated status
+ */
+-(void) onMessageStatusUpdate:(WKMessage*) message;
+```
+
+## Common Message Types
+
+The SDK includes some common message types, such as text messages, image messages, and voice messages.
+
+### Text Messages
+
+```objc
+@interface WKTextContent : WKMessageContent
+
+- (instancetype)initWithContent:(NSString*)content;
+
+@property(nonatomic,copy) NSString *content; // Message content
+
+@property(nonatomic,copy,nullable) NSString *format; // Content format, default is plain text: html, markdown
+
+@end
+```
+
+#### Usage Example
+
+```objc
+// Create text message
+WKTextContent *textContent = [[WKTextContent alloc] initWithContent:@"Hello World"];
+
+// Set format (optional)
+textContent.format = @"markdown"; // Supports html, markdown
+
+// Send message
+WKChannel *channel = [[WKChannel alloc] initWith:@"user123" channelType:WK_PERSON];
+[[WKSDK shared].chatManager sendMessage:textContent channel:channel];
+```
+
+### Image Messages
+
+```objc
+@interface WKImageContent : WKMediaMessageContent
+
+@property(nonatomic,assign) CGFloat width; // Image width
+@property(nonatomic,assign) CGFloat height; // Image height
+
+/*!
+ Initialize image message
+ @param image   Original image
+ @return        Image message object
+ */
+- (instancetype)initWithImage:(UIImage *)image;
+
+/// Initialize with data
+/// @param data Image data
+/// @param width Image width
+/// @param height Image height
+- (instancetype)initWithData:(NSData *)data width:(CGFloat)width height:(CGFloat)height;
+
+/// Initialize
+/// @param data Original image data
+/// @param width Original image width
+/// @param height Original image height
+/// @param thumbData Thumbnail data (if thumbnail data is provided, SDK will not generate thumbnail data)
+- (instancetype)initWithData:(NSData *)data width:(CGFloat)width height:(CGFloat)height thumbData:(nullable NSData*)thumbData;
+
+/*!
+ Whether to send original image
+ @discussion When sending images, whether to send original image, default is NO.
+ */
+@property (nonatomic, getter=isFull) BOOL full;
+
+@end
+```
+
+#### Usage Example
+
+```objc
+// Create image message from UIImage
+UIImage *image = [UIImage imageNamed:@"example.jpg"];
+WKImageContent *imageContent = [[WKImageContent alloc] initWithImage:image];
+
+// Set to send original image
+imageContent.full = YES;
+
+// Send image message
+WKChannel *channel = [[WKChannel alloc] initWith:@"user123" channelType:WK_PERSON];
+[[WKSDK shared].chatManager sendMessage:imageContent channel:channel];
+```
+
+### Voice Messages
+
+```objc
+@interface WKVoiceContent : WKMediaMessageContent
+
+/**
+ Initialize
+ @param voiceData Audio data
+ @param second Audio duration in seconds
+ @param waveform Audio waveform data (optional parameter)
+ @return Voice message object
+ */
+- (instancetype)initWithData:(NSData *)voiceData second:(int)second waveform:(NSData*)waveform;
+
+// Audio data
+@property(nonatomic,strong) NSData *voiceData;
+
+// Audio duration (in seconds)
+@property(nonatomic,assign) NSInteger second;
+
+// Audio waveform data (optional parameter)
+@property(nonatomic,strong) NSData *waveform;
+
+@end
+```
+
+#### Usage Example
+
+```objc
+// Create voice message
+NSData *voiceData = [NSData dataWithContentsOfFile:voicePath];
+WKVoiceContent *voiceContent = [[WKVoiceContent alloc] initWithData:voiceData second:30 waveform:nil];
+
+// Send voice message
+WKChannel *channel = [[WKChannel alloc] initWith:@"user123" channelType:WK_PERSON];
+[[WKSDK shared].chatManager sendMessage:voiceContent channel:channel];
+```
+
+### Custom Messages
+
+See [Custom Messages](./advanced) for details.
+
+## Message Extensions
+
+Some messages may need to carry additional information, such as message read status, whether the message has been edited, etc. This information can be implemented through message extension properties.
+
+### Update Extensions
+
+The WKMessage class has a `remoteExtra` property. After modifying this property, you need to call this method to update the remote extension:
+
+```objc
+[[WKSDK shared].chatManager updateMessageRemoteExtra:(WKMessage*)message];
+```
+
+### Sync Extensions
+
+Incrementally sync all message extension data for a specified channel (this method is generally called once when opening a chat page):
+
+```objc
+// channel Channel to sync
+[[WKSDK shared].chatManager syncMessageExtra:(WKChannel*)channel 
+                                     complete:(void(^_Nullable)(NSError * _Nullable error))complete];
+```
+
+### Extension Data Source
+
+#### Update Extension Data Source
+
+Trigger timing: Triggered when calling `[[WKSDK shared].chatManager updateMessageRemoteExtra]`
+
+```objc
+// newExtra New extension data
+// oldExtra Old extension data
+[[[WKSDK shared] chatManager] setUpdateMessageExtraProvider:^(WKMessageExtra *newExtra,WKMessageExtra *oldExtra,WKUpdateMessageExtraCallback callback) {
+    // Implement your server API call here
+    // Call callback with result
+}];
+```
+
+#### Sync Extension Data Source
+
+Trigger timing: Triggered when calling `[[WKSDK shared].chatManager syncMessageExtra]`
+
+```objc
+// channel Channel to sync extension messages
+// extraVersion Current client data version
+// limit Data amount per sync
+// callback Should call this callback when getting messages from server (Note: callback must be called regardless of success or failure)
+[[[WKSDK shared] chatManager] setSyncMessageExtraProvider:^(WKChannel * _Nonnull channel, long long extraVersion,NSInteger limit, WKSyncMessageExtraCallback  _Nonnull callback) {
+    // Implement your server API call here
+    // Call callback with result
+}];
+```
+
+## Message History
+
+### Query Latest Messages
+
+Query the latest messages for a channel (generally called when first entering a conversation page to query first screen messages):
+
+```objc
+/**
+ Query latest messages for a channel
+ @param channel Channel
+ @param limit Message count limit
+ @param complete Query callback
+ */
+[[WKSDK shared].chatManager pullLastMessages:(WKChannel*)channel 
+                                        limit:(int)limit 
+                                     complete:(void(^)(NSArray<WKMessage*> *messages, NSError *error))complete];
+```
+
+### Pull Down to Load Messages
+
+```objc
+/**
+ Pull down to load messages
+ @param channel Channel
+ @param startOrderSeq Starting orderSeq, e.g., to query 10 messages above 100, startOrderSeq would be 100, resulting data: 90 91 92 93 94 95 96 97 98 99
+ @param limit Message count limit
+ @param complete Query callback
+ */
+[[WKSDK shared].chatManager pullDown:(WKChannel*)channel 
+                        startOrderSeq:(uint32_t)startOrderSeq 
+                                limit:(int)limit 
+                             complete:(void(^)(NSArray<WKMessage*> *messages, NSError *error))complete];
+```
+
+### Pull Up to Load Messages
+
+```objc
+/**
+ Pull up to load messages
+ @param startOrderSeq Starting orderSeq, e.g., to query 10 messages below 100, startOrderSeq would be 100, resulting data: 101 102 103 104 105 106 107 108 109 110
+ @param limit Message count limit
+ @param complete Query callback
+ */
+[[WKSDK shared].chatManager pullUp:(WKChannel*)channel 
+                      startOrderSeq:(uint32_t)startOrderSeq 
+                              limit:(int)limit 
+                           complete:(void(^)(NSArray<WKMessage*> *messages, NSError *error))complete];
+```
+
+### Query Messages Around
+
+```objc
+/**
+ Query messages around specified orderSeq, 5 above and 5 below, e.g., if orderSeq is 20, query 16 17 18 19 20 21 22 23 24 25, mainly used for message positioning
+ @param channel Channel
+ @param orderSeq Query messages around this OrderSeq
+ */
+[[WKSDK shared].chatManager pullAround:(WKChannel*)channel 
+                               orderSeq:(uint32_t)orderSeq  
+                                  limit:(int)limit 
+                               complete:(void(^)(NSArray<WKMessage*> *messages, NSError *error))complete];
+```
+
+### Message History Data Source
+
+`Trigger timing: When getting message history and the message doesn't exist locally, SDK will call this method to complete local messages`
+
+Sync channel messages. When requesting message history, SDK will check if messages exist locally. If not or missing, SDK will call this method to request messages from server.
+
+```objc
+// channel Channel to sync messages
+// startMessageSeq Start message sequence number
+// endMessageSeq End message sequence number
+// limit Message sync count per request
+// pullMode Pull message mode 0: pull down 1: pull up
+// callback Should call this callback when getting messages from server (Note: callback must be called regardless of success or failure)
+[WKSDK.shared.chatManager setSyncChannelMessageProvider:^(WKChannel * _Nonnull channel, uint32_t startMessageSeq, uint32_t endMessageSeq, NSInteger limit, WKPullMode pullMode, WKSyncChannelMessageCallback  _Nonnull callback) {
+    // Implement your server API call here
+    // Call callback with result
+}];
+```
+
+## Core Class Properties
+
+Message class core properties:
+
+```objc
+@interface WKMessage : NSObject
+
+@property(nonatomic,strong) WKMessageHeader *header; // Message header
+
+@property(nonatomic,strong) WKSetting *setting; // Message settings
+
+@property(nonatomic,strong) WKChannel *channel; // Chat channel
+
+@property(nonatomic,copy) NSString *fromUid; // Sender uid
+
+@property(nonatomic,strong) WKMessageContent *content; // Message content
+
+@property(nonatomic,assign) NSInteger timestamp; // Message time (server time, in seconds)
+
+@property(nonatomic,strong) NSMutableDictionary *extra; // Message local extension data
+
+@property(nonatomic,strong) WKMessageExtra *remoteExtra; // Message remote extension
+
+@property(nonatomic,assign) WKMessageStatus status; // Message status
+
+@end
+```
+
+Message content core properties:
+
+```objc
+@interface WKMessageContent : NSObject<NSCopying>
+
+/**
+ Your custom message type, should be consistent across platforms
+ @return Content type
+ */
+- (NSNumber*) contentType;
+
+// Upper layer doesn't need to implement encode, implement this method instead
+- (NSDictionary*) encodeWithJSON;
+
+// Upper layer doesn't need to implement decode, implement this method instead
+- (void) decodeWithJSON:(NSDictionary*)contentDic;
+
+// @mention information in message
+@property (nonatomic, strong) WKMentionedInfo *mentionedInfo;
+
+/// Reply content
+@property(nonatomic,strong) WKReply *reply;
+
+@end
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Channel Management"
+    icon="hash"
+    href="/en/sdk/wukongim/ios/channel"
+  >
+    Learn how to manage channels and groups
+  </Card>
+  <Card
+    title="Conversation Management"
+    icon="users"
+    href="/en/sdk/wukongim/ios/conversation"
+  >
+    Handle conversation lists and unread messages
+  </Card>
+  <Card
+    title="Media Messages"
+    icon="image"
+    href="/en/sdk/wukongim/ios/media"
+  >
+    Handle images, voice, video and other multimedia messages
+  </Card>
+  <Card
+    title="Advanced Features"
+    icon="cog"
+    href="/en/sdk/wukongim/ios/advanced"
+  >
+    Custom messages and advanced configuration
+  </Card>
+</CardGroup>

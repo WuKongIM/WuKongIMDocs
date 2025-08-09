@@ -1,0 +1,359 @@
+---
+title: "消息"
+description: "WuKongIM 消息的核心结构和使用方法"
+icon: "message-circle-more"
+---
+
+## 概念解释
+
+### 什么是消息？
+
+消息（Message）是 WuKongIM 中信息传递的基本单位，是用户之间进行实时通讯的载体。每条消息都包含发送者、接收者、内容和元数据等信息。
+
+### 为什么消息很重要？
+
+- **通讯基础**：消息是即时通讯系统的核心，所有的聊天功能都基于消息传递
+- **数据载体**：消息不仅可以传递文本，还可以传递图片、文件、位置等各种类型的数据
+- **状态追踪**：每条消息都有唯一标识和状态，便于追踪消息的发送、接收和阅读状态
+
+### 与其他概念的关系
+
+- **频道（Channel）**：消息通过频道进行传输，频道定义了消息的发送目标
+- **用户（User）**：消息有明确的发送者和接收者，都是系统中的用户
+- **会话（Conversation）**：消息会更新对应的会话记录，影响会话列表的显示
+
+## 核心结构
+
+消息包含以下核心属性：
+
+| 属性 | 类型 | 说明 |
+|------|------|------|
+| `message_id` | integer | 消息唯一标识符 |
+| `message_seq` | integer | 频道内消息序号 |
+| `client_msg_no` | string | 客户端消息标识 |
+| `from_uid` | string | 发送者用户ID |
+| `channel_id` | string | 目标频道ID |
+| `channel_type` | integer | 频道类型（1=个人，2=群组） |
+| `timestamp` | integer | 消息时间戳 |
+| `payload` | string | Base64编码的消息内容 |
+
+### 消息示例
+
+```json
+{
+  "message_id": 123456789,
+  "message_seq": 1001,
+  "client_msg_no": "client_msg_123",
+  "from_uid": "user123",
+  "channel_id": "group123",
+  "channel_type": 2,
+  "timestamp": 1640995200,
+  "payload": "SGVsbG8gV29ybGQ="
+}
+
+```
+
+## 相关 API 端点
+
+| 端点 | 方法 | 说明 |
+|------|------|------|
+| `/message/send` | POST | 发送单条消息 |
+| `/message/sendbatch` | POST | 批量发送消息 |
+| `/message/search` | POST | 搜索历史消息 |
+| `/channel/messagesync` | POST | 同步频道消息 |
+
+## EasySDK 代码示例
+
+### 发送消息
+
+<CodeGroup>
+```javascript Web
+import { WKIM, WKIMChannelType } from 'easyjssdk';
+
+// 初始化 SDK
+const im = WKIM.init("ws://your-server.com:5200", {
+  uid: "your_user_id",
+  token: "your_token"
+});
+
+// 发送文本消息
+const textPayload = {
+  type: 1,
+  content: "Hello, World!"
+};
+const result = await im.send("friend_user_id", WKIMChannelType.Person, textPayload);
+
+// 发送图片消息
+const imagePayload = {
+  type: 2,
+  url: "https://example.com/image.jpg",
+  width: 800,
+  height: 600
+};
+const imageResult = await im.send("group_id", WKIMChannelType.Group, imagePayload);
+```
+
+```swift iOS
+import WuKongEasySDK
+
+// 初始化 SDK
+let config = WuKongConfig(
+    serverUrl: "ws://your-server.com:5200",
+    uid: "your_user_id",
+    token: "your_token"
+)
+let easySDK = WuKongEasySDK(config: config)
+
+// 发送文本消息
+let textPayload = MessagePayload(
+    type: 1,
+    content: "Hello, World!"
+)
+try await easySDK.send(
+    channelId: "friend_user_id",
+    channelType: .person,
+    payload: textPayload
+)
+
+// 发送图片消息
+let imagePayload = MessagePayload(
+    type: 2,
+    url: "https://example.com/image.jpg",
+    width: 800,
+    height: 600
+)
+try await easySDK.send(
+    channelId: "group_id",
+    channelType: .group,
+    payload: imagePayload
+)
+```
+
+```kotlin Android
+import com.githubim.easysdk.WuKongEasySDK
+import com.githubim.easysdk.WuKongConfig
+import com.githubim.easysdk.WuKongChannelType
+
+// 初始化 SDK
+val config = WuKongConfig.Builder()
+    .serverUrl("ws://your-server.com:5200")
+    .uid("your_user_id")
+    .token("your_token")
+    .build()
+val easySDK = WuKongEasySDK.getInstance()
+easySDK.init(this, config)
+
+// 发送文本消息
+val textPayload = MessagePayload(
+    type = 1,
+    content = "Hello, World!"
+)
+easySDK.send(
+    channelId = "friend_user_id",
+    channelType = WuKongChannelType.PERSON,
+    payload = textPayload
+)
+
+// 发送图片消息
+val imagePayload = MessagePayload(
+    type = 2,
+    url = "https://example.com/image.jpg",
+    width = 800,
+    height = 600
+)
+easySDK.send(
+    channelId = "group_id",
+    channelType = WuKongChannelType.GROUP,
+    payload = imagePayload
+)
+```
+
+```dart Flutter
+import 'package:wukong_easy_sdk/wukong_easy_sdk.dart';
+
+// 初始化 SDK
+final config = WuKongConfig(
+  serverUrl: "ws://your-server.com:5200",
+  uid: "your_user_id",
+  token: "your_token",
+);
+final easySDK = WuKongEasySDK.getInstance();
+await easySDK.init(config);
+
+// 发送文本消息
+final textPayload = MessagePayload(
+  type: 1,
+  content: "Hello, World!",
+);
+await easySDK.send(
+  channelId: "friend_user_id",
+  channelType: WuKongChannelType.person,
+  payload: textPayload,
+);
+
+// 发送图片消息
+final imagePayload = MessagePayload(
+  type: 2,
+  url: "https://example.com/image.jpg",
+  width: 800,
+  height: 600,
+);
+await easySDK.send(
+  channelId: "group_id",
+  channelType: WuKongChannelType.group,
+  payload: imagePayload,
+);
+```
+</CodeGroup>
+
+### 监听消息
+
+<CodeGroup>
+```javascript Web
+import { WKIMEvent } from 'easyjssdk';
+
+// 监听新消息
+im.on(WKIMEvent.Message, (message) => {
+  console.log("收到新消息:", message);
+  console.log("消息内容:", message.payload);
+  console.log("发送者:", message.fromUid);
+});
+```
+
+```swift iOS
+// 监听新消息
+easySDK.onMessage { message in
+    print("收到新消息:", message)
+    print("消息内容:", message.payload)
+    print("发送者:", message.fromUid)
+}
+```
+
+```kotlin Android
+import com.githubim.easysdk.WuKongEvent
+import com.githubim.easysdk.listener.WuKongEventListener
+
+// 监听新消息
+easySDK.addEventListener(WuKongEvent.MESSAGE, object : WuKongEventListener<Message> {
+    override fun onEvent(message: Message) {
+        Log.d("WuKong", "收到新消息: $message")
+        Log.d("WuKong", "消息内容: ${message.payload}")
+        Log.d("WuKong", "发送者: ${message.fromUid}")
+    }
+})
+```
+
+```dart Flutter
+// 监听新消息
+easySDK.addEventListener(WuKongEvent.message, (Message message) {
+  print("收到新消息: $message");
+  print("消息内容: ${message.payload}");
+  print("发送者: ${message.fromUid}");
+});
+```
+</CodeGroup>
+
+### 消息类型处理
+
+<CodeGroup>
+```javascript Web
+// 根据消息类型处理不同内容
+im.on(WKIMEvent.Message, (message) => {
+  const payload = JSON.parse(message.payload);
+
+  switch (payload.type) {
+    case 1: // 文本消息
+      console.log("文本消息:", payload.content);
+      break;
+    case 2: // 图片消息
+      console.log("图片消息:", payload.url);
+      break;
+    case 100: // 自定义消息
+      console.log("自定义消息:", payload);
+      break;
+  }
+});
+```
+
+```swift iOS
+// 根据消息类型处理不同内容
+easySDK.onMessage { message in
+    if let payloadData = Data(base64Encoded: message.payload),
+       let payload = try? JSONSerialization.jsonObject(with: payloadData) as? [String: Any],
+       let type = payload["type"] as? Int {
+
+        switch type {
+        case 1: // 文本消息
+            if let content = payload["content"] as? String {
+                print("文本消息:", content)
+            }
+        case 2: // 图片消息
+            if let url = payload["url"] as? String {
+                print("图片消息:", url)
+            }
+        case 100: // 自定义消息
+            print("自定义消息:", payload)
+        default:
+            print("未知消息类型:", type)
+        }
+    }
+}
+```
+
+```kotlin Android
+// 根据消息类型处理不同内容
+easySDK.addEventListener(WuKongEvent.MESSAGE, object : WuKongEventListener<Message> {
+    override fun onEvent(message: Message) {
+        try {
+            val payloadJson = JSONObject(String(Base64.decode(message.payload, Base64.DEFAULT)))
+            val type = payloadJson.getInt("type")
+
+            when (type) {
+                1 -> { // 文本消息
+                    val content = payloadJson.getString("content")
+                    Log.d("WuKong", "文本消息: $content")
+                }
+                2 -> { // 图片消息
+                    val url = payloadJson.getString("url")
+                    Log.d("WuKong", "图片消息: $url")
+                }
+                100 -> { // 自定义消息
+                    Log.d("WuKong", "自定义消息: $payloadJson")
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("WuKong", "解析消息失败", e)
+        }
+    }
+})
+```
+
+```dart Flutter
+// 根据消息类型处理不同内容
+easySDK.addEventListener(WuKongEvent.message, (Message message) {
+  try {
+    final payloadString = utf8.decode(base64.decode(message.payload));
+    final payload = json.decode(payloadString);
+    final type = payload['type'];
+
+    switch (type) {
+      case 1: // 文本消息
+        print("文本消息: ${payload['content']}");
+        break;
+      case 2: // 图片消息
+        print("图片消息: ${payload['url']}");
+        break;
+      case 100: // 自定义消息
+        print("自定义消息: $payload");
+        break;
+    }
+  } catch (e) {
+    print("解析消息失败: $e");
+  }
+});
+```
+</CodeGroup>
+
+<Note>
+  消息内容 `payload` 字段使用 Base64 编码，具体格式由应用层定义。
+</Note>

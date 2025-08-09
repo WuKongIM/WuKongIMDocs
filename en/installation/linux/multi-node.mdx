@@ -1,0 +1,339 @@
+---
+title: "Multi-Node Deployment"
+description: "Deploy WuKongIM multi-node cluster on Linux systems"
+icon: "network"
+---
+
+# Multi-Node Mode
+
+## Description
+
+**Applicable scenarios**: Applications with high data security requirements, large applications.
+
+**Advantages**: High availability, strong disaster recovery, supports online scaling, real-time automatic backup between multiple replicas, load balancing, etc.
+
+**Disadvantages**: Slightly complex deployment, requires multiple machines.
+
+WuKongIM cluster follows the `2n+1` principle, where n represents the number of allowed failures. For example, to allow 1 machine to fail without affecting normal service operation requires 2×1+1=3 machines in the cluster; to allow 2 machines to fail without affecting normal service operation requires 2×2+1=5 machines in the cluster, and so on.
+
+## Environment Requirements
+
+- **Number of machines**: 3 or more
+- **Operating System**: Linux (Ubuntu recommended) (Recommended configuration: 2 cores 4GB or 4 cores 8GB)
+- **Load Balancer**: nginx (recommended version 1.27.0 or above)
+
+Assume three servers with the following information:
+
+| Name | Internal IP | External IP |
+| --- | --- | --- |
+| node1(1001) | 10.206.0.13 | 119.45.229.172 |
+| node2(1002) | 10.206.0.14 | 129.211.213.76 |
+| node3(1003) | 10.206.0.8  | 1.13.191.138 |
+
+## Preparation
+
+You need to deploy `nginx` (recommended version 1.27.0) on the `node1` node for load balancing.
+
+## Installation
+
+### 1. Download Executable File
+
+**Scope**: All nodes
+
+<CodeGroup>
+```bash AMD64
+curl -L -o wukongim https://github.com/WuKongIM/WuKongIM/releases/download/latest/wukongim-linux-amd64
+```
+
+```bash ARM64
+curl -L -o wukongim https://github.com/WuKongIM/WuKongIM/releases/download/latest/wukongim-linux-arm64
+```
+</CodeGroup>
+
+### 2. Modify Executable File Permissions
+
+**Scope**: All nodes
+
+```bash
+chmod +x wukongim
+```
+
+## Configuration
+
+### Configure WuKongIM
+
+**On node1**, create configuration file `wk.yaml` with the following content:
+
+```yaml
+mode: "release"
+external: # Public network configuration
+  ip: "119.45.229.172" # Node external IP, IP address that clients can access
+  tcpAddr: "119.45.229.172:15100" # Long connection address for app access, note this is the load balancer server's IP and port, not local
+  wsAddr: "ws://119.45.229.172:15200" # Long connection address for web access, note this is the load balancer server's IP and port, not local
+cluster:
+  nodeId: 1001 # Node ID
+  apiUrl: "http://10.206.0.13:5001" # Current node's internal API address
+  serverAddr: "10.206.0.13:11110" # Current node's internal distributed communication address
+  initNodes:
+    - "1001@10.206.0.13:11110"
+    - "1002@10.206.0.14:11110"
+    - "1003@10.206.0.8:11110"
+```
+
+**On node2**, create configuration file `wk.yaml` with the following content:
+
+```yaml
+mode: "release"
+external: # Public network configuration
+  ip: "129.211.213.76" # Node external IP, IP address that clients can access
+  tcpAddr: "119.45.229.172:15100" # Long connection address for app access, note this is the load balancer server's IP and port, not local
+  wsAddr: "ws://119.45.229.172:15200" # Long connection address for web access, note this is the load balancer server's IP and port, not local
+cluster:
+  nodeId: 1002 # Node ID
+  apiUrl: "http://10.206.0.14:5001" # Current node's internal API address
+  serverAddr: "10.206.0.14:11110" # Current node's internal distributed communication address
+  initNodes:
+    - "1001@10.206.0.13:11110"
+    - "1002@10.206.0.14:11110"
+    - "1003@10.206.0.8:11110"
+```
+
+**On node3**, create configuration file `wk.yaml` with the following content:
+
+```yaml
+mode: "release"
+external: # Public network configuration
+  ip: "1.13.191.138" # Node external IP, IP address that clients can access
+  tcpAddr: "119.45.229.172:15100" # Long connection address for app access, note this is the load balancer server's IP and port, not local
+  wsAddr: "ws://119.45.229.172:15200" # Long connection address for web access, note this is the load balancer server's IP and port, not local
+cluster:
+  nodeId: 1003 # Node ID
+  apiUrl: "http://10.206.0.8:5001" # Current node's internal API address
+  serverAddr: "10.206.0.8:11110" # Current node's internal distributed communication address
+  initNodes:
+    - "1001@10.206.0.13:11110"
+    - "1002@10.206.0.14:11110"
+    - "1003@10.206.0.8:11110"
+```
+
+### Configure nginx
+
+Create nginx configuration file with the following content:
+
+```nginx
+user  nginx;
+worker_processes  auto;
+
+error_log  /var/log/nginx/error.log notice;
+pid        /var/run/nginx.pid;
+
+events {
+    worker_connections  1024;
+}
+http {
+    include       /etc/nginx/mime.types;
+    default_type  application/octet-stream;
+
+    log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+                      '$status $body_bytes_sent "$http_referer" '
+                      '"$http_user_agent" "$http_x_forwarded_for"';
+
+    access_log  /var/log/nginx/access.log  main;
+
+    sendfile        on;
+    keepalive_timeout  65;
+
+    # API load balancing
+    upstream wukongimapi {
+        server 10.206.0.13:5001;
+        server 10.206.0.14:5001;
+        server 10.206.0.8:5001;
+    }
+    # Demo load balancing
+    upstream wukongimdemo {
+        server 10.206.0.13:5172;
+        server 10.206.0.14:5172;
+        server 10.206.0.8:5172;
+    }
+    # Manager load balancing
+    upstream wukongimanager {
+        server 10.206.0.13:5300;
+        server 10.206.0.14:5300;
+        server 10.206.0.8:5300;
+    }
+    # WebSocket load balancing
+    upstream wukongimws {
+        server 10.206.0.13:5200;
+        server 10.206.0.14:5200;
+        server 10.206.0.8:5200;
+    }
+    # HTTP API forwarding
+    server {
+        listen 15001;
+        location / {
+            proxy_pass http://wukongimapi;
+            proxy_connect_timeout 20s;
+            proxy_read_timeout 60s;
+        }
+    }
+    # Demo
+    server {
+        listen 15172;
+        location / {
+            proxy_pass http://wukongimdemo;
+            proxy_connect_timeout 20s;
+            proxy_read_timeout 60s;
+        }
+        location /login {
+            rewrite ^ /chatdemo?apiurl=http://119.45.229.172:15001;
+            proxy_pass http://wukongimdemo;
+            proxy_connect_timeout 20s;
+            proxy_read_timeout 60s;
+        }
+    }
+
+    # Manager
+    server {
+        listen 15300;
+        location / {
+            proxy_pass http://wukongimanager;
+            proxy_connect_timeout 60s;
+            proxy_read_timeout 60s;
+        }
+    }
+    # WebSocket
+    server {
+        listen 15200;
+        location / {
+            proxy_pass http://wukongimws;
+            proxy_redirect off;
+            proxy_http_version 1.1;
+            # nginx receives data from upstream server timeout, default 120s, connection closes if no byte received in consecutive 120s
+            proxy_read_timeout 120s;
+            # nginx sends data to upstream server timeout, default 120s, connection closes if no byte sent in consecutive 120s
+            proxy_send_timeout 120s;
+            # nginx connection timeout with upstream server
+            proxy_connect_timeout 4s;
+            proxy_set_header  X-Real-IP $remote_addr;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+        }
+    }
+}
+
+# TCP
+stream {
+  # TCP load balancing
+  upstream wukongimtcp {
+    server 10.206.0.13:5100;
+    server 10.206.0.14:5100;
+    server 10.206.0.8:5100;
+  }
+  server {
+    listen 15100;
+    proxy_connect_timeout 4s;
+    proxy_timeout 120s;
+    proxy_pass wukongimtcp;
+  }
+}
+```
+
+<Note>
+Remember to restart nginx for the configuration to take effect:
+```bash
+sudo systemctl restart nginx
+# or
+sudo nginx -s reload
+```
+</Note>
+
+## Start or Stop
+
+Start WuKongIM on all nodes:
+
+```bash
+./wukongim --config wk.yaml -d
+
+# Stop
+# ./wukongim stop
+```
+
+## Port Configuration
+
+### External Network Ports
+
+| Port | Description |
+| --- | --- |
+| 15001 | HTTP API port (only open to internal LAN) |
+| 15100 | TCP port, app clients need access |
+| 15200 | WebSocket port, web IM clients need access |
+| 15300 | Management system port |
+| 15172 | Demo port, for demonstrating WuKongIM communication capabilities |
+
+### Internal Network Ports (nodes need to access each other)
+
+| Port | Description |
+| --- | --- |
+| 5001 | HTTP API port (only open to internal LAN) |
+| 5100 | TCP port, only needs internal network access in distributed setup |
+| 5200 | WebSocket port, only needs internal network access in distributed setup |
+| 5300 | Management system port |
+
+<Warning>
+Make sure to open the required ports in your firewall:
+
+```bash
+# External ports (on load balancer node)
+sudo ufw allow 15001
+sudo ufw allow 15100
+sudo ufw allow 15200
+sudo ufw allow 15300
+sudo ufw allow 15172
+
+# Internal ports (on all nodes)
+sudo ufw allow 5001
+sudo ufw allow 5100
+sudo ufw allow 5200
+sudo ufw allow 5300
+sudo ufw allow 11110  # Cluster communication
+```
+</Warning>
+
+## Verification
+
+1. Access `http://119.45.229.172:15172/login`, enter any username and password, after login you can chat, indicating successful deployment.
+
+2. Access `http://119.45.229.172:15300/web` to enter the management system. The default built-in guest has read-only permissions. If you need operation permissions, please see [Authorization Configuration](/en/server/configuration#administrator-authentication-configuration).
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Server Configuration"
+    icon="gear"
+    href="/en/server/configuration"
+  >
+    Configure authentication and performance optimization
+  </Card>
+  <Card
+    title="Monitoring Setup"
+    icon="chart-line"
+    href="/en/installation/linux/monitoring"
+  >
+    Set up monitoring and alerting
+  </Card>
+  <Card
+    title="Single Node Deployment"
+    icon="server"
+    href="/en/installation/linux/single-node"
+  >
+    Learn about single node deployment
+  </Card>
+  <Card
+    title="API Documentation"
+    icon="code"
+    href="/en/api/introduction"
+  >
+    Start using WuKongIM API
+  </Card>
+</CardGroup>

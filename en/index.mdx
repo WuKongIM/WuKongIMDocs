@@ -1,0 +1,82 @@
+---
+title: "Introduction to WuKongIM"
+description: "Learn about WuKongIM's core features and capabilities"
+icon: "book-open"
+---
+
+## What is WuKongIM?
+
+WuKongIM is a high-performance distributed instant messaging service that supports various communication scenarios including chat applications, message push, IoT communication, audio/video signaling, live streaming, customer service systems, AI communication, and instant communities.
+
+## Core Philosophy
+
+**As simple as Redis, as high-performance as Kafka, as reliable as MySQL**
+
+WuKongIM is designed with three core principles:
+- **Simplicity**: Easy to deploy and manage with zero dependencies
+- **Performance**: High throughput and low latency for real-time communication
+- **Reliability**: Distributed architecture with automatic failover and data consistency
+
+## Key Features
+
+### 🎯 Unique Capabilities
+- **Unlimited Group Members**: Support for 100,000+ member group chats
+- **Permanent Message Storage**: Messages are stored permanently with efficient retrieval
+- **Custom Binary Protocol**: Optimized for minimal bandwidth usage
+
+### 📱 Low Resource Consumption
+- **Efficient Protocol**: 1-byte heartbeat packets save bandwidth and battery
+- **Optimized Storage**: Custom storage engine designed specifically for IM workloads
+- **Smart Caching**: Intelligent message caching for optimal performance
+
+### 🔐 Security First
+- **End-to-End Encryption**: Message channels and content are fully encrypted
+- **Attack Prevention**: Protection against man-in-the-middle attacks and message tampering
+- **Data Backup**: Real-time server data backup ensures no data loss
+
+### 🚀 High Performance
+- **Custom Storage**: Built on PebbleDB with IM-specific optimizations
+- **Distributed Database**: Purpose-built distributed database eliminates generic database overhead
+- **Fast Storage = Fast Messages**: Optimized storage layer enables high-speed message delivery
+
+### 🔥 High Availability
+- **Modified Raft Protocol**: Custom distributed consensus for automatic disaster recovery
+- **Zero Downtime**: Automatic failover when nodes go down, transparent to users
+- **Decentralized**: No single point of failure, all nodes are independent and equal
+- **Easy Scaling**: Add machines without downtime or data migration
+
+### 0️⃣ Easy to Use
+- **Zero Dependencies**: No third-party middleware required
+- **Simple Deployment**: Start with a single command
+- **Channel-Based Design**: Easy to understand publish-subscribe model
+- **Developer Friendly**: Comprehensive documentation and SDK support
+
+### 🌲 Technical Support
+- **Official Support**: Technical support from the core team
+- **Documentation**: Comprehensive technical documentation
+- **Community**: Active community and discussion groups
+- **Issue Tracking**: GitHub Issues for feedback and bug reports
+
+## Architecture Overview
+
+WuKongIM uses a channel-based architecture where:
+- **Channels** are the core communication units
+- **Users** subscribe to channels to receive messages
+- **Messages** are published to channels and delivered to subscribers
+- **Nodes** work together in a distributed cluster for high availability
+
+## Use Cases
+
+WuKongIM is perfect for:
+- **Chat Applications**: Group chats, private messaging, and social platforms
+- **Message Push**: Notification systems and real-time updates
+- **IoT Communication**: Device-to-device and device-to-server messaging
+- **Audio/Video Signaling**: WebRTC signaling and media coordination
+- **Live Streaming**: Chat and interaction features for live broadcasts
+- **Customer Service**: Support chat systems and helpdesk solutions
+- **AI Communication**: Chatbots and AI-powered messaging
+- **Instant Communities**: Real-time community platforms and forums
+
+## Getting Help
+
+If you encounter any issues or have suggestions for improvement, please provide feedback through GitHub Issues: https://github.com/WuKongIM/WuKongIM/issues

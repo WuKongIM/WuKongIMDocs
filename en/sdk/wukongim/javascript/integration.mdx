@@ -1,0 +1,433 @@
+---
+title: "Integration Guide"
+description: "WuKongIM JavaScript SDK integration and initialization configuration guide"
+icon: "rocket"
+---
+
+## Installation
+
+<CodeGroup>
+```bash npm
+npm i wukongimjssdk
+```
+
+```bash yarn
+yarn add wukongimjssdk
+```
+
+```bash pnpm
+pnpm add wukongimjssdk
+```
+
+```bash bun
+bun add wukongimjssdk
+```
+</CodeGroup>
+
+## Import
+
+<CodeGroup>
+```javascript ES6
+import WKSDK from "wukongimjssdk"
+```
+
+```javascript CommonJS
+const WKSDK = require("wukongimjssdk").default
+```
+
+```javascript AMD
+define(['wukongimjssdk'], function(WKSDK) {
+    // Use WKSDK here
+});
+```
+
+```html Browser CDN
+<script src="https://cdn.jsdelivr.net/npm/wukongimjssdk@latest/lib/wukongimjssdk.umd.js"></script>
+```
+
+```html Browser Local
+<script src="./wukongimjssdk.umd.js"></script>
+```
+</CodeGroup>
+
+<Note>
+When using `<script>` tag import, you must add the `wk` prefix, for example `wk.WKSDK.shared()`
+</Note>
+
+## Basic Setup
+
+### Initialize SDK
+
+```javascript
+// Get SDK instance
+const sdk = WKSDK.shared();
+
+// Configure SDK
+sdk.config({
+    addr: "ws://your-server.com:5200",  // WebSocket server address
+    apiURL: "http://your-api-server.com", // API server address
+    uploadURL: "http://your-upload-server.com", // File upload server address
+    uid: "user123",                     // User ID
+    token: "user-auth-token"            // User authentication token
+});
+```
+
+### TypeScript Support
+
+If you're using TypeScript, install the type definitions:
+
+```bash
+npm install --save-dev @types/wukongimjssdk
+```
+
+Then import with types:
+
+```typescript
+import WKSDK, { WKMessage, WKChannel, WKChannelType } from "wukongimjssdk";
+
+const sdk = WKSDK.shared();
+```
+
+## Configuration Options
+
+### Basic Configuration
+
+```javascript
+const sdk = WKSDK.shared();
+
+sdk.config({
+    // Required settings
+    addr: "ws://your-server.com:5200",
+    uid: "user123",
+    token: "user-auth-token",
+    
+    // Optional settings
+    apiURL: "http://your-api-server.com",
+    uploadURL: "http://your-upload-server.com",
+    
+    // Connection settings
+    heartbeatInterval: 30000,           // Heartbeat interval (ms)
+    reconnectInterval: 5000,            // Reconnect interval (ms)
+    maxReconnectAttempts: 10,           // Max reconnect attempts
+    
+    // Debug settings
+    debug: true,                        // Enable debug mode
+    logLevel: "debug",                  // Log level: debug, info, warn, error
+    
+    // Storage settings
+    enableLocalStorage: true,           // Enable local storage
+    storagePrefix: "wk_",              // Storage key prefix
+    
+    // Message settings
+    messageRetryCount: 3,               // Message retry count
+    messageTimeout: 30000,              // Message timeout (ms)
+});
+```
+
+### Advanced Configuration
+
+```javascript
+sdk.config({
+    // Custom headers for API requests
+    headers: {
+        "Custom-Header": "value",
+        "Authorization": "Bearer token"
+    },
+    
+    // Custom WebSocket protocols
+    protocols: ["wukongim"],
+    
+    // Custom message handlers
+    messageHandlers: {
+        1: (message) => { /* Handle text messages */ },
+        2: (message) => { /* Handle image messages */ }
+    },
+    
+    // Custom error handler
+    errorHandler: (error) => {
+        console.error("SDK Error:", error);
+    },
+    
+    // Custom connection state handler
+    connectionStateHandler: (state) => {
+        console.log("Connection state:", state);
+    }
+});
+```
+
+## Framework Integration
+
+### React Integration
+
+```jsx
+import React, { useEffect, useState } from 'react';
+import WKSDK from 'wukongimjssdk';
+
+function ChatApp() {
+    const [sdk, setSdk] = useState(null);
+    const [connected, setConnected] = useState(false);
+    
+    useEffect(() => {
+        const sdkInstance = WKSDK.shared();
+        
+        // Configure SDK
+        sdkInstance.config({
+            addr: "ws://your-server.com:5200",
+            uid: "user123",
+            token: "user-auth-token"
+        });
+        
+        // Listen for connection events
+        sdkInstance.connectionManager.addConnectStatusListener((status) => {
+            setConnected(status === 'connected');
+        });
+        
+        // Listen for messages
+        sdkInstance.chatManager.addMessageListener((message) => {
+            console.log('New message:', message);
+        });
+        
+        setSdk(sdkInstance);
+        
+        // Connect
+        sdkInstance.connectionManager.connect();
+        
+        // Cleanup
+        return () => {
+            sdkInstance.connectionManager.disconnect();
+        };
+    }, []);
+    
+    return (
+        <div>
+            <h1>Chat App</h1>
+            <p>Status: {connected ? 'Connected' : 'Disconnected'}</p>
+        </div>
+    );
+}
+```
+
+### Vue Integration
+
+```vue
+<template>
+  <div>
+    <h1>Chat App</h1>
+    <p>Status: {{ connected ? 'Connected' : 'Disconnected' }}</p>
+  </div>
+</template>
+
+<script>
+import WKSDK from 'wukongimjssdk';
+
+export default {
+  name: 'ChatApp',
+  data() {
+    return {
+      sdk: null,
+      connected: false
+    };
+  },
+  mounted() {
+    this.initSDK();
+  },
+  beforeUnmount() {
+    if (this.sdk) {
+      this.sdk.connectionManager.disconnect();
+    }
+  },
+  methods: {
+    initSDK() {
+      this.sdk = WKSDK.shared();
+      
+      // Configure SDK
+      this.sdk.config({
+        addr: "ws://your-server.com:5200",
+        uid: "user123",
+        token: "user-auth-token"
+      });
+      
+      // Listen for connection events
+      this.sdk.connectionManager.addConnectStatusListener((status) => {
+        this.connected = status === 'connected';
+      });
+      
+      // Listen for messages
+      this.sdk.chatManager.addMessageListener((message) => {
+        console.log('New message:', message);
+      });
+      
+      // Connect
+      this.sdk.connectionManager.connect();
+    }
+  }
+};
+</script>
+```
+
+### Angular Integration
+
+```typescript
+import { Component, OnInit, OnDestroy } from '@angular/core';
+import WKSDK from 'wukongimjssdk';
+
+@Component({
+  selector: 'app-chat',
+  template: `
+    <h1>Chat App</h1>
+    <p>Status: {{ connected ? 'Connected' : 'Disconnected' }}</p>
+  `
+})
+export class ChatComponent implements OnInit, OnDestroy {
+  private sdk: any;
+  connected = false;
+  
+  ngOnInit() {
+    this.initSDK();
+  }
+  
+  ngOnDestroy() {
+    if (this.sdk) {
+      this.sdk.connectionManager.disconnect();
+    }
+  }
+  
+  private initSDK() {
+    this.sdk = WKSDK.shared();
+    
+    // Configure SDK
+    this.sdk.config({
+      addr: "ws://your-server.com:5200",
+      uid: "user123",
+      token: "user-auth-token"
+    });
+    
+    // Listen for connection events
+    this.sdk.connectionManager.addConnectStatusListener((status: string) => {
+      this.connected = status === 'connected';
+    });
+    
+    // Listen for messages
+    this.sdk.chatManager.addMessageListener((message: any) => {
+      console.log('New message:', message);
+    });
+    
+    // Connect
+    this.sdk.connectionManager.connect();
+  }
+}
+```
+
+## Environment Support
+
+### Browser Environment
+
+```javascript
+// Check if running in browser
+if (typeof window !== 'undefined') {
+    // Browser-specific configuration
+    sdk.config({
+        enableLocalStorage: true,
+        storagePrefix: "wk_browser_"
+    });
+}
+```
+
+### Node.js Environment
+
+```javascript
+// Check if running in Node.js
+if (typeof process !== 'undefined' && process.versions && process.versions.node) {
+    // Node.js-specific configuration
+    sdk.config({
+        enableLocalStorage: false, // Use file system instead
+        storagePrefix: "wk_node_"
+    });
+}
+```
+
+### Webpack Configuration
+
+If you're using Webpack, you might need to configure it for the SDK:
+
+```javascript
+// webpack.config.js
+module.exports = {
+  // ... other config
+  resolve: {
+    fallback: {
+      "buffer": require.resolve("buffer"),
+      "crypto": require.resolve("crypto-browserify"),
+      "stream": require.resolve("stream-browserify")
+    }
+  },
+  plugins: [
+    new webpack.ProvidePlugin({
+      Buffer: ['buffer', 'Buffer'],
+    }),
+  ]
+};
+```
+
+## Verification
+
+Test your integration with this simple verification:
+
+```javascript
+// Test SDK initialization
+const sdk = WKSDK.shared();
+console.log('SDK instance:', sdk);
+
+// Test configuration
+sdk.config({
+    addr: "ws://test-server.com:5200",
+    uid: "test-user",
+    token: "test-token"
+});
+
+// Test managers
+console.log('Chat Manager:', sdk.chatManager);
+console.log('Connection Manager:', sdk.connectionManager);
+console.log('Channel Manager:', sdk.channelManager);
+
+// Test connection (optional)
+sdk.connectionManager.addConnectStatusListener((status) => {
+    console.log('Connection status:', status);
+});
+
+// Uncomment to test actual connection
+// sdk.connectionManager.connect();
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Basic Features"
+    icon="foundation"
+    href="/en/sdk/wukongim/javascript/base"
+  >
+    Learn basic SDK functionality usage
+  </Card>
+  <Card
+    title="Chat Management"
+    icon="message-circle"
+    href="/en/sdk/wukongim/javascript/chat"
+  >
+    Implement message sending and receiving
+  </Card>
+  <Card
+    title="Channel Management"
+    icon="hash"
+    href="/en/sdk/wukongim/javascript/channel"
+  >
+    Manage channels and groups
+  </Card>
+  <Card
+    title="Conversation Management"
+    icon="users"
+    href="/en/sdk/wukongim/javascript/conversation"
+  >
+    Handle conversation lists
+  </Card>
+</CardGroup>

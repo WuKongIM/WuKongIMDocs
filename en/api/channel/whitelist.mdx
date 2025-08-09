@@ -1,0 +1,553 @@
+---
+title: "Add Channel Whitelist"
+description: "Add users to channel whitelist"
+api: "POST /channel/whitelist_add"
+---
+
+## Overview
+
+Add users to channel whitelist. Whitelisted users have special privileges and can bypass certain restrictions.
+
+## Request Body
+
+### Required Parameters
+
+<ParamField body="channel_id" type="string" required>
+Channel ID
+</ParamField>
+
+<ParamField body="channel_type" type="integer" required>
+Channel type
+- `1` - Personal channel
+- `2` - Group channel
+</ParamField>
+
+<ParamField body="uids" type="array" required>
+List of user IDs to add to whitelist
+<ParamField body="uids[]" type="string">
+User ID
+</ParamField>
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "http://localhost:5001/channel/whitelist_add" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "channel_id": "group123",
+    "channel_type": 2,
+    "uids": ["user456", "user789"]
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5001/channel/whitelist_add', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    channel_id: 'group123',
+    channel_type: 2,
+    uids: ['user456', 'user789']
+  })
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+
+data = {
+    "channel_id": "group123",
+    "channel_type": 2,
+    "uids": ["user456", "user789"]
+}
+
+response = requests.post('http://localhost:5001/channel/whitelist_add', json=data)
+result = response.json()
+print(result)
+```
+
+```go Go
+package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    data := map[string]interface{}{
+        "channel_id":   "group123",
+        "channel_type": 2,
+        "uids":         []string{"user456", "user789"},
+    }
+    
+    jsonData, _ := json.Marshal(data)
+    
+    resp, err := http.Post(
+        "http://localhost:5001/channel/whitelist_add",
+        "application/json",
+        bytes.NewBuffer(jsonData),
+    )
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    var result map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Printf("%+v\n", result)
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json Success Response
+{
+  "status": "ok"
+}
+```
+</ResponseExample>
+
+## Response Fields
+
+<ResponseField name="status" type="string" required>
+Operation status, returns `"ok"` on success
+</ResponseField>
+
+## Status Codes
+
+| Status Code | Description |
+|-------------|-------------|
+| 200 | Whitelist operation successful |
+| 400 | Request parameter error |
+| 403 | No management permission |
+| 404 | Channel does not exist |
+| 500 | Internal server error |
+
+## Whitelist Mechanism
+
+### Special Privileges
+
+Whitelisted users enjoy the following special privileges:
+
+| Privilege | Description | Use Cases |
+|-----------|-------------|-----------|
+| Bypass Mute | Can speak during channel-wide mute | Administrators, important users |
+| Priority Access | Priority access during high traffic | VIP users, moderators |
+| Rate Limit Exemption | Exempt from standard rate limits | Trusted users, bots |
+
+### Permission Hierarchy
+
+Whitelist position in the permission system:
+
+1. **Administrator permissions** > Whitelist > Regular member permissions
+2. **Blacklist** > Whitelist (Blacklist has higher priority)
+3. **System users** > Whitelist
+
+## Use Cases
+
+### VIP User Management
+
+**Grant VIP Privileges**:
+```javascript
+// Add VIP users to whitelist for special privileges
+async function grantVIPPrivileges(channelId, channelType, vipUsers) {
+    try {
+        await addToWhitelist({
+            channel_id: channelId,
+            channel_type: channelType,
+            uids: vipUsers
+        });
+        
+        // Log VIP privilege grant
+        await logPrivilegeGrant({
+            channel_id: channelId,
+            channel_type: channelType,
+            users: vipUsers,
+            privilege_type: 'vip_whitelist',
+            granted_by: 'system',
+            timestamp: new Date().toISOString()
+        });
+        
+        // Notify users about VIP status
+        for (const userId of vipUsers) {
+            await notifyUser(userId, {
+                type: 'vip_granted',
+                channel_id: channelId,
+                privileges: ['bypass_mute', 'priority_access'],
+                message: 'You have been granted VIP privileges in this channel'
+            });
+        }
+        
+        console.log(`Granted VIP privileges to ${vipUsers.length} users`);
+    } catch (error) {
+        console.error('Failed to grant VIP privileges:', error);
+    }
+}
+
+// Usage
+await grantVIPPrivileges('group123', 2, ['vip_user1', 'vip_user2']);
+```
+
+### Moderator Management
+
+**Moderator Whitelist System**:
+```javascript
+// Comprehensive moderator management system
+class ModeratorManager {
+    constructor(channelId, channelType) {
+        this.channelId = channelId;
+        this.channelType = channelType;
+        this.moderatorLevels = {
+            senior: ['bypass_mute', 'priority_access', 'rate_limit_exempt'],
+            junior: ['bypass_mute', 'priority_access'],
+            trainee: ['bypass_mute']
+        };
+    }
+    
+    async promoteModerator(userId, level = 'junior') {
+        try {
+            // Add to whitelist
+            await addToWhitelist({
+                channel_id: this.channelId,
+                channel_type: this.channelType,
+                uids: [userId]
+            });
+            
+            // Record moderator status
+            await this.recordModeratorStatus(userId, level);
+            
+            // Grant additional permissions based on level
+            await this.grantModeratorPermissions(userId, level);
+            
+            // Notify about promotion
+            await this.notifyModeratorPromotion(userId, level);
+            
+            console.log(`User ${userId} promoted to ${level} moderator`);
+        } catch (error) {
+            console.error(`Failed to promote moderator ${userId}:`, error);
+        }
+    }
+    
+    async recordModeratorStatus(userId, level) {
+        await createModeratorRecord({
+            channel_id: this.channelId,
+            user_id: userId,
+            level: level,
+            privileges: this.moderatorLevels[level],
+            promoted_at: new Date().toISOString(),
+            status: 'active'
+        });
+    }
+    
+    async grantModeratorPermissions(userId, level) {
+        const permissions = this.moderatorLevels[level];
+        
+        for (const permission of permissions) {
+            await grantChannelPermission(this.channelId, userId, permission);
+        }
+    }
+    
+    async notifyModeratorPromotion(userId, level) {
+        await notifyUser(userId, {
+            type: 'moderator_promotion',
+            channel_id: this.channelId,
+            level: level,
+            privileges: this.moderatorLevels[level],
+            responsibilities: this.getModeratorResponsibilities(level)
+        });
+    }
+    
+    getModeratorResponsibilities(level) {
+        const responsibilities = {
+            senior: ['Manage junior moderators', 'Handle appeals', 'Policy enforcement'],
+            junior: ['Monitor chat', 'Issue warnings', 'Report violations'],
+            trainee: ['Observe and learn', 'Assist with basic moderation']
+        };
+        
+        return responsibilities[level] || [];
+    }
+    
+    async demoteModerator(userId) {
+        try {
+            // Remove from whitelist
+            await removeFromWhitelist({
+                channel_id: this.channelId,
+                channel_type: this.channelType,
+                uids: [userId]
+            });
+            
+            // Update moderator record
+            await updateModeratorRecord(this.channelId, userId, {
+                status: 'inactive',
+                demoted_at: new Date().toISOString()
+            });
+            
+            // Revoke permissions
+            await this.revokeModeratorPermissions(userId);
+            
+            console.log(`User ${userId} demoted from moderator`);
+        } catch (error) {
+            console.error(`Failed to demote moderator ${userId}:`, error);
+        }
+    }
+    
+    async revokeModeratorPermissions(userId) {
+        const allPermissions = Object.values(this.moderatorLevels).flat();
+        const uniquePermissions = [...new Set(allPermissions)];
+        
+        for (const permission of uniquePermissions) {
+            await revokeChannelPermission(this.channelId, userId, permission);
+        }
+    }
+}
+
+// Usage
+const moderatorManager = new ModeratorManager('group123', 2);
+
+// Promote user to moderator
+await moderatorManager.promoteModerator('user456', 'junior');
+
+// Promote to senior moderator
+await moderatorManager.promoteModerator('user789', 'senior');
+```
+
+### Event-Based Whitelist Management
+
+**Dynamic Whitelist for Events**:
+```javascript
+// Dynamic whitelist management for special events
+class EventWhitelistManager {
+    constructor() {
+        this.activeEvents = new Map();
+    }
+    
+    async createEventWhitelist(eventId, channelId, channelType, eventConfig) {
+        try {
+            const event = {
+                id: eventId,
+                channelId: channelId,
+                channelType: channelType,
+                config: eventConfig,
+                participants: [],
+                startTime: new Date(eventConfig.startTime),
+                endTime: new Date(eventConfig.endTime),
+                status: 'scheduled'
+            };
+            
+            this.activeEvents.set(eventId, event);
+            
+            // Schedule automatic whitelist management
+            await this.scheduleEventWhitelist(event);
+            
+            console.log(`Event whitelist created for event ${eventId}`);
+        } catch (error) {
+            console.error(`Failed to create event whitelist for ${eventId}:`, error);
+        }
+    }
+    
+    async scheduleEventWhitelist(event) {
+        const now = Date.now();
+        const startDelay = event.startTime.getTime() - now;
+        const endDelay = event.endTime.getTime() - now;
+        
+        if (startDelay > 0) {
+            // Schedule event start
+            setTimeout(() => {
+                this.startEventWhitelist(event.id);
+            }, startDelay);
+        } else if (endDelay > 0) {
+            // Event already started, activate immediately
+            await this.startEventWhitelist(event.id);
+        }
+        
+        if (endDelay > 0) {
+            // Schedule event end
+            setTimeout(() => {
+                this.endEventWhitelist(event.id);
+            }, endDelay);
+        }
+    }
+    
+    async startEventWhitelist(eventId) {
+        const event = this.activeEvents.get(eventId);
+        if (!event) return;
+        
+        try {
+            // Add event participants to whitelist
+            if (event.participants.length > 0) {
+                await addToWhitelist({
+                    channel_id: event.channelId,
+                    channel_type: event.channelType,
+                    uids: event.participants
+                });
+            }
+            
+            event.status = 'active';
+            
+            // Notify participants
+            for (const participantId of event.participants) {
+                await notifyUser(participantId, {
+                    type: 'event_started',
+                    event_id: eventId,
+                    channel_id: event.channelId,
+                    message: 'Event has started, you now have special privileges'
+                });
+            }
+            
+            console.log(`Event whitelist activated for event ${eventId}`);
+        } catch (error) {
+            console.error(`Failed to start event whitelist for ${eventId}:`, error);
+        }
+    }
+    
+    async endEventWhitelist(eventId) {
+        const event = this.activeEvents.get(eventId);
+        if (!event) return;
+        
+        try {
+            // Remove event participants from whitelist
+            if (event.participants.length > 0) {
+                await removeFromWhitelist({
+                    channel_id: event.channelId,
+                    channel_type: event.channelType,
+                    uids: event.participants
+                });
+            }
+            
+            event.status = 'completed';
+            
+            // Notify participants
+            for (const participantId of event.participants) {
+                await notifyUser(participantId, {
+                    type: 'event_ended',
+                    event_id: eventId,
+                    channel_id: event.channelId,
+                    message: 'Event has ended, special privileges revoked'
+                });
+            }
+            
+            console.log(`Event whitelist deactivated for event ${eventId}`);
+        } catch (error) {
+            console.error(`Failed to end event whitelist for ${eventId}:`, error);
+        }
+    }
+    
+    async addEventParticipant(eventId, userId) {
+        const event = this.activeEvents.get(eventId);
+        if (!event) return;
+        
+        if (!event.participants.includes(userId)) {
+            event.participants.push(userId);
+            
+            // If event is active, add to whitelist immediately
+            if (event.status === 'active') {
+                await addToWhitelist({
+                    channel_id: event.channelId,
+                    channel_type: event.channelType,
+                    uids: [userId]
+                });
+            }
+        }
+    }
+}
+
+// Usage
+const eventManager = new EventWhitelistManager();
+
+// Create event with whitelist
+await eventManager.createEventWhitelist('webinar_001', 'group123', 2, {
+    startTime: '2024-01-15T10:00:00Z',
+    endTime: '2024-01-15T12:00:00Z',
+    type: 'webinar'
+});
+
+// Add participants
+await eventManager.addEventParticipant('webinar_001', 'speaker1');
+await eventManager.addEventParticipant('webinar_001', 'speaker2');
+```
+
+## Whitelist vs Blacklist Relationship
+
+### Priority Rules
+
+```
+Blacklist > Whitelist > Regular Permissions
+```
+
+### Conflict Resolution
+
+| Situation | Result | Description |
+|-----------|--------|-------------|
+| In both blacklist and whitelist | Blacklist takes effect | Blacklist has higher priority |
+| Only in whitelist | Whitelist privileges apply | Normal whitelisted user |
+| Only in blacklist | Blacklist restrictions apply | Normal blacklisted user |
+| In neither list | Regular user permissions | Default permission handling |
+
+### Implementation Example
+
+```javascript
+// Check user permissions considering both lists
+async function checkUserPermissions(channelId, channelType, userId) {
+    try {
+        const [blacklist, whitelist] = await Promise.all([
+            getChannelBlacklist(channelId, channelType),
+            getChannelWhitelist(channelId, channelType)
+        ]);
+        
+        const isBlacklisted = blacklist.includes(userId);
+        const isWhitelisted = whitelist.includes(userId);
+        
+        if (isBlacklisted) {
+            return {
+                status: 'blacklisted',
+                permissions: ['none'],
+                canSendMessage: false,
+                canJoinChannel: false
+            };
+        }
+        
+        if (isWhitelisted) {
+            return {
+                status: 'whitelisted',
+                permissions: ['bypass_mute', 'priority_access'],
+                canSendMessage: true,
+                canJoinChannel: true,
+                specialPrivileges: true
+            };
+        }
+        
+        return {
+            status: 'regular',
+            permissions: ['basic'],
+            canSendMessage: true,
+            canJoinChannel: true
+        };
+    } catch (error) {
+        console.error('Failed to check user permissions:', error);
+        return {
+            status: 'error',
+            permissions: ['none'],
+            canSendMessage: false,
+            canJoinChannel: false
+        };
+    }
+}
+```
+
+## Best Practices
+
+1. **Clear Criteria**: Establish clear criteria for whitelist inclusion
+2. **Regular Review**: Periodically review whitelist members and remove inactive users
+3. **Documentation**: Document reasons for adding users to whitelist
+4. **Graduated Privileges**: Implement different levels of whitelist privileges
+5. **Conflict Resolution**: Clearly define how blacklist/whitelist conflicts are resolved
+6. **Notification**: Inform users when they are added to or removed from whitelist
+7. **Audit Trail**: Maintain logs of all whitelist operations for accountability

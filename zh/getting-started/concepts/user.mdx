@@ -1,0 +1,270 @@
+---
+title: "用户"
+description: "WuKongIM 用户的核心结构和管理方法"
+icon: "user"
+---
+
+## 概念解释
+
+### 什么是用户？
+
+用户（User）是 WuKongIM 系统中的基本实体，代表使用即时通讯服务的个人或应用。每个用户都有唯一的标识符和相关属性，是消息发送和接收的主体。
+
+### 为什么用户很重要？
+
+- **身份标识**：用户 ID 是系统中唯一标识一个用户的关键
+- **权限基础**：所有的消息发送、接收权限都基于用户身份
+- **状态管理**：用户的在线状态决定了消息的推送方式和时机
+
+### 与其他概念的关系
+
+- **消息（Message）**：用户是消息的发送者和接收者
+- **频道（Channel）**：用户通过频道进行交流，个人频道的 ID 就是用户 ID
+- **会话（Conversation）**：用户的会话列表显示了该用户参与的所有聊天
+- **设备（Device）**：一个用户可以在多个设备上登录使用
+
+## 核心结构
+
+用户包含以下核心属性：
+
+| 属性 | 类型 | 说明 |
+|------|------|------|
+| `uid` | string | 用户唯一标识符 |
+| `online` | integer | 在线状态（0=离线，1=在线） |
+| `device_flag` | integer | 设备类型标识 |
+
+### 设备标识类型
+
+| 值 | 设备类型 | 说明 |
+|----|----------|------|
+| 1 | iOS | iPhone、iPad 设备 |
+| 2 | Android | Android 设备 |
+| 3 | Web | 浏览器、Web 应用 |
+| 4 | Desktop | 桌面应用 |
+
+### 用户示例
+
+```json
+{
+  "uid": "user123",
+  "online": 1,
+  "device_flag": 1
+}
+
+```
+
+## 相关 API 端点
+
+| 端点 | 方法 | 说明 |
+|------|------|------|
+| `/user/onlinestatus` | POST | 查询用户在线状态 |
+| `/user/token` | POST | 更新用户 Token |
+| `/user/device_quit` | POST | 强制设备下线 |
+| `/user/systemuids` | GET | 获取系统用户列表 |
+
+## EasySDK 代码示例
+
+### 用户初始化和连接
+
+<CodeGroup>
+```javascript Web
+import { WKIM, WKIMEvent } from 'easyjssdk';
+
+// 初始化 SDK
+const im = WKIM.init("ws://your-server.com:5200", {
+  uid: "user123",                    // 用户唯一标识
+  token: "your_auth_token"           // 用户认证令牌
+});
+
+// 监听连接状态
+im.on(WKIMEvent.Connect, (result) => {
+  console.log('用户已连接:', result);
+});
+
+im.on(WKIMEvent.Disconnect, (disconnectInfo) => {
+  console.log('用户已断开连接:', disconnectInfo);
+});
+
+// 连接到服务器
+try {
+  await im.connect();
+  console.log("连接成功！");
+} catch (error) {
+  console.error("连接失败:", error);
+}
+```
+
+```swift iOS
+import WuKongEasySDK
+
+// 配置用户信息
+let config = WuKongConfig(
+    serverUrl: "ws://your-server.com:5200",
+    uid: "user123",                 // 用户唯一标识
+    token: "your_auth_token"        // 用户认证令牌
+)
+
+// 初始化 SDK
+let easySDK = WuKongEasySDK(config: config)
+
+// 监听连接状态
+easySDK.onConnect { result in
+    print("用户已连接:", result)
+}
+
+easySDK.onDisconnect { disconnectInfo in
+    print("用户已断开连接:", disconnectInfo)
+}
+
+// 连接到服务器
+Task {
+    do {
+        try await easySDK.connect()
+        print("连接成功！")
+    } catch {
+        print("连接失败:", error)
+    }
+}
+```
+
+```kotlin Android
+import com.githubim.easysdk.WuKongEasySDK
+import com.githubim.easysdk.WuKongConfig
+import com.githubim.easysdk.WuKongEvent
+import com.githubim.easysdk.listener.WuKongEventListener
+
+// 配置用户信息
+val config = WuKongConfig.Builder()
+    .serverUrl("ws://your-server.com:5200")
+    .uid("user123")                // 用户唯一标识
+    .token("your_auth_token")      // 用户认证令牌
+    .build()
+
+// 初始化 SDK
+val easySDK = WuKongEasySDK.getInstance()
+easySDK.init(this, config)
+
+// 监听连接状态
+easySDK.addEventListener(WuKongEvent.CONNECT, object : WuKongEventListener<ConnectResult> {
+    override fun onEvent(result: ConnectResult) {
+        Log.d("WuKong", "用户已连接: $result")
+    }
+})
+
+easySDK.addEventListener(WuKongEvent.DISCONNECT, object : WuKongEventListener<DisconnectInfo> {
+    override fun onEvent(disconnectInfo: DisconnectInfo) {
+        Log.d("WuKong", "用户已断开连接: $disconnectInfo")
+    }
+})
+
+// 连接到服务器
+lifecycleScope.launch {
+    try {
+        easySDK.connect()
+        Log.d("WuKong", "连接成功！")
+    } catch (e: Exception) {
+        Log.e("WuKong", "连接失败: $e")
+    }
+}
+```
+
+```dart Flutter
+import 'package:wukong_easy_sdk/wukong_easy_sdk.dart';
+
+// 配置用户信息
+final config = WuKongConfig(
+  serverUrl: "ws://your-server.com:5200",
+  uid: "user123",                   // 用户唯一标识
+  token: "your_auth_token",         // 用户认证令牌
+);
+
+// 初始化 SDK
+final easySDK = WuKongEasySDK.getInstance();
+await easySDK.init(config);
+
+// 监听连接状态
+easySDK.addEventListener(WuKongEvent.connect, (ConnectResult result) {
+  print('用户已连接: $result');
+});
+
+easySDK.addEventListener(WuKongEvent.disconnect, (DisconnectInfo disconnectInfo) {
+  print('用户已断开连接: $disconnectInfo');
+});
+
+// 连接到服务器
+try {
+  await easySDK.connect();
+  print("连接成功！");
+} catch (e) {
+  print("连接失败: $e");
+}
+```
+</CodeGroup>
+
+### 用户状态管理
+
+<CodeGroup>
+```javascript Web
+// 检查连接状态
+const isConnected = im.isConnected();
+console.log('连接状态:', isConnected);
+
+// 断开连接
+await im.disconnect();
+
+// 监听错误事件
+im.on(WKIMEvent.Error, (error) => {
+  console.log('发生错误:', error);
+});
+```
+
+```swift iOS
+// 检查连接状态
+let isConnected = easySDK.isConnected()
+print("连接状态:", isConnected)
+
+// 断开连接
+Task {
+    await easySDK.disconnect()
+}
+
+// 监听错误事件
+easySDK.onError { error in
+    print("发生错误:", error)
+}
+```
+
+```kotlin Android
+// 检查连接状态
+val isConnected = easySDK.isConnected()
+Log.d("WuKong", "连接状态: $isConnected")
+
+// 断开连接
+easySDK.disconnect()
+
+// 监听错误事件
+easySDK.addEventListener(WuKongEvent.ERROR, object : WuKongEventListener<WuKongError> {
+    override fun onEvent(error: WuKongError) {
+        Log.e("WuKong", "发生错误: $error")
+    }
+})
+```
+
+```dart Flutter
+// 检查连接状态
+final isConnected = easySDK.isConnected();
+print('连接状态: $isConnected');
+
+// 断开连接
+await easySDK.disconnect();
+
+// 监听错误事件
+easySDK.addEventListener(WuKongEvent.error, (WuKongError error) {
+  print('发生错误: $error');
+});
+```
+</CodeGroup>
+
+<Note>
+  WuKongIM 专注于消息传输，用户的详细资料（如昵称、头像等）通常由应用层管理。
+</Note>

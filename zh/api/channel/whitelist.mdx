@@ -1,0 +1,173 @@
+---
+title: "添加频道白名单"
+description: "将用户添加到频道白名单"
+api: "POST /channel/whitelist_add"
+---
+
+## 概述
+
+将用户添加到频道白名单，白名单用户拥有特殊权限，可以绕过某些限制。
+
+## 请求体
+
+### 必传参数
+
+<ParamField body="channel_id" type="string" required>
+频道 ID
+</ParamField>
+
+<ParamField body="channel_type" type="integer" required>
+频道类型
+- `1` - 个人频道
+- `2` - 群组频道
+</ParamField>
+
+<ParamField body="uids" type="array" required>
+要添加到白名单的用户 ID 列表
+<ParamField body="uids[]" type="string">
+用户 ID
+</ParamField>
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "http://localhost:5001/channel/whitelist_add" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "channel_id": "group123",
+    "channel_type": 2,
+    "uids": ["user456", "user789"]
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5001/channel/whitelist_add', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    channel_id: 'group123',
+    channel_type: 2,
+    uids: ['user456', 'user789']
+  })
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+
+data = {
+    "channel_id": "group123",
+    "channel_type": 2,
+    "uids": ["user456", "user789"]
+}
+
+response = requests.post('http://localhost:5001/channel/whitelist_add', json=data)
+result = response.json()
+print(result)
+```
+
+```go Go
+package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    data := map[string]interface{}{
+        "channel_id":   "group123",
+        "channel_type": 2,
+        "uids":         []string{"user456", "user789"},
+    }
+    
+    jsonData, _ := json.Marshal(data)
+    
+    resp, err := http.Post(
+        "http://localhost:5001/channel/whitelist_add",
+        "application/json",
+        bytes.NewBuffer(jsonData),
+    )
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    var result map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Printf("%+v\n", result)
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json 成功响应
+{
+  "status": "ok"
+}
+```
+</ResponseExample>
+
+
+
+## 响应字段
+
+<ResponseField name="status" type="string" required>
+操作状态，成功时返回 `"ok"`
+</ResponseField>
+
+## 状态码
+
+| 状态码 | 说明 |
+|--------|------|
+| 200 | 白名单操作成功 |
+| 400 | 请求参数错误 |
+| 403 | 没有管理权限 |
+| 404 | 频道不存在 |
+| 500 | 服务器内部错误 |
+
+## 白名单机制
+
+### 特殊权限
+
+白名单用户享有以下特殊权限：
+
+| 权限 | 说明 | 适用场景 |
+|------|------|----------|
+| 绕过禁言 | 在全员禁言时仍可发言 | 管理员、重要用户 |
+
+### 权限层级
+
+白名单在权限体系中的位置：
+
+1. **管理员权限** > 白名单 > 普通成员权限
+2. **黑名单** > 白名单（黑名单优先级更高）
+3. **系统用户** > 白名单
+
+## 使用场景
+
+
+## 白名单与黑名单的关系
+
+### 优先级规则
+
+```
+黑名单 > 白名单 > 普通权限
+```
+
+### 冲突处理
+
+| 情况 | 结果 | 说明 |
+|------|------|------|
+| 同时在黑白名单 | 按黑名单处理 | 黑名单优先级更高 |
+| 只在白名单 | 享受白名单权限 | 正常白名单用户 |
+| 只在黑名单 | 受黑名单限制 | 正常黑名单用户 |
+| 都不在名单 | 普通用户权限 | 按默认权限处理 |
+

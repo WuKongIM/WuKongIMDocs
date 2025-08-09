@@ -1,0 +1,286 @@
+---
+title: "Device"
+description: "Core structure and management methods of WuKongIM devices"
+icon: "smartphone"
+---
+
+## Concept Explanation
+
+### What is a Device?
+
+A Device is the terminal carrier for users to access the WuKongIM system, representing the specific device used by users to send and receive messages. Each device has a unique identifier and type, supporting users to simultaneously use instant messaging services on multiple devices.
+
+### Why are Devices Important?
+
+- **Multi-device Sync**: Users can log in simultaneously on multiple devices like phones, computers, and tablets with real-time message synchronization
+- **Device Management**: Can view and manage all user login devices, supporting remote device logout
+- **Push Strategy**: Adopt different message push strategies based on device type
+
+### Relationship with Other Concepts
+
+- **User**: A user can own multiple devices, each device is associated with a user ID
+- **Message**: Messages are synchronized to all online devices of the user
+- **Connection**: Each device has an independent network connection
+
+## Core Structure
+
+Devices contain the following core attributes:
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `cid` | integer | Connection unique identifier |
+| `uid` | string | User ID that owns the device |
+| `device_id` | string | Device unique identifier |
+| `device_flag` | integer | Device type identifier |
+| `uptime` | string | Online duration |
+| `idle` | string | Idle time |
+
+### Device Example
+
+```json
+{
+  "cid": 12345,
+  "uid": "user123",
+  "device_id": "device_456",
+  "device_flag": 1,
+  "uptime": "1h30m",
+  "idle": "5m"
+}
+```
+
+## Related API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/user/device_quit` | POST | Force device offline |
+| `/connz` | GET | View connection information |
+
+## Device Type Identifiers
+
+| Identifier Value | Device Type | Description |
+|------------------|-------------|-------------|
+| 0 | App | Android, iPhone, iPad devices |
+| 1 | Web | Browser, Web applications |
+| 2 | Desktop | Desktop applications |
+
+## EasySDK Code Examples
+
+### Device Initialization and Configuration
+
+<CodeGroup>
+```javascript Web
+import { WKIM } from 'easyjssdk';
+
+// Device type is automatically set to Web (1) during initialization
+const im = WKIM.init("ws://your-server.com:5200", {
+  uid: "user123",
+  token: "your_token",
+  deviceId: "web_device_001"  // Optional: custom device ID
+});
+
+// EasySDK automatically handles device type, Web platform defaults to device type 1
+console.log('Current platform: Web');
+console.log('Device type: 1 (Web)');
+```
+
+```swift iOS
+import WuKongEasySDK
+
+// Device type is automatically set to APP (0) during initialization
+let config = WuKongConfig(
+    serverUrl: "ws://your-server.com:5200",
+    uid: "user123",
+    token: "your_token",
+    deviceId: "ios_device_001"  // Optional: custom device ID
+)
+
+let easySDK = WuKongEasySDK(config: config)
+
+// EasySDK automatically handles device type, iOS platform defaults to device type 0 (APP)
+print("Current platform: APP")
+print("Device type: 0 (APP)")
+```
+
+```kotlin Android
+import com.githubim.easysdk.WuKongEasySDK
+import com.githubim.easysdk.WuKongConfig
+
+// Device type is automatically set to APP (0) during initialization
+val config = WuKongConfig.Builder()
+    .serverUrl("ws://your-server.com:5200")
+    .uid("user123")
+    .token("your_token")
+    .deviceId("android_device_001")  // Optional: custom device ID
+    .build()
+
+val easySDK = WuKongEasySDK.getInstance()
+easySDK.init(this, config)
+
+// EasySDK automatically handles device type, Android platform defaults to device type 0
+Log.d("WuKong", "Current platform: APP")
+Log.d("WuKong", "Device type: 0 (APP)")
+```
+
+```dart Flutter
+import 'package:wukong_easy_sdk/wukong_easy_sdk.dart';
+
+// Device type is automatically set during initialization
+final config = WuKongConfig(
+  serverUrl: "ws://your-server.com:5200",
+  uid: "user123",
+  token: "your_token",
+  deviceId: "flutter_device_001",  // Optional: custom device ID
+);
+
+final easySDK = WuKongEasySDK.getInstance();
+await easySDK.init(config);
+
+// EasySDK automatically handles device type
+print('Current platform: Flutter');
+print('Device type: Auto-detected');
+```
+</CodeGroup>
+
+### Multi-device Synchronization
+
+<Note>
+  **Important Note**: EasySDK automatically handles message synchronization between multiple devices. When a user logs in on multiple devices, messages are automatically synchronized to all online devices.
+</Note>
+
+<CodeGroup>
+```javascript Web
+// EasySDK automatically handles multi-device sync
+// When receiving messages, all online devices will receive the same message
+
+im.on(WKIMEvent.Message, (message) => {
+  console.log('Received message (auto-synced to all devices):', message);
+});
+
+// Check connection status
+console.log('Current device connection status:', im.isConnected());
+```
+
+```swift iOS
+// EasySDK automatically handles multi-device sync
+// When receiving messages, all online devices will receive the same message
+
+easySDK.onMessage { message in
+    print("Received message (auto-synced to all devices):", message)
+}
+
+// Check connection status
+print("Current device connection status:", easySDK.isConnected())
+```
+
+```kotlin Android
+// EasySDK automatically handles multi-device sync
+// When receiving messages, all online devices will receive the same message
+
+easySDK.addEventListener(WuKongEvent.MESSAGE, object : WuKongEventListener<Message> {
+    override fun onEvent(message: Message) {
+        Log.d("WuKong", "Received message (auto-synced to all devices): $message")
+    }
+})
+
+// Check connection status
+Log.d("WuKong", "Current device connection status: ${easySDK.isConnected()}")
+```
+
+```dart Flutter
+// EasySDK automatically handles multi-device sync
+// When receiving messages, all online devices will receive the same message
+
+easySDK.addEventListener(WuKongEvent.message, (Message message) {
+  print('Received message (auto-synced to all devices): $message');
+});
+
+// Check connection status
+print('Current device connection status: ${easySDK.isConnected()}');
+```
+</CodeGroup>
+
+### Device Management
+
+<CodeGroup>
+```javascript Web
+// EasySDK automatically manages device connections
+// Each device maintains its own connection state
+
+// Listen for connection events
+im.on(WKIMEvent.Connect, (result) => {
+  console.log('Device connected:', result);
+});
+
+im.on(WKIMEvent.Disconnect, (info) => {
+  console.log('Device disconnected:', info);
+});
+
+// Graceful disconnect
+await im.disconnect();
+console.log('Device disconnected gracefully');
+```
+
+```swift iOS
+// EasySDK automatically manages device connections
+// Each device maintains its own connection state
+
+// Listen for connection events
+easySDK.onConnect { result in
+    print("Device connected:", result)
+}
+
+easySDK.onDisconnect { info in
+    print("Device disconnected:", info)
+}
+
+// Graceful disconnect
+Task {
+    await easySDK.disconnect()
+    print("Device disconnected gracefully")
+}
+```
+
+```kotlin Android
+// EasySDK automatically manages device connections
+// Each device maintains its own connection state
+
+// Listen for connection events
+easySDK.addEventListener(WuKongEvent.CONNECT, object : WuKongEventListener<ConnectResult> {
+    override fun onEvent(result: ConnectResult) {
+        Log.d("WuKong", "Device connected: $result")
+    }
+})
+
+easySDK.addEventListener(WuKongEvent.DISCONNECT, object : WuKongEventListener<DisconnectInfo> {
+    override fun onEvent(info: DisconnectInfo) {
+        Log.d("WuKong", "Device disconnected: $info")
+    }
+})
+
+// Graceful disconnect
+easySDK.disconnect()
+Log.d("WuKong", "Device disconnected gracefully")
+```
+
+```dart Flutter
+// EasySDK automatically manages device connections
+// Each device maintains its own connection state
+
+// Listen for connection events
+easySDK.addEventListener(WuKongEvent.connect, (ConnectResult result) {
+  print('Device connected: $result');
+});
+
+easySDK.addEventListener(WuKongEvent.disconnect, (DisconnectInfo info) {
+  print('Device disconnected: $info');
+});
+
+// Graceful disconnect
+await easySDK.disconnect();
+print('Device disconnected gracefully');
+```
+</CodeGroup>
+
+<Note>
+  A user can be online on multiple devices simultaneously. EasySDK automatically handles message synchronization between multiple devices. Each device has an independent connection and device identifier.
+</Note>

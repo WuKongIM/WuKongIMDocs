@@ -1,0 +1,500 @@
+---
+title: "Media Management"
+description: "WuKongIM iOS SDK media management functionality including file upload/download and progress management"
+icon: "image"
+---
+
+The media manager is responsible for managing multimedia resources such as files, images, videos, and audio in messages, including upload and download operations.
+
+<Note>
+Files, images, videos, audio and other multimedia resources in messages are all managed through the media manager
+</Note>
+
+This documentation only covers core methods. For more details, check the `[WKSDK shared].mediaManager` interface in the code.
+
+## Custom Upload
+
+### Create Upload Task
+
+Inherit from `WKMessageFileUploadTask` and implement necessary methods:
+
+<CodeGroup>
+```objc Objective-C
+// Inherit from WKMessageFileUploadTask
+@interface WKFileUploadTask : WKMessageFileUploadTask
+
+@end
+```
+
+```swift Swift
+// Inherit from WKMessageFileUploadTask
+class WKFileUploadTask: WKMessageFileUploadTask {
+    
+}
+```
+</CodeGroup>
+
+### Implement Upload Task
+
+<CodeGroup>
+```objc Objective-C
+// Implement four methods: initWithMessage, resume, cancel, suspend
+@implementation WKFileUploadTask
+
+- (instancetype)initWithMessage:(WKMessage *)message {
+    self = [super initWithMessage:message];
+    if(self) {
+        [self initTask];
+    }
+    return self;
+}
+
+- (void)initTask {
+    // Initialize upload task
+    // Set up network request, configure parameters, etc.
+}
+
+- (void)resume {
+    // Start or resume upload
+    [self startUpload];
+}
+
+- (void)cancel {
+    // Cancel upload
+    [self cancelUpload];
+}
+
+- (void)suspend {
+    // Pause upload
+    [self pauseUpload];
+}
+
+- (void)startUpload {
+    // Implement actual upload logic
+    // Example using NSURLSession
+    NSURLSessionConfiguration *config = [NSURLSessionConfiguration defaultSessionConfiguration];
+    NSURLSession *session = [NSURLSession sessionWithConfiguration:config delegate:self delegateQueue:nil];
+    
+    NSMutableURLRequest *request = [[NSMutableURLRequest alloc] initWithURL:[NSURL URLWithString:@"your-upload-url"]];
+    request.HTTPMethod = @"POST";
+    
+    // Set up multipart form data
+    NSString *boundary = @"----WebKitFormBoundary7MA4YWxkTrZu0gW";
+    NSString *contentType = [NSString stringWithFormat:@"multipart/form-data; boundary=%@", boundary];
+    [request setValue:contentType forHTTPHeaderField:@"Content-Type"];
+    
+    NSMutableData *body = [NSMutableData data];
+    // Add file data to body
+    
+    NSURLSessionUploadTask *uploadTask = [session uploadTaskWithRequest:request fromData:body];
+    [uploadTask resume];
+}
+
+// NSURLSessionDelegate methods
+- (void)URLSession:(NSURLSession *)session task:(NSURLSessionTask *)task didSendBodyData:(int64_t)bytesSent totalBytesSent:(int64_t)totalBytesSent totalBytesExpectedToSend:(int64_t)totalBytesExpectedToSend {
+    // Update upload progress
+    float progress = (float)totalBytesSent / (float)totalBytesExpectedToSend;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self updateProgress:progress];
+    });
+}
+
+- (void)URLSession:(NSURLSession *)session task:(NSURLSessionTask *)task didCompleteWithError:(NSError *)error {
+    if (error) {
+        // Upload failed
+        [self uploadFailedWithError:error];
+    } else {
+        // Upload successful
+        [self uploadCompleted];
+    }
+}
+
+@end
+```
+
+```swift Swift
+// Implement four methods: initWithMessage, resume, cancel, suspend
+extension WKFileUploadTask {
+    
+    override init(message: WKMessage) {
+        super.init(message: message)
+        initTask()
+    }
+    
+    func initTask() {
+        // Initialize upload task
+        // Set up network request, configure parameters, etc.
+    }
+    
+    override func resume() {
+        // Start or resume upload
+        startUpload()
+    }
+    
+    override func cancel() {
+        // Cancel upload
+        cancelUpload()
+    }
+    
+    override func suspend() {
+        // Pause upload
+        pauseUpload()
+    }
+    
+    func startUpload() {
+        // Implement actual upload logic
+        // Example using URLSession
+        let config = URLSessionConfiguration.default
+        let session = URLSession(configuration: config, delegate: self, delegateQueue: nil)
+        
+        var request = URLRequest(url: URL(string: "your-upload-url")!)
+        request.httpMethod = "POST"
+        
+        // Set up multipart form data
+        let boundary = "----WebKitFormBoundary7MA4YWxkTrZu0gW"
+        let contentType = "multipart/form-data; boundary=\(boundary)"
+        request.setValue(contentType, forHTTPHeaderField: "Content-Type")
+        
+        let body = NSMutableData()
+        // Add file data to body
+        
+        let uploadTask = session.uploadTask(with: request, from: body as Data)
+        uploadTask.resume()
+    }
+}
+
+// URLSessionDelegate methods
+extension WKFileUploadTask: URLSessionDelegate {
+    
+    func urlSession(_ session: URLSession, task: URLSessionTask, didSendBodyData bytesSent: Int64, totalBytesSent: Int64, totalBytesExpectedToSend: Int64) {
+        // Update upload progress
+        let progress = Float(totalBytesSent) / Float(totalBytesExpectedToSend)
+        DispatchQueue.main.async {
+            self.updateProgress(progress)
+        }
+    }
+    
+    func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
+        if let error = error {
+            // Upload failed
+            uploadFailed(with: error)
+        } else {
+            // Upload successful
+            uploadCompleted()
+        }
+    }
+}
+```
+</CodeGroup>
+
+### Register Upload Task
+
+<CodeGroup>
+```objc Objective-C
+// Register custom upload task
+[[WKSDK shared].mediaManager addFileUploadTask:[WKFileUploadTask class] contentType:WKContentTypeImage];
+```
+
+```swift Swift
+// Register custom upload task
+WKSDK.shared().mediaManager.addFileUploadTask(WKFileUploadTask.self, contentType: .image)
+```
+</CodeGroup>
+
+## Custom Download
+
+### Create Download Task
+
+<CodeGroup>
+```objc Objective-C
+@interface WKFileDownloadTask : WKMessageFileDownloadTask
+
+@end
+
+@implementation WKFileDownloadTask
+
+- (instancetype)initWithMessage:(WKMessage *)message {
+    self = [super initWithMessage:message];
+    if(self) {
+        [self initTask];
+    }
+    return self;
+}
+
+- (void)initTask {
+    // Initialize download task
+}
+
+- (void)resume {
+    // Start or resume download
+    [self startDownload];
+}
+
+- (void)cancel {
+    // Cancel download
+    [self cancelDownload];
+}
+
+- (void)suspend {
+    // Pause download
+    [self pauseDownload];
+}
+
+- (void)startDownload {
+    // Implement download logic
+    NSURLSessionConfiguration *config = [NSURLSessionConfiguration defaultSessionConfiguration];
+    NSURLSession *session = [NSURLSession sessionWithConfiguration:config delegate:self delegateQueue:nil];
+    
+    NSURL *downloadURL = [NSURL URLWithString:@"file-download-url"];
+    NSURLSessionDownloadTask *downloadTask = [session downloadTaskWithURL:downloadURL];
+    [downloadTask resume];
+}
+
+// NSURLSessionDownloadDelegate methods
+- (void)URLSession:(NSURLSession *)session downloadTask:(NSURLSessionDownloadTask *)downloadTask didWriteData:(int64_t)bytesWritten totalBytesWritten:(int64_t)totalBytesWritten totalBytesExpectedToWrite:(int64_t)totalBytesExpectedToWrite {
+    // Update download progress
+    float progress = (float)totalBytesWritten / (float)totalBytesExpectedToWrite;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self updateProgress:progress];
+    });
+}
+
+- (void)URLSession:(NSURLSession *)session downloadTask:(NSURLSessionDownloadTask *)downloadTask didFinishDownloadingToURL:(NSURL *)location {
+    // Download completed, move file to final location
+    NSString *documentsPath = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) firstObject];
+    NSString *filePath = [documentsPath stringByAppendingPathComponent:@"downloaded_file"];
+    
+    NSError *error;
+    [[NSFileManager defaultManager] moveItemAtURL:location toURL:[NSURL fileURLWithPath:filePath] error:&error];
+    
+    if (!error) {
+        [self downloadCompletedWithPath:filePath];
+    } else {
+        [self downloadFailedWithError:error];
+    }
+}
+
+@end
+```
+
+```swift Swift
+class WKFileDownloadTask: WKMessageFileDownloadTask {
+    
+    override init(message: WKMessage) {
+        super.init(message: message)
+        initTask()
+    }
+    
+    func initTask() {
+        // Initialize download task
+    }
+    
+    override func resume() {
+        // Start or resume download
+        startDownload()
+    }
+    
+    override func cancel() {
+        // Cancel download
+        cancelDownload()
+    }
+    
+    override func suspend() {
+        // Pause download
+        pauseDownload()
+    }
+    
+    func startDownload() {
+        // Implement download logic
+        let config = URLSessionConfiguration.default
+        let session = URLSession(configuration: config, delegate: self, delegateQueue: nil)
+        
+        let downloadURL = URL(string: "file-download-url")!
+        let downloadTask = session.downloadTask(with: downloadURL)
+        downloadTask.resume()
+    }
+}
+
+// URLSessionDownloadDelegate methods
+extension WKFileDownloadTask: URLSessionDownloadDelegate {
+    
+    func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didWriteData bytesWritten: Int64, totalBytesWritten: Int64, totalBytesExpectedToWrite: Int64) {
+        // Update download progress
+        let progress = Float(totalBytesWritten) / Float(totalBytesExpectedToWrite)
+        DispatchQueue.main.async {
+            self.updateProgress(progress)
+        }
+    }
+    
+    func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
+        // Download completed, move file to final location
+        let documentsPath = NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true).first!
+        let filePath = documentsPath + "/downloaded_file"
+        
+        do {
+            try FileManager.default.moveItem(at: location, to: URL(fileURLWithPath: filePath))
+            downloadCompleted(withPath: filePath)
+        } catch {
+            downloadFailed(with: error)
+        }
+    }
+}
+```
+</CodeGroup>
+
+### Register Download Task
+
+<CodeGroup>
+```objc Objective-C
+// Register custom download task
+[[WKSDK shared].mediaManager addFileDownloadTask:[WKFileDownloadTask class] contentType:WKContentTypeImage];
+```
+
+```swift Swift
+// Register custom download task
+WKSDK.shared().mediaManager.addFileDownloadTask(WKFileDownloadTask.self, contentType: .image)
+```
+</CodeGroup>
+
+## Progress Management
+
+### Monitor Upload Progress
+
+<CodeGroup>
+```objc Objective-C
+// Listen for upload progress
+[[NSNotificationCenter defaultCenter] addObserver:self 
+                                         selector:@selector(onUploadProgress:) 
+                                             name:@"WKMessageUploadProgressNotification" 
+                                           object:nil];
+
+- (void)onUploadProgress:(NSNotification *)notification {
+    WKMessage *message = notification.userInfo[@"message"];
+    NSNumber *progress = notification.userInfo[@"progress"];
+    
+    NSLog(@"Upload progress: %.2f%% for message: %@", progress.floatValue * 100, message.messageID);
+}
+```
+
+```swift Swift
+// Listen for upload progress
+NotificationCenter.default.addObserver(
+    self,
+    selector: #selector(onUploadProgress(_:)),
+    name: NSNotification.Name("WKMessageUploadProgressNotification"),
+    object: nil
+)
+
+@objc func onUploadProgress(_ notification: Notification) {
+    if let message = notification.userInfo?["message"] as? WKMessage,
+       let progress = notification.userInfo?["progress"] as? NSNumber {
+        print("Upload progress: \(progress.floatValue * 100)% for message: \(message.messageID)")
+    }
+}
+```
+</CodeGroup>
+
+### Monitor Download Progress
+
+<CodeGroup>
+```objc Objective-C
+// Listen for download progress
+[[NSNotificationCenter defaultCenter] addObserver:self 
+                                         selector:@selector(onDownloadProgress:) 
+                                             name:@"WKMessageDownloadProgressNotification" 
+                                           object:nil];
+
+- (void)onDownloadProgress:(NSNotification *)notification {
+    WKMessage *message = notification.userInfo[@"message"];
+    NSNumber *progress = notification.userInfo[@"progress"];
+    
+    NSLog(@"Download progress: %.2f%% for message: %@", progress.floatValue * 100, message.messageID);
+}
+```
+
+```swift Swift
+// Listen for download progress
+NotificationCenter.default.addObserver(
+    self,
+    selector: #selector(onDownloadProgress(_:)),
+    name: NSNotification.Name("WKMessageDownloadProgressNotification"),
+    object: nil
+)
+
+@objc func onDownloadProgress(_ notification: Notification) {
+    if let message = notification.userInfo?["message"] as? WKMessage,
+       let progress = notification.userInfo?["progress"] as? NSNumber {
+        print("Download progress: \(progress.floatValue * 100)% for message: \(message.messageID)")
+    }
+}
+```
+</CodeGroup>
+
+## File Management
+
+### Get File Path
+
+<CodeGroup>
+```objc Objective-C
+// Get local file path for message
+WKMessage *message = // Your message object
+NSString *filePath = [[WKSDK shared].mediaManager getFilePathForMessage:message];
+
+if (filePath && [[NSFileManager defaultManager] fileExistsAtPath:filePath]) {
+    // File exists locally
+    NSLog(@"File path: %@", filePath);
+} else {
+    // File needs to be downloaded
+    [[WKSDK shared].mediaManager downloadFileForMessage:message];
+}
+```
+
+```swift Swift
+// Get local file path for message
+let message: WKMessage = // Your message object
+let filePath = WKSDK.shared().mediaManager.getFilePath(for: message)
+
+if let filePath = filePath, FileManager.default.fileExists(atPath: filePath) {
+    // File exists locally
+    print("File path: \(filePath)")
+} else {
+    // File needs to be downloaded
+    WKSDK.shared().mediaManager.downloadFile(for: message)
+}
+```
+</CodeGroup>
+
+### Clear Cache
+
+<CodeGroup>
+```objc Objective-C
+// Clear all media cache
+[[WKSDK shared].mediaManager clearAllCache];
+
+// Clear cache for specific message type
+[[WKSDK shared].mediaManager clearCacheForContentType:WKContentTypeImage];
+
+// Clear cache older than specified days
+[[WKSDK shared].mediaManager clearCacheOlderThanDays:7];
+```
+
+```swift Swift
+// Clear all media cache
+WKSDK.shared().mediaManager.clearAllCache()
+
+// Clear cache for specific message type
+WKSDK.shared().mediaManager.clearCache(for: .image)
+
+// Clear cache older than specified days
+WKSDK.shared().mediaManager.clearCacheOlderThan(days: 7)
+```
+</CodeGroup>
+
+## Best Practices
+
+1. **Progress Feedback**: Always provide progress feedback for long-running operations
+2. **Error Handling**: Implement proper error handling for network failures
+3. **Cache Management**: Regularly clean up old cached files to save storage space
+4. **Background Tasks**: Use background tasks for large file uploads/downloads
+5. **Network Optimization**: Implement retry logic and adaptive quality based on network conditions
+6. **Security**: Validate file types and sizes before processing

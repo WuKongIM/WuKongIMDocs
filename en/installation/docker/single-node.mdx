@@ -1,0 +1,299 @@
+---
+title: "Docker Single Node"
+description: "Deploy WuKongIM in single node mode using Docker Compose"
+icon: "server"
+---
+
+# Docker Single Node Deployment
+
+Deploy WuKongIM as a single node using Docker Compose for development and small production environments.
+
+## Overview
+
+Single node deployment is ideal for:
+- **Small Applications**: Up to 400k daily active users
+- **Development Environment**: Testing and development
+- **Simple Setup**: Quick deployment with minimal configuration
+- **Cost-Effective**: Single server deployment
+
+<Callout type="info">
+  **Scaling**: Single node can be easily upgraded to cluster mode later without data migration.
+</Callout>
+
+### Advantages
+- Simple deployment and management
+- Good performance for moderate loads
+- Supports online scaling to cluster
+- Lower resource requirements
+
+### Disadvantages
+- No automatic failover
+- Manual backup required
+- Single point of failure
+
+## Prerequisites
+
+Before starting, ensure you have:
+
+<Steps>
+  <Step title="Linux System">
+    Ubuntu 18.04+ or CentOS 7+ (Ubuntu 20.04+ recommended)
+  </Step>
+  <Step title="Hardware Requirements">
+    - **Minimum**: 2 cores, 4GB RAM
+    - **Recommended**: 4 cores, 8GB RAM
+  </Step>
+  <Step title="Docker Installation">
+    Docker 20.10+ and Docker Compose 1.29+
+  </Step>
+  <Step title="Network Access">
+    Ports 5001, 5100, 5200, 5300 available
+  </Step>
+</Steps>
+
+## Installation
+
+### 1. Create Installation Directory
+
+```bash
+# Create directory
+mkdir ~/wukongim
+cd ~/wukongim
+```
+
+### 2. Create Docker Compose Configuration
+
+Create a `docker-compose.yml` file with the following content:
+
+```yaml
+version: '3.7'
+services:
+  wukongim:
+    image: registry.cn-shanghai.aliyuncs.com/wukongim/wukongim:v2
+    environment:
+      - "WK_CLUSTER_NODEID=1001"
+      # - "WK_TOKENAUTHON=true"  # Enable token auth (recommended for production)
+      - "WK_CLUSTER_SERVERADDR=YOUR_INTERNAL_IP:11110"  # Internal communication address
+      - "WK_TRACE_PROMETHEUSAPIURL=http://prometheus:9090"  # Prometheus monitoring
+      - "WK_MODE=release"  # Release mode
+      - "WK_EXTERNAL_IP=YOUR_EXTERNAL_IP"  # Server external IP
+      - "WK_CLUSTER_APIURL=http://YOUR_INTERNAL_IP:5001"  # Internal API address
+      - "WK_INTRANET_TCPADDR=YOUR_INTERNAL_IP:5100"  # Internal TCP address
+    healthcheck:
+      test: "wget -q -Y off -O /dev/null http://localhost:5001/health > /dev/null 2>&1"
+      interval: 10s
+      timeout: 10s
+      retries: 3
+    restart: always
+    volumes:
+      - ./wukongim_data:/root/wukongim  # Data persistence
+    ports:
+      - "5001:5001"   # HTTP API
+      - "5100:5100"   # TCP connections
+      - "5200:5200"   # WebSocket connections
+      - "5300:5300"   # Management interface
+      - "5172:5172"   # Demo interface
+      - "11110:11110" # Cluster communication
+
+  prometheus:
+    image: registry.cn-shanghai.aliyuncs.com/wukongim/prometheus:v2.53.1
+    volumes:
+      - "./prometheus.yml:/etc/prometheus/prometheus.yml"
+    ports:
+      - "9090:9090"
+```
+
+<Callout type="warning">
+  **Important**: Replace the following placeholders with your actual values:
+  - `YOUR_EXTERNAL_IP`: Your server's external IP address
+  - `YOUR_INTERNAL_IP`: Your server's internal IP address
+</Callout>
+
+### 3. Configure Prometheus Monitoring
+
+Create a `prometheus.yml` file for monitoring:
+
+```yaml
+global:
+  scrape_interval: 10s
+  evaluation_interval: 10s
+
+scrape_configs:
+  - job_name: wukongim-metrics
+    static_configs:
+      - targets: ['wukongim:5300']
+```
+
+### 4. Start the Services
+
+```bash
+# Start WuKongIM and monitoring
+docker-compose up -d
+
+# Check service status
+docker-compose ps
+
+# View logs
+docker-compose logs -f wukongim
+```
+
+## Configuration
+
+### Environment Variables
+
+Key environment variables for single node deployment:
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `WK_CLUSTER_NODEID` | Unique node identifier | `1001` |
+| `WK_EXTERNAL_IP` | External IP for client connections | `203.0.113.1` |
+| `WK_CLUSTER_SERVERADDR` | Internal communication address | `10.0.1.100:11110` |
+| `WK_TOKENAUTHON` | Enable token authentication | `true` |
+| `WK_MODE` | Running mode | `release` |
+
+### Security Configuration
+
+For production environments, enable authentication:
+
+```yaml
+environment:
+  - "WK_TOKENAUTHON=true"
+  - "WK_MANAGERTOKEN=your-secure-manager-token"
+```
+
+## Verification
+
+### 1. Health Check
+
+```bash
+# Check if WuKongIM is running
+curl http://localhost:5001/health
+
+# Expected response: {"status":"ok"}
+```
+
+### 2. Get Connection Information
+
+```bash
+# Get connection details for a user
+curl "http://localhost:5001/route?uid=testuser"
+
+# Expected response:
+# {
+#   "tcp_addr": "YOUR_EXTERNAL_IP:5100",
+#   "ws_addr": "ws://YOUR_EXTERNAL_IP:5200"
+# }
+```
+
+### 3. Access Management Interface
+
+Open your browser and navigate to:
+- **Management Interface**: `http://YOUR_EXTERNAL_IP:5300`
+- **Prometheus Monitoring**: `http://YOUR_EXTERNAL_IP:9090`
+- **Demo Interface**: `http://YOUR_EXTERNAL_IP:5172`
+
+## Data Management
+
+### Backup
+
+```bash
+# Stop services
+docker-compose down
+
+# Backup data directory
+tar -czf wukongim-backup-$(date +%Y%m%d).tar.gz wukongim_data/
+
+# Restart services
+docker-compose up -d
+```
+
+### Restore
+
+```bash
+# Stop services
+docker-compose down
+
+# Restore data
+tar -xzf wukongim-backup-YYYYMMDD.tar.gz
+
+# Restart services
+docker-compose up -d
+```
+
+## Troubleshooting
+
+### Common Issues
+
+<AccordionGroup>
+  <Accordion title="Port binding errors">
+    Check if ports are already in use:
+    ```bash
+    sudo netstat -tulpn | grep :5001
+    sudo netstat -tulpn | grep :5100
+    sudo netstat -tulpn | grep :5200
+    ```
+  </Accordion>
+  
+  <Accordion title="Connection refused">
+    Verify the service is running and healthy:
+    ```bash
+    docker-compose ps
+    docker-compose logs wukongim
+    ```
+  </Accordion>
+  
+  <Accordion title="External IP issues">
+    Ensure firewall allows connections:
+    ```bash
+    sudo ufw allow 5001/tcp
+    sudo ufw allow 5100/tcp
+    sudo ufw allow 5200/tcp
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### Log Analysis
+
+```bash
+# View real-time logs
+docker-compose logs -f wukongim
+
+# View specific number of log lines
+docker-compose logs --tail=100 wukongim
+
+# Export logs to file
+docker-compose logs wukongim > wukongim.log
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Scale to Cluster"
+    icon="expand"
+    href="/installation/docker/multi-node"
+  >
+    Upgrade to multi-node cluster deployment
+  </Card>
+  <Card
+    title="Configure Authentication"
+    icon="shield-check"
+    href="/server/configuration/auth"
+  >
+    Set up user authentication
+  </Card>
+  <Card
+    title="API Integration"
+    icon="code"
+    href="/api/getting-started"
+  >
+    Start using the WuKongIM API
+  </Card>
+  <Card
+    title="Monitoring Setup"
+    icon="chart-line"
+    href="/installation/linux/monitoring"
+  >
+    Set up comprehensive monitoring
+  </Card>
+</CardGroup>

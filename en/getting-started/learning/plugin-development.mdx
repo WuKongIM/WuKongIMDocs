@@ -1,0 +1,383 @@
+---
+title: "Plugin Development"
+description: "Learn how to develop WuKongIM plugins to extend and enhance message processing functionality"
+icon: "toy-brick"
+---
+
+## Overview
+
+WuKongIM defines a set of plugin rules that third-party developers can implement to extend or enhance existing WuKongIM message processing logic. Through plugins, you can implement features like sensitive word filtering, message search, AI chat, and more.
+
+<Note>
+Plugin functionality is only supported in WuKongIM version 2.1.3 and above
+</Note>
+
+## Plugin Types
+
+### User Plugins
+
+User plugins can receive all messages from users bound to the plugin. After installation, they need to be bound to users to take effect.
+
+**Features**:
+- Only process messages from bound users
+- Suitable for AI chat, personal assistant scenarios
+- Implement `Receive` function
+
+**Use Cases**:
+- Chat with large language models: Bind specific user UID, sending messages to this user means sending to the LLM
+- Personal assistant: Provide customized services for specific users
+
+### Global Plugins
+
+Global plugins can receive all messages in the system. After installation, they take effect globally.
+
+**Features**:
+- Monitor all system messages
+- No need to bind users
+- Suitable for system-level functionality
+
+**Use Cases**:
+- Sensitive word filtering: Monitor every sent message for filtering
+- Message search: Build search index for all messages
+- Data analysis: Statistics and analysis of message data
+
+## Development Environment Setup
+
+### Prerequisites
+
+- Go language environment (currently plugin development only supports Go)
+- WuKongIM source code or running instance
+- [Go PDK](https://github.com/WuKongIM/go-pdk) plugin development library
+
+### Environment Preparation
+
+**1. Download WuKongIM Source Code**
+
+```bash
+git clone https://github.com/WuKongIM/WuKongIM.git
+cd WuKongIM
+```
+
+**2. Start Single-Node WuKongIM**
+
+```bash
+go run main.go --config exampleconfig/single.yaml
+```
+
+**3. Create Plugin Project**
+
+```bash
+mkdir my-plugin
+cd my-plugin
+go mod init my-plugin
+go get github.com/WuKongIM/go-pdk
+```
+
+## Plugin Development
+
+### Basic Structure
+
+Here's a complete plugin development example:
+
+<CodeGroup>
+
+```go Plugin Structure Definition
+package main
+
+import (
+    "encoding/json"
+    "fmt"
+    "github.com/WuKongIM/go-pdk"
+)
+
+// Define plugin configuration struct
+type Config struct {
+    Name string `json:"name" label:"AI Name"` // json is config item name, label is display name in WuKongIM backend
+}
+
+// Plugin struct
+type AIExample struct {
+    Config Config // Plugin configuration, name must be Config
+}
+
+// Plugin initialization
+func (a *AIExample) Init() error {
+    pdk.Log.Info("AI plugin initialized", pdk.Any("config", a.Config))
+    return nil
+}
+
+// Plugin information
+func (a *AIExample) Info() pdk.PluginInfo {
+    return pdk.PluginInfo{
+        Uid:         "ai_example",           // Plugin unique ID
+        Name:        "AI Example Plugin",    // Plugin name
+        Description: "AI chat example plugin", // Plugin description
+        Version:     "1.0.0",               // Plugin version
+        Type:        pdk.PluginTypeUser,    // Plugin type: user plugin
+    }
+}
+
+// Receive message processing
+func (a *AIExample) Receive(message pdk.Message) error {
+    // Parse message content
+    var content map[string]interface{}
+    if err := json.Unmarshal([]byte(message.Payload), &content); err != nil {
+        return err
+    }
+    
+    // Get message text
+    text, ok := content["content"].(string)
+    if !ok {
+        return fmt.Errorf("invalid message content")
+    }
+    
+    // AI processing logic (simplified example)
+    response := fmt.Sprintf("AI %s replies: I received your message '%s'", a.Config.Name, text)
+    
+    // Send reply message
+    replyContent := map[string]interface{}{
+        "type":    "text",
+        "content": response,
+    }
+    
+    replyPayload, _ := json.Marshal(replyContent)
+    
+    return pdk.SendMessage(pdk.SendMessageReq{
+        ChannelId:   message.ChannelId,
+        ChannelType: message.ChannelType,
+        Payload:     string(replyPayload),
+    })
+}
+
+// Plugin entry point
+func main() {
+    plugin := &AIExample{}
+    pdk.Run(plugin)
+}
+```
+
+```go Global Plugin Example
+package main
+
+import (
+    "encoding/json"
+    "strings"
+    "github.com/WuKongIM/go-pdk"
+)
+
+type SensitiveWordFilter struct {
+    Config struct {
+        Words []string `json:"words" label:"Sensitive Words"`
+    }
+}
+
+func (s *SensitiveWordFilter) Init() error {
+    pdk.Log.Info("Sensitive word filter initialized")
+    return nil
+}
+
+func (s *SensitiveWordFilter) Info() pdk.PluginInfo {
+    return pdk.PluginInfo{
+        Uid:         "sensitive_filter",
+        Name:        "Sensitive Word Filter",
+        Description: "Filter sensitive words in messages",
+        Version:     "1.0.0",
+        Type:        pdk.PluginTypeGlobal, // Global plugin
+    }
+}
+
+func (s *SensitiveWordFilter) Receive(message pdk.Message) error {
+    var content map[string]interface{}
+    if err := json.Unmarshal([]byte(message.Payload), &content); err != nil {
+        return err
+    }
+    
+    text, ok := content["content"].(string)
+    if !ok {
+        return nil
+    }
+    
+    // Check for sensitive words
+    for _, word := range s.Config.Words {
+        if strings.Contains(text, word) {
+            pdk.Log.Warn("Sensitive word detected", 
+                pdk.String("word", word),
+                pdk.String("message", text))
+            
+            // Block message or replace with ***
+            content["content"] = strings.ReplaceAll(text, word, "***")
+            newPayload, _ := json.Marshal(content)
+            
+            // Update message content
+            return pdk.UpdateMessage(pdk.UpdateMessageReq{
+                MessageId: message.MessageId,
+                Payload:   string(newPayload),
+            })
+        }
+    }
+    
+    return nil
+}
+
+func main() {
+    plugin := &SensitiveWordFilter{}
+    pdk.Run(plugin)
+}
+```
+
+</CodeGroup>
+
+### Core Interfaces
+
+#### PluginInfo
+
+Plugin information structure:
+
+```go
+type PluginInfo struct {
+    Uid         string      // Plugin unique ID
+    Name        string      // Plugin name
+    Description string      // Plugin description
+    Version     string      // Plugin version
+    Type        PluginType  // Plugin type
+}
+```
+
+#### Message
+
+Message structure received by plugin:
+
+```go
+type Message struct {
+    MessageId    int64  // Message ID
+    MessageSeq   int64  // Message sequence
+    ChannelId    string // Channel ID
+    ChannelType  int    // Channel type
+    FromUid      string // Sender UID
+    Payload      string // Message content (JSON string)
+    Timestamp    int64  // Timestamp
+}
+```
+
+#### Plugin Types
+
+```go
+const (
+    PluginTypeUser   PluginType = "user"   // User plugin
+    PluginTypeGlobal PluginType = "global" // Global plugin
+)
+```
+
+### Plugin Configuration
+
+Plugins can define configuration items that users can set in the WuKongIM management interface:
+
+```go
+type Config struct {
+    APIKey    string   `json:"api_key" label:"API Key" placeholder:"Enter your API key"`
+    Model     string   `json:"model" label:"AI Model" default:"gpt-3.5-turbo"`
+    MaxTokens int      `json:"max_tokens" label:"Max Tokens" default:"1000"`
+    Keywords  []string `json:"keywords" label:"Keywords"`
+    Enabled   bool     `json:"enabled" label:"Enable Plugin" default:"true"`
+}
+```
+
+**Configuration Tags**:
+- `json`: Configuration item name
+- `label`: Display name in management interface
+- `placeholder`: Input placeholder text
+- `default`: Default value
+- `required`: Whether required
+
+## Plugin Compilation and Installation
+
+### Compilation
+
+**1. Build Plugin**
+
+```bash
+go build -buildmode=plugin -o ai_example.so main.go
+```
+
+**2. Upload Plugin**
+
+Upload the compiled `.so` file to WuKongIM management interface.
+
+### Installation and Configuration
+
+**1. Install Plugin**
+
+In WuKongIM management interface:
+- Go to Plugin Management
+- Upload plugin file
+- Configure plugin parameters
+- Enable plugin
+
+**2. Bind Users (User Plugins Only)**
+
+For user plugins, you need to bind specific users:
+- Go to User Management
+- Select target user
+- Bind plugin to user
+
+## API Reference
+
+### Send Message
+
+```go
+func SendMessage(req SendMessageReq) error
+
+type SendMessageReq struct {
+    ChannelId   string // Target channel ID
+    ChannelType int    // Channel type
+    Payload     string // Message content (JSON string)
+    FromUid     string // Sender UID (optional)
+}
+```
+
+### Update Message
+
+```go
+func UpdateMessage(req UpdateMessageReq) error
+
+type UpdateMessageReq struct {
+    MessageId int64  // Message ID to update
+    Payload   string // New message content
+}
+```
+
+### Logging
+
+```go
+pdk.Log.Info("Info message", pdk.String("key", "value"))
+pdk.Log.Warn("Warning message", pdk.Int("count", 10))
+pdk.Log.Error("Error message", pdk.Any("data", obj))
+```
+
+## Best Practices
+
+1. **Error Handling**
+   - Always handle errors gracefully
+   - Use appropriate logging levels
+   - Don't panic in plugin code
+
+2. **Performance**
+   - Avoid blocking operations
+   - Use goroutines for heavy processing
+   - Implement proper timeouts
+
+3. **Security**
+   - Validate all input data
+   - Sanitize user content
+   - Use secure API calls
+
+4. **Configuration**
+   - Provide sensible defaults
+   - Validate configuration values
+   - Document all configuration options
+
+## Related Resources
+
+- [Go PDK Documentation](https://github.com/WuKongIM/go-pdk)
+- [Plugin Examples](https://github.com/WuKongIM/plugin-examples)
+- [API Documentation](/en/api/introduction)

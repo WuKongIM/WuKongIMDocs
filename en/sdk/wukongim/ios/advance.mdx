@@ -1,0 +1,320 @@
+---
+title: "Advanced Features"
+description: "WuKongIM iOS SDK advanced features including custom messages, message reactions, and more"
+icon: "cog"
+---
+
+This guide covers advanced features of the WuKongIM iOS SDK, including custom messages, message reactions, message editing, and other advanced capabilities.
+
+## Custom Messages
+
+### Creating Custom Message Types
+
+You can create custom message types by extending `WKMessageContent`. Here's an example of creating a GIF message:
+
+```objc
+@interface WKGIFContent : WKMessageContent
+
+// GIF URL
+@property(nonatomic,copy) NSString *url;
+// Width
+@property(nonatomic,assign) NSInteger width;
+// Height
+@property(nonatomic,assign) NSInteger height;
+
+@end
+```
+
+### Implementing Encoding/Decoding
+
+```objc
+@implementation WKGIFContent
+
+- (NSDictionary *)encodeMsg {
+    NSMutableDictionary *dataDict = [NSMutableDictionary dictionary];
+    if(self.url) {
+        dataDict[@"url"] = self.url;
+    }
+    dataDict[@"width"] = @(self.width);
+    dataDict[@"height"] = @(self.height);
+    return dataDict;
+}
+
+- (void)decodeMsg:(NSDictionary *)contentDict {
+    self.url = contentDict[@"url"];
+    self.width = [contentDict[@"width"] integerValue];
+    self.height = [contentDict[@"height"] integerValue];
+}
+
+- (WKContentType)contentType {
+    return 3; // Custom type number
+}
+
+@end
+```
+
+### Registering Custom Messages
+
+```objc
+// Register the custom message type
+[[WKIM shared].messageManager registerContentClass:[WKGIFContent class]];
+```
+
+### Sending Custom Messages
+
+```objc
+WKGIFContent *gifContent = [[WKGIFContent alloc] init];
+gifContent.url = @"https://example.com/animation.gif";
+gifContent.width = 300;
+gifContent.height = 200;
+
+[[WKIM shared].messageManager sendMessage:gifContent 
+                                channelId:@"channel123" 
+                              channelType:WKChannelTypePerson];
+```
+
+## Message Reactions
+
+### Adding Reactions
+
+```objc
+// Add a reaction to a message
+[[WKIM shared].messageManager addReaction:@"👍" 
+                                messageId:@"msg123" 
+                                channelId:@"channel123" 
+                              channelType:WKChannelTypePerson];
+```
+
+### Removing Reactions
+
+```objc
+// Remove a reaction from a message
+[[WKIM shared].messageManager removeReaction:@"👍" 
+                                   messageId:@"msg123" 
+                                   channelId:@"channel123" 
+                                 channelType:WKChannelTypePerson];
+```
+
+### Listening for Reaction Updates
+
+```objc
+// Listen for reaction updates
+[[WKIM shared].messageManager addOnRefreshMsgListener:^(WKMessage *message) {
+    // Handle message updates including reactions
+    if (message.reactions.count > 0) {
+        // Update UI with new reactions
+    }
+}];
+```
+
+## Message Editing
+
+### Edit Text Messages
+
+```objc
+// Edit a text message
+WKTextContent *editedContent = [[WKTextContent alloc] init];
+editedContent.content = @"Edited message content";
+
+[[WKIM shared].messageManager editMessage:editedContent 
+                                messageId:@"msg123" 
+                                channelId:@"channel123" 
+                              channelType:WKChannelTypePerson];
+```
+
+### Handling Edit Events
+
+```objc
+// Listen for message edit events
+[[WKIM shared].messageManager addOnRefreshMsgListener:^(WKMessage *message) {
+    if (message.edited) {
+        // Message was edited, update UI
+        NSLog(@"Message edited: %@", message.content);
+    }
+}];
+```
+
+## Message Read Receipts
+
+### Marking Messages as Read
+
+```objc
+// Mark messages as read
+NSArray<WKMessage *> *messages = @[message1, message2, message3];
+[[WKIM shared].messageManager markMessagesAsRead:messages];
+```
+
+### Uploading Read Status
+
+```objc
+// Upload read status to server
+[[WKIM shared].messageManager uploadReadStatus:@"channel123" 
+                                   channelType:WKChannelTypePerson 
+                                    messageSeq:lastReadMessageSeq];
+```
+
+## Message Reminders
+
+### Creating Reminders
+
+```objc
+// Create a reminder for a message
+WKReminder *reminder = [[WKReminder alloc] init];
+reminder.messageId = @"msg123";
+reminder.channelId = @"channel123";
+reminder.channelType = WKChannelTypePerson;
+reminder.type = WKReminderTypeMention;
+reminder.text = @"You were mentioned";
+
+[[WKIM shared].reminderManager saveReminders:@[reminder]];
+```
+
+### Listening for Reminders
+
+```objc
+// Listen for reminder updates
+[[WKIM shared].reminderManager addRefreshListener:^(NSArray<WKReminder *> *reminders) {
+    // Handle new reminders
+    for (WKReminder *reminder in reminders) {
+        NSLog(@"New reminder: %@", reminder.text);
+    }
+}];
+```
+
+## File Upload Integration
+
+### Custom File Upload
+
+```objc
+// Implement custom file upload
+[[WKIM shared].messageManager setOnUploadAttachmentListener:^(WKMessage *message, void (^result)(WKMessageAttachment *attachment)) {
+    // Your custom upload logic
+    [self uploadFile:message.content completion:^(NSString *url) {
+        WKMessageAttachment *attachment = [[WKMessageAttachment alloc] init];
+        attachment.url = url;
+        result(attachment);
+    }];
+}];
+```
+
+### Download Progress
+
+```objc
+// Monitor download progress
+[[WKIM shared].messageManager setOnDownloadAttachmentListener:^(WKMessage *message, void (^result)(WKMessageAttachment *attachment)) {
+    // Your custom download logic with progress
+    [self downloadFile:message.content.url progress:^(float progress) {
+        // Update progress UI
+    } completion:^(NSString *localPath) {
+        WKMessageAttachment *attachment = [[WKMessageAttachment alloc] init];
+        attachment.localPath = localPath;
+        result(attachment);
+    }];
+}];
+```
+
+## Advanced Configuration
+
+### Custom Message Processors
+
+```objc
+// Register custom message processor
+[[WKIM shared].messageManager addMessageProcessor:^WKMessage *(WKMessage *message) {
+    // Process message before saving/displaying
+    if (message.content.contentType == 3) { // GIF message
+        // Custom processing for GIF messages
+    }
+    return message;
+}];
+```
+
+### Message Encryption
+
+```objc
+// Implement message encryption
+[[WKIM shared].messageManager setOnEncryptMessageListener:^NSData *(NSData *data) {
+    // Encrypt message data
+    return [self encryptData:data];
+}];
+
+[[WKIM shared].messageManager setOnDecryptMessageListener:^NSData *(NSData *encryptedData) {
+    // Decrypt message data
+    return [self decryptData:encryptedData];
+}];
+```
+
+## Performance Optimization
+
+### Message Caching
+
+```objc
+// Configure message cache settings
+WKOptions *options = [WKIM shared].options;
+options.messageMaxCacheCount = 1000; // Maximum cached messages per channel
+options.messageCacheExpireTime = 7 * 24 * 60 * 60; // 7 days in seconds
+```
+
+### Database Optimization
+
+```objc
+// Optimize database performance
+[[WKIM shared].messageManager optimizeDatabase];
+
+// Clear old messages
+[[WKIM shared].messageManager clearMessagesOlderThan:30]; // 30 days
+```
+
+## Error Handling
+
+### Advanced Error Handling
+
+```objc
+// Set up comprehensive error handling
+[[WKIM shared] setOnConnectionStatusListener:^(WKConnectionStatus status, WKConnectionReason reason) {
+    switch (status) {
+        case WKConnectionStatusConnected:
+            NSLog(@"Connected successfully");
+            break;
+        case WKConnectionStatusDisconnected:
+            NSLog(@"Disconnected: %@", @(reason));
+            // Handle reconnection logic
+            break;
+        case WKConnectionStatusConnecting:
+            NSLog(@"Connecting...");
+            break;
+    }
+}];
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Media Messages"
+    icon="image"
+    href="/en/sdk/wukongim/ios/media"
+  >
+    Learn about image, video, and audio messages
+  </Card>
+  <Card
+    title="Channel Management"
+    icon="hash"
+    href="/en/sdk/wukongim/ios/channel"
+  >
+    Manage channels and members
+  </Card>
+  <Card
+    title="Conversation Management"
+    icon="comments"
+    href="/en/sdk/wukongim/ios/conversation"
+  >
+    Handle conversation lists and updates
+  </Card>
+  <Card
+    title="Connection Management"
+    icon="wifi"
+    href="/en/sdk/wukongim/ios/connection"
+  >
+    Advanced connection and network handling
+  </Card>
+</CardGroup>

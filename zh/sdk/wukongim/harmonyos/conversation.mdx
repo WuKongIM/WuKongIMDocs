@@ -1,0 +1,663 @@
+---
+title: "会话管理"
+description: "WuKongIM HarmonyOS SDK 会话管理功能，包括最近会话获取、监听和操作"
+icon: "messages-square"
+---
+
+最近会话管理是 WuKongIM HarmonyOS SDK 的核心功能之一，负责管理用户的会话列表、未读消息统计和会话状态变化。
+
+## 获取最近会话
+
+### 所有最近会话
+
+```typescript
+// 查询所有最近会话
+let msgs = WKIM.shared.conversationManager().all();
+```
+
+### 完整会话获取示例
+
+```typescript
+import { WKIM, WKConversation, WKChannelType } from '@wukong/wkim';
+
+class ConversationManager {
+  
+  // 获取所有最近会话
+  static getAllConversations(): WKConversation[] {
+    try {
+      const conversations = WKIM.shared.conversationManager().all();
+      console.log(`获取到 ${conversations.length} 个会话`);
+      return conversations;
+    } catch (error) {
+      console.error('获取会话列表失败:', error);
+      return [];
+    }
+  }
+  
+  // 获取未读会话
+  static getUnreadConversations(): WKConversation[] {
+    const allConversations = this.getAllConversations();
+    return allConversations.filter(conv => conv.unreadCount > 0);
+  }
+  
+  // 获取置顶会话
+  static getTopConversations(): WKConversation[] {
+    const allConversations = this.getAllConversations();
+    const topConversations: WKConversation[] = [];
+    
+    for (const conv of allConversations) {
+      const channel = WKIM.shared.channelManager().getChannel(conv.channelId, conv.channelType);
+      if (channel && channel.top === 1) {
+        topConversations.push(conv);
+      }
+    }
+    
+    return topConversations;
+  }
+  
+  // 按时间排序会话
+  static sortConversationsByTime(conversations: WKConversation[]): WKConversation[] {
+    return conversations.sort((a, b) => b.lastMsgTimestamp - a.lastMsgTimestamp);
+  }
+  
+  // 获取总未读数
+  static getTotalUnreadCount(): number {
+    const conversations = this.getAllConversations();
+    return conversations.reduce((total, conv) => total + conv.unreadCount, 0);
+  }
+  
+  // 搜索会话
+  static searchConversations(keyword: string): WKConversation[] {
+    if (!keyword.trim()) {
+      return [];
+    }
+    
+    const allConversations = this.getAllConversations();
+    const results: WKConversation[] = [];
+    
+    for (const conv of allConversations) {
+      const channel = WKIM.shared.channelManager().getChannel(conv.channelId, conv.channelType);
+      if (channel) {
+        const displayName = channel.channelRemark || channel.channelName;
+        if (displayName.toLowerCase().includes(keyword.toLowerCase()) ||
+            channel.channelId.toLowerCase().includes(keyword.toLowerCase())) {
+          results.push(conv);
+        }
+      }
+    }
+    
+    return results;
+  }
+  
+  // 按类型获取会话
+  static getConversationsByType(channelType: number): WKConversation[] {
+    const allConversations = this.getAllConversations();
+    return allConversations.filter(conv => conv.channelType === channelType);
+  }
+  
+  // 获取个人会话
+  static getPersonalConversations(): WKConversation[] {
+    return this.getConversationsByType(WKChannelType.personal);
+  }
+  
+  // 获取群组会话
+  static getGroupConversations(): WKConversation[] {
+    return this.getConversationsByType(WKChannelType.group);
+  }
+}
+```
+
+## 新消息监听
+
+只有第一次打开应用时，需要同步最近会话列表，后续最近会话列表的变化，通过监听来获取。
+
+```typescript
+// 定义监听器
+let listener = (list: WKConversation[]) => {
+  // 当UI列表没有list中的数据时需执行添加操作
+};
+
+// 监听新消息
+WKIM.shared.conversationManager().addRefreshListener(listener);
+
+// 移出监听
+WKIM.shared.conversationManager().removeRefreshListener(listener);
+```
+
+### 完整会话监听管理
+
+```typescript
+interface ConversationUpdateEvent {
+  conversations: WKConversation[];
+  timestamp: number;
+  type: 'refresh' | 'delete';
+}
+
+class ConversationListener {
+  private static refreshListeners: Set<(list: WKConversation[]) => void> = new Set();
+  private static deletedListeners: Set<(channelId: string, channelType: number) => void> = new Set();
+  private static updateCallbacks: Array<(event: ConversationUpdateEvent) => void> = [];
+  
+  // 添加会话刷新监听
+  static addRefreshListener(callback: (list: WKConversation[]) => void): void {
+    this.refreshListeners.add(callback);
+    
+    WKIM.shared.conversationManager().addRefreshListener((list: WKConversation[]) => {
+      // 调用回调
+      callback(list);
+      
+      // 发送到更新回调
+      const event: ConversationUpdateEvent = {
+        conversations: list,
+        timestamp: Date.now(),
+        type: 'refresh'
+      };
+      
+      this.updateCallbacks.forEach(cb => cb(event));
+      
+      console.log('会话列表更新:', list.length);
+    });
+  }
+  
+  // 移除会话刷新监听
+  static removeRefreshListener(callback: (list: WKConversation[]) => void): void {
+    this.refreshListeners.delete(callback);
+    WKIM.shared.conversationManager().removeRefreshListener(callback);
+  }
+  
+  // 添加会话删除监听
+  static addDeletedListener(callback: (channelId: string, channelType: number) => void): void {
+    this.deletedListeners.add(callback);
+    
+    WKIM.shared.conversationManager().addDeletedListener((channelId: string, channelType: number) => {
+      // 调用回调
+      callback(channelId, channelType);
+      
+      // 发送到更新回调
+      const event: ConversationUpdateEvent = {
+        conversations: [],
+        timestamp: Date.now(),
+        type: 'delete'
+      };
+      
+      this.updateCallbacks.forEach(cb => cb(event));
+      
+      console.log('会话删除:', channelId);
+    });
+  }
+  
+  // 移除会话删除监听
+  static removeDeletedListener(callback: (channelId: string, channelType: number) => void): void {
+    this.deletedListeners.delete(callback);
+    WKIM.shared.conversationManager().removeDeletedListener(callback);
+  }
+  
+  // 添加更新回调
+  static addUpdateCallback(callback: (event: ConversationUpdateEvent) => void): void {
+    this.updateCallbacks.push(callback);
+  }
+  
+  // 移除更新回调
+  static removeUpdateCallback(callback: (event: ConversationUpdateEvent) => void): void {
+    const index = this.updateCallbacks.indexOf(callback);
+    if (index > -1) {
+      this.updateCallbacks.splice(index, 1);
+    }
+  }
+  
+  // 移除所有监听
+  static removeAllListeners(): void {
+    // 移除刷新监听
+    this.refreshListeners.forEach(callback => {
+      WKIM.shared.conversationManager().removeRefreshListener(callback);
+    });
+    this.refreshListeners.clear();
+    
+    // 移除删除监听
+    this.deletedListeners.forEach(callback => {
+      WKIM.shared.conversationManager().removeDeletedListener(callback);
+    });
+    this.deletedListeners.clear();
+    
+    // 清理更新回调
+    this.updateCallbacks = [];
+  }
+  
+  // 销毁
+  static dispose(): void {
+    this.removeAllListeners();
+  }
+}
+```
+
+## 删除最近会话
+
+```typescript
+// 删除最近会话
+WKIM.shared.conversationManager().delete(channelId, channelType);
+```
+
+调用删除最近会话后，会触发删除最近会话事件，UI可以监听删除最近会话事件，并将UI上的会话进行删除。
+
+```typescript
+// 定义监听器
+let listener = (channelId: string, channelType: number) => {
+  // 删除UI上的会话
+};
+
+// 设置监听
+WKIM.shared.conversationManager().addDeletedListener(listener);
+
+// 移出监听
+WKIM.shared.conversationManager().removeDeletedListener(listener);
+```
+
+### 完整会话操作示例
+
+```typescript
+class ConversationOperations {
+  
+  // 删除会话
+  static deleteConversation(channelId: string, channelType: number): boolean {
+    try {
+      WKIM.shared.conversationManager().delete(channelId, channelType);
+      console.log('删除会话成功:', channelId);
+      return true;
+    } catch (error) {
+      console.error('删除会话失败:', error);
+      return false;
+    }
+  }
+  
+  // 批量删除会话
+  static batchDeleteConversations(conversations: Array<{channelId: string, channelType: number}>): number {
+    let successCount = 0;
+    
+    for (const conv of conversations) {
+      if (this.deleteConversation(conv.channelId, conv.channelType)) {
+        successCount++;
+      }
+    }
+    
+    console.log(`批量删除完成，成功删除 ${successCount}/${conversations.length} 个会话`);
+    return successCount;
+  }
+  
+  // 清除会话未读数（需要根据实际SDK API实现）
+  static clearUnreadCount(channelId: string, channelType: number): boolean {
+    try {
+      // 这里需要根据实际SDK API来实现
+      // 示例：WKIM.shared.conversationManager().clearUnread(channelId, channelType);
+      console.log('清除未读数成功:', channelId);
+      return true;
+    } catch (error) {
+      console.error('清除未读数失败:', error);
+      return false;
+    }
+  }
+  
+  // 置顶会话
+  static async pinConversation(channelId: string, channelType: number, pin: boolean): Promise<boolean> {
+    try {
+      // 这里需要调用业务服务器API来设置置顶状态
+      // 然后更新频道信息
+      const success = await this.updateChannelTopStatus(channelId, channelType, pin);
+      
+      if (success) {
+        // 刷新频道信息
+        await WKIM.shared.channelManager().fetchChannelInfo(channelId, channelType);
+        console.log(`${pin ? '置顶' : '取消置顶'}会话成功:`, channelId);
+      }
+      
+      return success;
+    } catch (error) {
+      console.error(`${pin ? '置顶' : '取消置顶'}会话失败:`, error);
+      return false;
+    }
+  }
+  
+  // 免打扰设置
+  static async muteConversation(channelId: string, channelType: number, mute: boolean): Promise<boolean> {
+    try {
+      // 这里需要调用业务服务器API来设置免打扰状态
+      const success = await this.updateChannelMuteStatus(channelId, channelType, mute);
+      
+      if (success) {
+        // 刷新频道信息
+        await WKIM.shared.channelManager().fetchChannelInfo(channelId, channelType);
+        console.log(`${mute ? '开启' : '关闭'}免打扰成功:`, channelId);
+      }
+      
+      return success;
+    } catch (error) {
+      console.error(`${mute ? '开启' : '关闭'}免打扰失败:`, error);
+      return false;
+    }
+  }
+  
+  // 更新频道置顶状态（需要实现业务API调用）
+  private static async updateChannelTopStatus(channelId: string, channelType: number, top: boolean): Promise<boolean> {
+    // 实现业务服务器API调用
+    return true; // 示例返回
+  }
+  
+  // 更新频道免打扰状态（需要实现业务API调用）
+  private static async updateChannelMuteStatus(channelId: string, channelType: number, mute: boolean): Promise<boolean> {
+    // 实现业务服务器API调用
+    return true; // 示例返回
+  }
+  
+  // 获取会话最后一条消息
+  static getLastMessage(conversation: WKConversation): WKMsg | null {
+    // 这里需要根据实际SDK API来实现
+    // 示例：return conversation.msg;
+    return null;
+  }
+  
+  // 获取会话显示名称
+  static getConversationDisplayName(conversation: WKConversation): string {
+    const channel = WKIM.shared.channelManager().getChannel(conversation.channelId, conversation.channelType);
+    if (channel) {
+      return channel.channelRemark || channel.channelName || conversation.channelId;
+    }
+    return conversation.channelId;
+  }
+  
+  // 获取会话头像
+  static getConversationAvatar(conversation: WKConversation): string {
+    const channel = WKIM.shared.channelManager().getChannel(conversation.channelId, conversation.channelType);
+    return channel?.avatar || '';
+  }
+}
+```
+
+## 数据结构说明
+
+### WKConversation 会话对象
+
+```typescript
+export class WKConversation {
+  channelId: string = ''                          // 频道ID
+  channelType: number = WKChannelType.personal    // 频道类型
+  lastClientMsgNo: string = ''                    // 最后一条消息的序列号
+  isDeleted: number = 0                           // 是否被删除
+  version: number = 0                             // 会话版本号
+  unreadCount = 0                                 // 未读消息数
+  lastMsgTimestamp = 0                            // 最后一条消息的时间戳
+  lastMsgSeq = 0                                  // 最后一条消息的序列号
+  parentChannelId = ''                            // 父会话ID
+  parentChannelType = WKChannelType.personal      // 父会话类型
+  localExtra?: Record<string, Object>             // 本地扩展字段
+  remoteExtra?: WKConversationExtra               // 远程扩展字段
+  private reminders?: WKReminder[]                // 提醒项
+  private msg?: WKMsg                             // 最后一条消息
+  private channel?: WKChannel                     // 频道信息
+}
+```
+
+### 字段说明
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `channelId` | string | 频道ID |
+| `channelType` | number | 频道类型 |
+| `lastClientMsgNo` | string | 最后一条消息的序列号 |
+| `isDeleted` | number | 是否被删除（0=否，1=是） |
+| `version` | number | 会话版本号 |
+| `unreadCount` | number | 未读消息数 |
+| `lastMsgTimestamp` | number | 最后一条消息的时间戳 |
+| `lastMsgSeq` | number | 最后一条消息的序列号 |
+| `parentChannelId` | string | 父会话ID |
+| `parentChannelType` | number | 父会话类型 |
+| `localExtra` | Record&lt;string, Object&gt; | 本地扩展字段 |
+| `remoteExtra` | WKConversationExtra | 远程扩展字段 |
+
+### 频道类型说明
+
+| 类型值 | 说明 |
+|--------|------|
+| `WKChannelType.personal` | 个人聊天 |
+| `WKChannelType.group` | 群聊 |
+
+## HarmonyOS 组件集成示例
+
+### 会话列表组件
+
+```typescript
+@Component
+export struct ConversationListComponent {
+  @State private conversations: WKConversation[] = [];
+  @State private loading: boolean = true;
+  private refreshListener?: (list: WKConversation[]) => void;
+  private deletedListener?: (channelId: string, channelType: number) => void;
+  
+  aboutToAppear(): void {
+    this.loadConversations();
+    this.setupListeners();
+  }
+  
+  aboutToDisappear(): void {
+    this.removeListeners();
+  }
+  
+  private loadConversations(): void {
+    this.loading = true;
+    
+    try {
+      const conversations = ConversationManager.getAllConversations();
+      const sortedConversations = ConversationManager.sortConversationsByTime(conversations);
+      this.conversations = sortedConversations;
+    } catch (error) {
+      console.error('加载会话列表失败:', error);
+    } finally {
+      this.loading = false;
+    }
+  }
+  
+  private setupListeners(): void {
+    // 会话刷新监听
+    this.refreshListener = (list: WKConversation[]) => {
+      const sortedConversations = ConversationManager.sortConversationsByTime(list);
+      this.conversations = sortedConversations;
+    };
+    
+    // 会话删除监听
+    this.deletedListener = (channelId: string, channelType: number) => {
+      this.conversations = this.conversations.filter(conv => 
+        !(conv.channelId === channelId && conv.channelType === channelType)
+      );
+    };
+    
+    ConversationListener.addRefreshListener(this.refreshListener);
+    ConversationListener.addDeletedListener(this.deletedListener);
+  }
+  
+  private removeListeners(): void {
+    if (this.refreshListener) {
+      ConversationListener.removeRefreshListener(this.refreshListener);
+    }
+    if (this.deletedListener) {
+      ConversationListener.removeDeletedListener(this.deletedListener);
+    }
+  }
+  
+  build() {
+    Column() {
+      if (this.loading) {
+        Row() {
+          LoadingProgress()
+            .width(20)
+            .height(20)
+          Text('加载中...')
+            .margin({ left: 8 })
+        }
+        .justifyContent(FlexAlign.Center)
+        .padding(16)
+      } else if (this.conversations.length === 0) {
+        Column() {
+          Image($r('app.media.empty_conversation'))
+            .width(64)
+            .height(64)
+            .margin({ bottom: 16 })
+          Text('暂无会话')
+            .fontSize(16)
+            .fontColor(Color.Grey)
+        }
+        .justifyContent(FlexAlign.Center)
+        .layoutWeight(1)
+      } else {
+        List() {
+          ForEach(this.conversations, (conversation: WKConversation) => {
+            ListItem() {
+              this.buildConversationItem(conversation)
+            }
+            .swipeAction({ end: this.buildSwipeActions(conversation) })
+          })
+        }
+        .layoutWeight(1)
+        .onRefresh(() => {
+          this.loadConversations();
+        })
+      }
+    }
+    .width('100%')
+    .height('100%')
+  }
+  
+  @Builder
+  private buildConversationItem(conversation: WKConversation) {
+    Row() {
+      // 头像
+      Image(ConversationOperations.getConversationAvatar(conversation) || this.getDefaultAvatar(conversation.channelId))
+        .width(50)
+        .height(50)
+        .borderRadius(25)
+        .margin({ right: 12 })
+      
+      Column() {
+        Row() {
+          // 会话名称
+          Text(ConversationOperations.getConversationDisplayName(conversation))
+            .fontSize(16)
+            .fontWeight(FontWeight.Medium)
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .layoutWeight(1)
+          
+          // 时间
+          Text(this.formatTime(conversation.lastMsgTimestamp))
+            .fontSize(12)
+            .fontColor(Color.Grey)
+        }
+        .width('100%')
+        .margin({ bottom: 4 })
+        
+        Row() {
+          // 最后一条消息
+          Text(this.getLastMessageText(conversation))
+            .fontSize(14)
+            .fontColor(Color.Grey)
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .layoutWeight(1)
+          
+          // 未读数
+          if (conversation.unreadCount > 0) {
+            Text(conversation.unreadCount > 99 ? '99+' : conversation.unreadCount.toString())
+              .fontSize(10)
+              .fontColor(Color.White)
+              .backgroundColor(Color.Red)
+              .padding({ left: 6, right: 6, top: 2, bottom: 2 })
+              .borderRadius(10)
+              .margin({ left: 8 })
+          }
+        }
+        .width('100%')
+      }
+      .alignItems(HorizontalAlign.Start)
+      .layoutWeight(1)
+    }
+    .width('100%')
+    .padding(12)
+    .alignItems(VerticalAlign.Top)
+    .onClick(() => {
+      this.openConversation(conversation);
+    })
+  }
+  
+  @Builder
+  private buildSwipeActions(conversation: WKConversation) {
+    Row() {
+      Button('删除')
+        .backgroundColor(Color.Red)
+        .fontColor(Color.White)
+        .onClick(() => {
+          this.deleteConversation(conversation);
+        })
+    }
+  }
+  
+  private getLastMessageText(conversation: WKConversation): string {
+    // 这里需要根据最后一条消息获取显示文本
+    // 可以通过 lastClientMsgNo 获取消息详情
+    return '最新消息...'; // 示例文本
+  }
+  
+  private formatTime(timestamp: number): string {
+    const date = new Date(timestamp * 1000);
+    const now = new Date();
+    
+    if (date.toDateString() === now.toDateString()) {
+      return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+    } else {
+      return `${date.getMonth() + 1}/${date.getDate()}`;
+    }
+  }
+  
+  private getDefaultAvatar(channelId: string): string {
+    return `https://ui-avatars.com/api/?name=${channelId}&background=random`;
+  }
+  
+  private deleteConversation(conversation: WKConversation): void {
+    ConversationOperations.deleteConversation(conversation.channelId, conversation.channelType);
+  }
+  
+  private openConversation(conversation: WKConversation): void {
+    // 打开聊天界面
+    console.log('打开会话:', conversation.channelId);
+  }
+}
+```
+
+## 下一步
+
+<CardGroup cols={2}>
+  <Card
+    title="数据源配置"
+    icon="database"
+    href="/zh/sdk/wukongim/harmonyos/datasource"
+  >
+    配置会话数据源和同步逻辑
+  </Card>
+  <Card
+    title="高级功能"
+    icon="cog"
+    href="/zh/sdk/wukongim/harmonyos/advance"
+  >
+    探索自定义消息和高级特性
+  </Card>
+  <Card
+    title="频道管理"
+    icon="hash"
+    href="/zh/sdk/wukongim/harmonyos/channel"
+  >
+    回到频道管理功能
+  </Card>
+  <Card
+    title="消息管理"
+    icon="message-circle"
+    href="/zh/sdk/wukongim/harmonyos/message"
+  >
+    回到消息收发功能
+  </Card>
+</CardGroup>

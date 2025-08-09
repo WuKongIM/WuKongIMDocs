@@ -1,0 +1,810 @@
+---
+title: "Reminder Management"
+description: "WuKongIM HarmonyOS SDK reminder management functionality, including @mentions, system reminders, and custom reminders"
+icon: "bell"
+---
+
+Reminder item management handles various types of reminder messages, such as @mentions, group join requests, system notifications, etc. Conversation reminders currently only support server-issued commands, and clients only need to listen for synchronized conversation reminders and refresh conversation messages.
+
+<Note>
+Reminder items can only be issued by the server, and clients are mainly responsible for receiving, displaying, and managing reminder status
+</Note>
+
+## Get Reminder Items
+
+### Get reminder items for a specific channel
+
+```typescript
+// Get reminder items for a specific channel
+// channelId: Channel ID
+// channelType: Channel type
+// done: 1.Completed reminder items 0.Incomplete reminder items
+WKIM.shared.reminderManager().get(channelId, channelType, done);
+```
+
+### Complete reminder item retrieval example
+
+```typescript
+import { WKIM, WKReminder, WKChannelType } from '@wukong/wkim';
+
+class ReminderManager {
+  
+  // Get reminder items for a specific channel
+  static getChannelReminders(channelId: string, channelType: number, done: number = 0): WKReminder[] {
+    try {
+      const reminders = WKIM.shared.reminderManager().get(channelId, channelType, done);
+      console.log(`Retrieved ${reminders.length} reminder items`);
+      return reminders;
+    } catch (error) {
+      console.error('Failed to get reminder items:', error);
+      return [];
+    }
+  }
+  
+  // Get all pending reminder items
+  static getAllPendingReminders(): WKReminder[] {
+    // Here you need to iterate through all channels to get reminder items
+    // Actual implementation may require SDK to provide corresponding API
+    const allReminders: WKReminder[] = [];
+    
+    // Example: Get reminder items for all conversations
+    const conversations = WKIM.shared.conversationManager().all();
+    for (const conv of conversations) {
+      const reminders = this.getChannelReminders(conv.channelId, conv.channelType, 0);
+      allReminders.push(...reminders);
+    }
+    
+    return allReminders;
+  }
+  
+  // Get completed reminder items
+  static getCompletedReminders(channelId: string, channelType: number): WKReminder[] {
+    return this.getChannelReminders(channelId, channelType, 1);
+  }
+  
+  // Get reminder items by type
+  static getRemindersByType(channelId: string, channelType: number, type: number): WKReminder[] {
+    const allReminders = this.getChannelReminders(channelId, channelType, 0);
+    return allReminders.filter(reminder => reminder.type === type);
+  }
+  
+  // Get @mention reminders
+  static getMentionReminders(channelId: string, channelType: number): WKReminder[] {
+    return this.getRemindersByType(channelId, channelType, ReminderType.mention);
+  }
+  
+  // Get join request reminders
+  static getJoinRequestReminders(channelId: string, channelType: number): WKReminder[] {
+    return this.getRemindersByType(channelId, channelType, ReminderType.joinRequest);
+  }
+  
+  // Get system notice reminders
+  static getSystemNoticeReminders(channelId: string, channelType: number): WKReminder[] {
+    return this.getRemindersByType(channelId, channelType, ReminderType.systemNotice);
+  }
+  
+  // Count total reminders
+  static getTotalReminderCount(): number {
+    const allReminders = this.getAllPendingReminders();
+    return allReminders.length;
+  }
+  
+  // Count reminders by type
+  static getReminderCountByType(): Map<number, number> {
+    const allReminders = this.getAllPendingReminders();
+    const countMap = new Map<number, number>();
+    
+    for (const reminder of allReminders) {
+      const count = countMap.get(reminder.type) || 0;
+      countMap.set(reminder.type, count + 1);
+    }
+    
+    return countMap;
+  }
+  
+  // Check if there are unread reminders
+  static hasUnreadReminders(channelId: string, channelType: number): boolean {
+    const reminders = this.getChannelReminders(channelId, channelType, 0);
+    return reminders.length > 0;
+  }
+  
+  // Get reminder display text
+  static getReminderDisplayText(reminder: WKReminder): string {
+    if (reminder.text) {
+      return reminder.text;
+    }
+    
+    // Return default text based on type
+    switch (reminder.type) {
+      case ReminderType.mention:
+        return 'Someone mentioned me';
+      case ReminderType.joinRequest:
+        return 'Join request';
+      case ReminderType.systemNotice:
+        return 'System notice';
+      case ReminderType.unreadVoice:
+        return 'Unread voice';
+      default:
+        return 'New reminder';
+    }
+  }
+}
+
+// Reminder type constants
+class ReminderType {
+  static readonly mention = 1;        // @mention
+  static readonly joinRequest = 2;    // Join request
+  static readonly systemNotice = 3;   // System notice
+  static readonly unreadVoice = 4;    // Unread voice
+  static readonly custom = 99;        // Custom reminder
+}
+```
+
+## Save Reminder Items
+
+### Save or update reminder items
+
+```typescript
+// Save reminder items
+WKIM.shared.reminderManager().save(list: WKReminder[]);
+```
+
+### Complete reminder item saving example
+
+```typescript
+class ReminderOperations {
+  
+  // Save single reminder item
+  static saveReminder(reminder: WKReminder): void {
+    try {
+      WKIM.shared.reminderManager().save([reminder]);
+      console.log('Reminder item saved successfully:', reminder.reminderId);
+    } catch (error) {
+      console.error('Failed to save reminder item:', error);
+    }
+  }
+  
+  // Batch save reminder items
+  static batchSaveReminders(reminders: WKReminder[]): void {
+    try {
+      WKIM.shared.reminderManager().save(reminders);
+      console.log(`Batch saved ${reminders.length} reminder items successfully`);
+    } catch (error) {
+      console.error('Failed to batch save reminder items:', error);
+    }
+  }
+  
+  // Mark reminder as done
+  static markReminderAsDone(reminder: WKReminder): void {
+    reminder.done = 1;
+    reminder.needUpload = 1; // Mark as needing upload to business server
+    this.saveReminder(reminder);
+  }
+  
+  // Batch mark reminders as done
+  static batchMarkRemindersAsDone(reminders: WKReminder[]): void {
+    for (const reminder of reminders) {
+      reminder.done = 1;
+      reminder.needUpload = 1;
+    }
+    this.batchSaveReminders(reminders);
+  }
+  
+  // Create @mention reminder
+  static createMentionReminder(options: {
+    messageId: string;
+    channelId: string;
+    channelType: number;
+    messageSeq: number;
+    mentionText: string;
+    publisher?: string;
+  }): WKReminder {
+    const reminder = new WKReminder();
+    reminder.messageId = options.messageId;
+    reminder.channelId = options.channelId;
+    reminder.channelType = options.channelType;
+    reminder.messageSeq = options.messageSeq;
+    reminder.type = ReminderType.mention;
+    reminder.text = options.mentionText;
+    reminder.publisher = options.publisher || '';
+    reminder.done = 0;
+    reminder.needUpload = 0;
+    reminder.version = Date.now();
+    
+    return reminder;
+  }
+  
+  // Create join request reminder
+  static createJoinRequestReminder(options: {
+    channelId: string;
+    channelType: number;
+    applicantName: string;
+    requestData: Record<string, Object>;
+  }): WKReminder {
+    const reminder = new WKReminder();
+    reminder.channelId = options.channelId;
+    reminder.channelType = options.channelType;
+    reminder.type = ReminderType.joinRequest;
+    reminder.text = `${options.applicantName} requests to join the group`;
+    reminder.data = options.requestData;
+    reminder.done = 0;
+    reminder.needUpload = 0;
+    reminder.version = Date.now();
+    
+    return reminder;
+  }
+  
+  // Create system notice reminder
+  static createSystemNoticeReminder(options: {
+    channelId: string;
+    channelType: number;
+    noticeText: string;
+    noticeData?: Record<string, Object>;
+  }): WKReminder {
+    const reminder = new WKReminder();
+    reminder.channelId = options.channelId;
+    reminder.channelType = options.channelType;
+    reminder.type = ReminderType.systemNotice;
+    reminder.text = options.noticeText;
+    reminder.data = options.noticeData;
+    reminder.done = 0;
+    reminder.needUpload = 0;
+    reminder.version = Date.now();
+    
+    return reminder;
+  }
+  
+  // Create unread voice reminder
+  static createUnreadVoiceReminder(options: {
+    messageId: string;
+    channelId: string;
+    channelType: number;
+    messageSeq: number;
+    voiceDuration: number;
+  }): WKReminder {
+    const reminder = new WKReminder();
+    reminder.messageId = options.messageId;
+    reminder.channelId = options.channelId;
+    reminder.channelType = options.channelType;
+    reminder.messageSeq = options.messageSeq;
+    reminder.type = ReminderType.unreadVoice;
+    reminder.text = 'Voice message unread';
+    reminder.data = { duration: options.voiceDuration };
+    reminder.done = 0;
+    reminder.needUpload = 0;
+    reminder.version = Date.now();
+    
+    return reminder;
+  }
+}
+```
+
+## Event Listening
+
+### Add/Update Events
+
+```typescript
+refreshReminders = (reminders: WKReminder[]): void => {
+    // Add reminder items or update reminder items
+};
+
+// Listen for reminder items
+WKIM.shared.reminderManager().addRefreshListener(this.refreshReminders);
+
+// Remove listener
+WKIM.shared.reminderManager().removeRefreshListener(this.refreshReminders);
+```
+
+### Complete event listening management
+
+```typescript
+interface ReminderEvent {
+  type: ReminderEventType;
+  reminders: WKReminder[];
+  timestamp: number;
+}
+
+enum ReminderEventType {
+  refresh = 'refresh',    // Refresh reminder
+  update = 'update',      // Update reminder
+  delete = 'delete',      // Delete reminder
+}
+
+class ReminderListener {
+  private static refreshListeners: Set<(reminders: WKReminder[]) => void> = new Set();
+  private static reminderEventCallbacks: Array<(event: ReminderEvent) => void> = [];
+
+  // Add reminder refresh listener
+  static addRefreshReminderListener(callback: (reminders: WKReminder[]) => void): void {
+    this.refreshListeners.add(callback);
+
+    WKIM.shared.reminderManager().addRefreshListener((reminders: WKReminder[]) => {
+      // Call callback
+      callback(reminders);
+
+      // Send to event callbacks
+      const event: ReminderEvent = {
+        type: ReminderEventType.refresh,
+        reminders,
+        timestamp: Date.now()
+      };
+
+      this.reminderEventCallbacks.forEach(cb => cb(event));
+
+      // Handle specific types of reminders
+      this.handleSpecificReminders(reminders);
+
+      console.log('Received reminder update:', reminders.length);
+    });
+  }
+
+  // Remove reminder refresh listener
+  static removeRefreshReminderListener(callback: (reminders: WKReminder[]) => void): void {
+    this.refreshListeners.delete(callback);
+    WKIM.shared.reminderManager().removeRefreshListener(callback);
+  }
+
+  // Add reminder event callback
+  static addReminderEventCallback(callback: (event: ReminderEvent) => void): void {
+    this.reminderEventCallbacks.push(callback);
+  }
+
+  // Remove reminder event callback
+  static removeReminderEventCallback(callback: (event: ReminderEvent) => void): void {
+    const index = this.reminderEventCallbacks.indexOf(callback);
+    if (index > -1) {
+      this.reminderEventCallbacks.splice(index, 1);
+    }
+  }
+
+  // Remove all listeners
+  static removeAllListeners(): void {
+    this.refreshListeners.forEach(callback => {
+      WKIM.shared.reminderManager().removeRefreshListener(callback);
+    });
+    this.refreshListeners.clear();
+    this.reminderEventCallbacks = [];
+  }
+
+  // Handle specific types of reminders
+  private static handleSpecificReminders(reminders: WKReminder[]): void {
+    for (const reminder of reminders) {
+      switch (reminder.type) {
+        case ReminderType.mention:
+          this.handleMentionReminder(reminder);
+          break;
+        case ReminderType.joinRequest:
+          this.handleJoinRequestReminder(reminder);
+          break;
+        case ReminderType.systemNotice:
+          this.handleSystemNoticeReminder(reminder);
+          break;
+        case ReminderType.unreadVoice:
+          this.handleUnreadVoiceReminder(reminder);
+          break;
+        default:
+          this.handleCustomReminder(reminder);
+          break;
+      }
+    }
+  }
+
+  // Handle @mention reminder
+  private static handleMentionReminder(reminder: WKReminder): void {
+    console.log('Handle @mention reminder:', reminder.text);
+    // Can trigger notifications, sounds, etc. here
+    this.showNotification('Someone mentioned me', reminder.text);
+  }
+
+  // Handle join request reminder
+  private static handleJoinRequestReminder(reminder: WKReminder): void {
+    console.log('Handle join request reminder:', reminder.text);
+    this.showNotification('Join request', reminder.text);
+  }
+
+  // Handle system notice reminder
+  private static handleSystemNoticeReminder(reminder: WKReminder): void {
+    console.log('Handle system notice reminder:', reminder.text);
+    this.showNotification('System notice', reminder.text);
+  }
+
+  // Handle unread voice reminder
+  private static handleUnreadVoiceReminder(reminder: WKReminder): void {
+    console.log('Handle unread voice reminder:', reminder.text);
+    this.showNotification('Voice message', reminder.text);
+  }
+
+  // Handle custom reminder
+  private static handleCustomReminder(reminder: WKReminder): void {
+    console.log('Handle custom reminder:', reminder.text);
+    this.showNotification('Reminder', reminder.text);
+  }
+
+  // Show notification
+  private static showNotification(title: string, content: string): void {
+    // Implement notification display logic
+    // Can use HarmonyOS notification API
+  }
+
+  // Add listener for specific channel
+  static addChannelReminderListener(channelId: string, channelType: number, callback: (reminders: WKReminder[]) => void): void {
+    const wrappedCallback = (reminders: WKReminder[]) => {
+      // Filter reminders for current channel
+      const channelReminders = reminders.filter(reminder =>
+        reminder.channelId === channelId && reminder.channelType === channelType
+      );
+
+      if (channelReminders.length > 0) {
+        callback(channelReminders);
+      }
+    };
+
+    this.addRefreshReminderListener(wrappedCallback);
+  }
+
+  // Dispose
+  static dispose(): void {
+    this.removeAllListeners();
+  }
+}
+```
+
+## Data Structure Description
+
+### WKReminder Reminder Object
+
+```typescript
+export class WKReminder {
+  // Reminder item ID
+  reminderId = 0;
+  // Message ID
+  messageId = '';
+  // Channel ID
+  channelId: string = '';
+  // Channel type
+  channelType: number = WKChannelType.personal;
+  // Message sequence number
+  messageSeq = 0;
+  // Reminder item type 1.[@someone] 2.[join request] ...
+  type = 0;
+  // Display content
+  text = '';
+  // Reminder item content
+  data?: Record<string, Object>;
+  // Version number for incremental sync
+  version = 0;
+  // Whether completed 1.yes
+  done = 0;
+  // Whether needs upload to server
+  needUpload = 0;
+  // Publisher
+  publisher = '';
+}
+```
+
+### Field Description
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `reminderId` | number | Reminder item unique identifier |
+| `messageId` | string | Associated message ID |
+| `channelId` | string | Channel ID |
+| `channelType` | number | Channel type |
+| `messageSeq` | number | Message sequence number |
+| `type` | number | Reminder type (1=@mention, 2=join request, 3=system notice, 4=unread voice) |
+| `text` | string | Reminder display text |
+| `data` | Record | Additional data, can be any type |
+| `version` | number | Version number for synchronization |
+| `done` | number | Completion status (0=incomplete, 1=completed) |
+| `needUpload` | number | Whether needs upload to business server (0=no, 1=yes) |
+| `publisher` | string | Publisher ID |
+
+### Reminder Type Description
+
+| Type Value | Description |
+|------------|-------------|
+| `1` | @mention |
+| `2` | Join request |
+| `3` | System notice |
+| `4` | Unread voice |
+| `99` | Custom reminder |
+
+## HarmonyOS Component Integration Example
+
+### Reminder List Component
+
+```typescript
+@Component
+export struct ReminderListComponent {
+  @State private reminders: WKReminder[] = [];
+  @State private loading: boolean = true;
+  private channelId?: string;
+  private channelType?: number;
+  private refreshListener?: (reminders: WKReminder[]) => void;
+
+  constructor(channelId?: string, channelType?: number) {
+    this.channelId = channelId;
+    this.channelType = channelType;
+  }
+
+  aboutToAppear(): void {
+    this.loadReminders();
+    this.setupListener();
+  }
+
+  aboutToDisappear(): void {
+    if (this.refreshListener) {
+      ReminderListener.removeRefreshReminderListener(this.refreshListener);
+    }
+  }
+
+  private loadReminders(): void {
+    this.loading = true;
+
+    let reminders: WKReminder[];
+    if (this.channelId && this.channelType !== undefined) {
+      // Get reminders for specific channel
+      reminders = ReminderManager.getChannelReminders(this.channelId, this.channelType, 0);
+    } else {
+      // Get all reminders
+      reminders = ReminderManager.getAllPendingReminders();
+    }
+
+    this.reminders = reminders;
+    this.loading = false;
+  }
+
+  private setupListener(): void {
+    this.refreshListener = (reminders: WKReminder[]) => {
+      if (this.channelId && this.channelType !== undefined) {
+        // Filter reminders for specific channel
+        const channelReminders = reminders.filter(reminder =>
+          reminder.channelId === this.channelId && reminder.channelType === this.channelType
+        );
+
+        if (channelReminders.length > 0) {
+          this.loadReminders();
+        }
+      } else {
+        // Refresh all reminders
+        this.loadReminders();
+      }
+    };
+
+    ReminderListener.addRefreshReminderListener(this.refreshListener);
+  }
+
+  build() {
+    Column() {
+      // Title bar
+      Row() {
+        Text('Reminder Messages')
+          .fontSize(18)
+          .fontWeight(FontWeight.Bold)
+
+        Blank()
+
+        if (this.reminders.length > 0) {
+          Button('Mark All Read')
+            .fontSize(14)
+            .onClick(() => {
+              this.markAllAsDone();
+            })
+        }
+      }
+      .width('100%')
+      .padding(16)
+
+      // Reminder list
+      if (this.loading) {
+        Column() {
+          LoadingProgress()
+            .width(40)
+            .height(40)
+          Text('Loading...')
+            .margin({ top: 8 })
+        }
+        .justifyContent(FlexAlign.Center)
+        .layoutWeight(1)
+      } else if (this.reminders.length === 0) {
+        Column() {
+          Image($r('app.media.empty_reminder'))
+            .width(64)
+            .height(64)
+            .margin({ bottom: 16 })
+          Text('No reminders')
+            .fontSize(16)
+            .fontColor(Color.Grey)
+        }
+        .justifyContent(FlexAlign.Center)
+        .layoutWeight(1)
+      } else {
+        List() {
+          ForEach(this.reminders, (reminder: WKReminder) => {
+            ListItem() {
+              this.buildReminderItem(reminder)
+            }
+          })
+        }
+        .layoutWeight(1)
+      }
+    }
+    .width('100%')
+    .height('100%')
+  }
+
+  @Builder
+  private buildReminderItem(reminder: WKReminder) {
+    Row() {
+      // Reminder icon
+      Circle({ width: 40, height: 40 })
+        .fill(this.getReminderColor(reminder.type))
+        .margin({ right: 12 })
+        .overlay(
+          Image(this.getReminderIcon(reminder.type))
+            .width(20)
+            .height(20)
+            .fillColor(Color.White)
+        )
+
+      Column() {
+        // Reminder title
+        Text(ReminderManager.getReminderDisplayText(reminder))
+          .fontSize(16)
+          .fontWeight(FontWeight.Medium)
+          .maxLines(1)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+
+        // Reminder content
+        if (reminder.text && reminder.text !== ReminderManager.getReminderDisplayText(reminder)) {
+          Text(reminder.text)
+            .fontSize(14)
+            .fontColor(Color.Grey)
+            .maxLines(2)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .margin({ top: 2 })
+        }
+
+        // Channel info
+        Text(`Channel: ${reminder.channelId}`)
+          .fontSize(12)
+          .fontColor(Color.Grey)
+          .margin({ top: 4 })
+      }
+      .alignItems(HorizontalAlign.Start)
+      .layoutWeight(1)
+
+      // Reminder type tag
+      Text(this.getReminderTypeText(reminder.type))
+        .fontSize(10)
+        .fontColor(Color.White)
+        .backgroundColor(this.getReminderColor(reminder.type))
+        .padding({ left: 6, right: 6, top: 2, bottom: 2 })
+        .borderRadius(8)
+    }
+    .width('100%')
+    .padding(12)
+    .alignItems(VerticalAlign.Top)
+    .onClick(() => {
+      this.handleReminderTap(reminder);
+    })
+  }
+
+  private getReminderColor(type: number): Color {
+    switch (type) {
+      case ReminderType.mention:
+        return Color.Orange;
+      case ReminderType.joinRequest:
+        return Color.Blue;
+      case ReminderType.systemNotice:
+        return Color.Green;
+      case ReminderType.unreadVoice:
+        return Color.Purple;
+      default:
+        return Color.Grey;
+    }
+  }
+
+  private getReminderIcon(type: number): Resource {
+    switch (type) {
+      case ReminderType.mention:
+        return $r('app.media.ic_mention');
+      case ReminderType.joinRequest:
+        return $r('app.media.ic_person_add');
+      case ReminderType.systemNotice:
+        return $r('app.media.ic_info');
+      case ReminderType.unreadVoice:
+        return $r('app.media.ic_mic');
+      default:
+        return $r('app.media.ic_notifications');
+    }
+  }
+
+  private getReminderTypeText(type: number): string {
+    switch (type) {
+      case ReminderType.mention:
+        return '@Mention';
+      case ReminderType.joinRequest:
+        return 'Join Request';
+      case ReminderType.systemNotice:
+        return 'System Notice';
+      case ReminderType.unreadVoice:
+        return 'Unread Voice';
+      default:
+        return 'Reminder';
+    }
+  }
+
+  private handleReminderTap(reminder: WKReminder): void {
+    // Handle reminder tap event
+    if (reminder.messageId) {
+      // Navigate to corresponding message
+      this.navigateToMessage(reminder);
+    } else {
+      // Handle other types of reminders
+      this.handleSpecialReminder(reminder);
+    }
+
+    // Mark as read
+    this.markReminderAsDone(reminder);
+  }
+
+  private navigateToMessage(reminder: WKReminder): void {
+    // Navigate to message page
+    console.log('Navigate to message:', reminder.messageId);
+  }
+
+  private handleSpecialReminder(reminder: WKReminder): void {
+    // Handle special reminders
+    console.log('Handle special reminder:', reminder.type);
+  }
+
+  private markReminderAsDone(reminder: WKReminder): void {
+    ReminderOperations.markReminderAsDone(reminder);
+
+    // Remove from list
+    const index = this.reminders.indexOf(reminder);
+    if (index > -1) {
+      this.reminders.splice(index, 1);
+    }
+  }
+
+  private markAllAsDone(): void {
+    ReminderOperations.batchMarkRemindersAsDone(this.reminders);
+    this.reminders = [];
+  }
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Advanced Features"
+    icon="cog"
+    href="/en/sdk/wukongim/harmonyos/advance"
+  >
+    Explore custom messages and extension features
+  </Card>
+  <Card
+    title="Command Management"
+    icon="terminal"
+    href="/en/sdk/wukongim/harmonyos/cmd"
+  >
+    Return to command message processing functionality
+  </Card>
+  <Card
+    title="Channel Member Management"
+    icon="users"
+    href="/en/sdk/wukongim/harmonyos/channel_member"
+  >
+    Return to channel member management functionality
+  </Card>
+  <Card
+    title="Data Source Configuration"
+    icon="database"
+    href="/en/sdk/wukongim/harmonyos/datasource"
+  >
+    Configure data sources and synchronization logic
+  </Card>
+</CardGroup>

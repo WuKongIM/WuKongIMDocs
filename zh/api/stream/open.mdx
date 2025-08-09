@@ -1,0 +1,276 @@
+---
+title: "打开流消息"
+description: "打开新的流消息会话"
+api: "POST /streamv2/open"
+---
+
+## 概述
+
+打开新的流消息会话，用于实时流式传输大量数据或长文本内容。
+
+## 请求体
+
+### 必传参数
+
+<ParamField body="channel_id" type="string" required>
+目标频道 ID
+</ParamField>
+
+<ParamField body="channel_type" type="integer" required>
+频道类型 (1=个人频道, 2=群组频道)
+</ParamField>
+
+<ParamField body="payload" type="string" required>
+Base64 编码的初始消息内容
+</ParamField>
+
+### 可选参数
+
+<ParamField body="header" type="object">
+消息头部信息
+<Expandable title="header 字段">
+<ParamField body="header.no_persist" type="integer">
+是否不持久化消息 (0=持久化, 1=不持久化)
+</ParamField>
+<ParamField body="header.red_dot" type="integer">
+是否显示红点通知 (0=不显示, 1=显示)
+</ParamField>
+<ParamField body="header.sync_once" type="integer">
+是否是写扩散，这里一般是0，只有cmd消息才是1
+</ParamField>
+</Expandable>
+</ParamField>
+
+<ParamField body="client_msg_no" type="string">
+客户端消息编号，用于去重和状态跟踪
+</ParamField>
+
+<ParamField body="from_uid" type="string">
+发送者用户 ID
+</ParamField>
+
+<ParamField body="force_new" type="boolean" default={false}>
+是否强制创建新流（关闭其他活跃流）
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "http://localhost:5001/streamv2/open" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "header": {
+      "no_persist": 0,
+      "red_dot": 1,
+      "sync_once": 0
+    },
+    "client_msg_no": "stream_msg_123",
+    "from_uid": "user123",
+    "channel_id": "group123",
+    "channel_type": 2,
+    "payload": "U3RyZWFtIGJlZ2lucw==",
+    "force_new": false
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5001/streamv2/open', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    header: {
+      no_persist: 0,
+      red_dot: 1,
+      sync_once: 0
+    },
+    client_msg_no: `stream_msg_${Date.now()}`,
+    from_uid: 'user123',
+    channel_id: 'group123',
+    channel_type: 2,
+    payload: btoa(JSON.stringify({
+      type: 'stream_start',
+      content: 'Stream begins...'
+    })),
+    force_new: false
+  })
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+import base64
+import json
+
+stream_content = {
+    "type": "stream_start",
+    "content": "Stream begins..."
+}
+
+data = {
+    "header": {
+        "no_persist": 0,
+        "red_dot": 1,
+        "sync_once": 0
+    },
+    "client_msg_no": "stream_msg_123",
+    "from_uid": "user123",
+    "channel_id": "group123",
+    "channel_type": 2,
+    "payload": base64.b64encode(
+        json.dumps(stream_content).encode()
+    ).decode(),
+    "force_new": False
+}
+
+response = requests.post('http://localhost:5001/streamv2/open', json=data)
+result = response.json()
+print(result)
+```
+
+```go Go
+package main
+
+import (
+    "bytes"
+    "encoding/base64"
+    "encoding/json"
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    streamContent := map[string]interface{}{
+        "type":    "stream_start",
+        "content": "Stream begins...",
+    }
+    
+    contentBytes, _ := json.Marshal(streamContent)
+    payload := base64.StdEncoding.EncodeToString(contentBytes)
+    
+    data := map[string]interface{}{
+        "header": map[string]interface{}{
+            "no_persist": 0,
+            "red_dot":    1,
+            "sync_once":  0,
+        },
+        "client_msg_no": "stream_msg_123",
+        "from_uid":      "user123",
+        "channel_id":    "group123",
+        "channel_type":  2,
+        "payload":       payload,
+        "force_new":     false,
+    }
+    
+    jsonData, _ := json.Marshal(data)
+    
+    resp, err := http.Post(
+        "http://localhost:5001/streamv2/open",
+        "application/json",
+        bytes.NewBuffer(jsonData),
+    )
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    var result map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Printf("%+v\n", result)
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json 成功响应
+{
+  "message_id": 123456789,
+  "stream_id": "stream_123456789"
+}
+```
+</ResponseExample>
+
+## 响应字段
+
+<ResponseField name="message_id" type="integer" required>
+服务器生成的消息 ID
+</ResponseField>
+
+<ResponseField name="stream_id" type="string" required>
+流消息会话 ID，用于后续写入操作
+</ResponseField>
+
+## 状态码
+
+| 状态码 | 说明 |
+|--------|------|
+| 200 | 流消息会话创建成功 |
+| 400 | 请求参数错误 |
+| 403 | 没有发送权限 |
+| 409 | 已存在活跃流（需要设置 force_new=true） |
+| 500 | 服务器内部错误 |
+
+## 流消息机制
+
+### 流消息特点
+
+- **实时传输**：支持实时流式数据传输
+- **大容量**：适合传输大量文本或数据
+- **分片发送**：内容可以分多次发送
+- **状态管理**：维护流的开启和关闭状态
+
+### 流生命周期
+
+1. **打开流**：使用此接口创建流会话
+2. **写入数据**：使用 `/streamv2/write` 接口写入数据
+3. **关闭流**：数据传输完成后关闭流
+4. **清理资源**：系统自动清理流相关资源
+
+## 使用场景
+
+### 长文本传输
+
+- **文章发布**：分段发送长文章内容
+- **代码分享**：实时传输代码片段
+- **文档协作**：实时同步文档编辑
+
+### 实时数据流
+
+- **日志传输**：实时传输系统日志
+- **监控数据**：实时发送监控指标
+- **状态更新**：实时更新任务状态
+
+### 交互式内容
+
+- **打字效果**：模拟打字机效果
+- **渐进式加载**：内容逐步显示
+- **实时翻译**：边输入边翻译
+
+## 参数说明
+
+### 强制创建 (force_new)
+
+| 值 | 行为 | 适用场景 |
+|----|------|----------|
+| false | 如果已有活跃流则失败 | 正常情况，避免冲突 |
+| true | 关闭现有流，创建新流 | 强制重新开始 |
+
+### 初始内容 (payload)
+
+初始内容用于：
+
+- **流标识**：标识流的开始
+- **元数据**：包含流的基本信息
+- **首段内容**：流的第一部分数据
+
+## 最佳实践
+
+1. **唯一标识**：使用唯一的 client_msg_no 避免重复创建
+2. **权限验证**：确保发送者有频道的发送权限
+3. **资源管理**：及时关闭不再使用的流
+4. **错误处理**：处理流创建失败的情况
+5. **状态跟踪**：跟踪流的状态和进度
+6. **超时处理**：设置合理的流超时时间

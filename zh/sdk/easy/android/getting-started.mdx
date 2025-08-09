@@ -1,0 +1,508 @@
+---
+title: "5分钟集成 Android"
+description: "快速集成 WuKongIM Android EasySDK，5分钟实现聊天功能"
+icon: "bot"
+---
+
+## 概述
+
+WuKongIM Android EasySDK 是一个轻量级的 Android SDK，让您能够在 5 分钟内为 Android 应用添加实时聊天功能。本指南将带您快速完成从安装到发送第一条消息的全过程。
+
+<Note>
+  **系统要求**：Android 5.0 (API level 21) 或更高版本，Kotlin 1.5.0 或更高版本
+</Note>
+
+## 步骤 1：安装 SDK
+
+选择以下任一方式安装 Android EasySDK：
+
+<Tabs>
+  <Tab title="Gradle (推荐)">
+    在 `app/build.gradle` 中添加：
+    ```kotlin
+    dependencies {
+        implementation 'com.githubim:easysdk-android:1.0.0'
+    }
+    ```
+  </Tab>
+  <Tab title="Gradle (Kotlin DSL)">
+    在 `app/build.gradle.kts` 中添加：
+    ```kotlin
+    dependencies {
+        implementation("com.githubim:easysdk-android:1.0.0")
+    }
+    ```
+  </Tab>
+  <Tab title="Maven">
+    在 `pom.xml` 中添加：
+    ```xml
+    <dependency>
+        <groupId>com.githubim</groupId>
+        <artifactId>easysdk-android</artifactId>
+        <version>1.0.0</version>
+    </dependency>
+    ```
+  </Tab>
+</Tabs>
+
+## 步骤 2：基本集成
+
+### 2.1 导入 SDK
+
+```kotlin
+import com.githubim.easysdk.WuKongEasySDK
+import com.githubim.easysdk.WuKongConfig
+import com.githubim.easysdk.WuKongChannelType
+import com.githubim.easysdk.WuKongEvent
+import com.githubim.easysdk.listener.WuKongEventListener
+```
+
+### 2.2 初始化 SDK
+
+```kotlin
+// 1. 初始化 SDK
+val config = WuKongConfig.Builder()
+    .serverUrl("ws://your-wukongim-server.com:5200")
+    .uid("your_user_id")        // 您的用户 ID
+    .token("your_auth_token")   // 您的认证 Token
+    // .deviceId("optional_device_id") // 可选：设备 ID
+    // .deviceFlag(WuKongDeviceFlag.APP) // 可选：设备标识，默认为 APP
+    .build()
+
+val easySDK = WuKongEasySDK.getInstance()
+easySDK.init(this, config) // this 为 Application 或 Activity 上下文
+```
+
+### 2.3 监听事件
+
+```kotlin
+// 2. 监听各种事件
+easySDK.addEventListener(WuKongEvent.CONNECT, object : WuKongEventListener<ConnectResult> {
+    override fun onEvent(result: ConnectResult) {
+        Log.d("WuKong", "Event: Connected! $result")
+        // 连接成功，可以开始发送消息
+        runOnUiThread {
+            updateUI(true)
+        }
+    }
+})
+
+easySDK.addEventListener(WuKongEvent.DISCONNECT, object : WuKongEventListener<DisconnectInfo> {
+    override fun onEvent(disconnectInfo: DisconnectInfo) {
+        Log.d("WuKong", "Event: Disconnected. $disconnectInfo")
+        Log.d("WuKong", "Disconnect code: ${disconnectInfo.code}, reason: ${disconnectInfo.reason}")
+        // 连接断开，更新UI状态
+        runOnUiThread {
+            updateUI(false)
+        }
+    }
+})
+
+easySDK.addEventListener(WuKongEvent.MESSAGE, object : WuKongEventListener<Message> {
+    override fun onEvent(message: Message) {
+        Log.d("WuKong", "Event: Message Received $message")
+        // 处理接收到的消息
+        runOnUiThread {
+            displayMessage(message)
+        }
+    }
+})
+
+easySDK.addEventListener(WuKongEvent.ERROR, object : WuKongEventListener<WuKongError> {
+    override fun onEvent(error: WuKongError) {
+        Log.e("WuKong", "Event: Error Occurred ${error.message}")
+        // 处理错误，可能需要更新UI或重连
+        runOnUiThread {
+            handleError(error)
+        }
+    }
+})
+
+// 可以为同一事件添加多个监听器
+easySDK.addEventListener(WuKongEvent.MESSAGE, object : WuKongEventListener<Message> {
+    override fun onEvent(message: Message) {
+        Log.d("WuKong", "Second listener also received message: ${message.messageId}")
+        // 在这里可以添加不同的处理逻辑
+    }
+})
+```
+
+### 2.4 移除事件监听器
+
+在某些情况下，您可能需要移除事件监听器以避免内存泄漏或重复处理。Android EasySDK 提供了移除监听器的方法。
+
+<Note>
+  **重要提醒**：在 Android 中，事件监听器的移除需要保持对监听器的引用。建议使用类属性来存储监听器引用，以便后续移除。
+</Note>
+
+#### 正确的使用方式
+
+```kotlin
+class ChatActivity : AppCompatActivity() {
+    private lateinit var easySDK: WuKongEasySDK
+    
+    // 保存监听器引用
+    private var messageListener: WuKongEventListener<Message>? = null
+    private var connectListener: WuKongEventListener<ConnectResult>? = null
+    private var disconnectListener: WuKongEventListener<DisconnectInfo>? = null
+    private var errorListener: WuKongEventListener<WuKongError>? = null
+    
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_chat)
+        
+        easySDK = WuKongEasySDK.getInstance()
+        setupEventListeners()
+        connectToServer()
+    }
+    
+    private fun setupEventListeners() {
+        // ✅ 正确：保存监听器引用
+        messageListener = object : WuKongEventListener<Message> {
+            override fun onEvent(message: Message) {
+                Log.d("WuKong", "处理消息: $message")
+                runOnUiThread {
+                    handleMessage(message)
+                }
+            }
+        }
+        
+        connectListener = object : WuKongEventListener<ConnectResult> {
+            override fun onEvent(result: ConnectResult) {
+                Log.d("WuKong", "连接成功: $result")
+                runOnUiThread {
+                    handleConnect(result)
+                }
+            }
+        }
+        
+        disconnectListener = object : WuKongEventListener<DisconnectInfo> {
+            override fun onEvent(disconnectInfo: DisconnectInfo) {
+                Log.d("WuKong", "连接断开: $disconnectInfo")
+                Log.d("WuKong", "断开代码: ${disconnectInfo.code}, 原因: ${disconnectInfo.reason}")
+                runOnUiThread {
+                    handleDisconnect(disconnectInfo)
+                }
+            }
+        }
+        
+        errorListener = object : WuKongEventListener<WuKongError> {
+            override fun onEvent(error: WuKongError) {
+                Log.e("WuKong", "发生错误: $error")
+                runOnUiThread {
+                    handleError(error)
+                }
+            }
+        }
+        
+        // 添加事件监听器
+        messageListener?.let { easySDK.addEventListener(WuKongEvent.MESSAGE, it) }
+        connectListener?.let { easySDK.addEventListener(WuKongEvent.CONNECT, it) }
+        disconnectListener?.let { easySDK.addEventListener(WuKongEvent.DISCONNECT, it) }
+        errorListener?.let { easySDK.addEventListener(WuKongEvent.ERROR, it) }
+    }
+    
+    private fun removeEventListeners() {
+        // 移除特定的事件监听器 - 使用保存的引用
+        messageListener?.let { 
+            easySDK.removeEventListener(WuKongEvent.MESSAGE, it)
+            messageListener = null
+        }
+        
+        connectListener?.let { 
+            easySDK.removeEventListener(WuKongEvent.CONNECT, it)
+            connectListener = null
+        }
+        
+        disconnectListener?.let { 
+            easySDK.removeEventListener(WuKongEvent.DISCONNECT, it)
+            disconnectListener = null
+        }
+        
+        errorListener?.let { 
+            easySDK.removeEventListener(WuKongEvent.ERROR, it)
+            errorListener = null
+        }
+    }
+    
+    override fun onDestroy() {
+        super.onDestroy()
+        // Activity 销毁时清理监听器
+        removeEventListeners()
+    }
+    
+    private fun handleMessage(message: Message) {
+        // 处理消息逻辑
+    }
+    
+    private fun handleConnect(result: ConnectResult) {
+        // 处理连接成功逻辑
+    }
+    
+    private fun handleDisconnect(disconnectInfo: DisconnectInfo) {
+        // 处理连接断开逻辑
+        Log.d("WuKong", "处理断开事件 - 代码: ${disconnectInfo.code}, 原因: ${disconnectInfo.reason}")
+    }
+    
+    private fun handleError(error: WuKongError) {
+        // 处理错误逻辑
+    }
+    
+    private fun connectToServer() {
+        lifecycleScope.launch {
+            try {
+                easySDK.connect()
+                Log.d("WuKong", "连接成功！")
+            } catch (e: Exception) {
+                Log.e("WuKong", "连接失败: $e")
+            }
+        }
+    }
+}
+```
+
+#### 错误的使用方式
+
+```kotlin
+// ❌ 错误：没有保存监听器引用，无法正确移除
+class BadChatActivity : AppCompatActivity() {
+    private lateinit var easySDK: WuKongEasySDK
+
+    private fun setupEventListeners() {
+        // 这样添加的监听器无法被移除，因为没有保存引用
+        easySDK.addEventListener(WuKongEvent.MESSAGE, object : WuKongEventListener<Message> {
+            override fun onEvent(message: Message) {
+                Log.d("WuKong", "处理消息: $message")
+            }
+        })
+
+        easySDK.addEventListener(WuKongEvent.CONNECT, object : WuKongEventListener<ConnectResult> {
+            override fun onEvent(result: ConnectResult) {
+                Log.d("WuKong", "连接成功: $result")
+            }
+        })
+    }
+
+    private fun removeEventListeners() {
+        // 无法移除上面添加的监听器，因为没有引用
+        // 只能移除所有监听器
+        easySDK.removeAllEventListeners()
+    }
+}
+```
+
+#### Fragment 集成最佳实践
+
+```kotlin
+class ChatFragment : Fragment() {
+    private lateinit var easySDK: WuKongEasySDK
+
+    // 保存监听器引用
+    private var messageListener: WuKongEventListener<Message>? = null
+    private var connectListener: WuKongEventListener<ConnectResult>? = null
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+
+        easySDK = WuKongEasySDK.getInstance()
+        setupEventListeners()
+    }
+
+    private fun setupEventListeners() {
+        messageListener = object : WuKongEventListener<Message> {
+            override fun onEvent(message: Message) {
+                activity?.runOnUiThread {
+                    handleMessage(message)
+                }
+            }
+        }
+
+        connectListener = object : WuKongEventListener<ConnectResult> {
+            override fun onEvent(result: ConnectResult) {
+                activity?.runOnUiThread {
+                    handleConnect(result)
+                }
+            }
+        }
+
+        // 添加监听器
+        messageListener?.let { easySDK.addEventListener(WuKongEvent.MESSAGE, it) }
+        connectListener?.let { easySDK.addEventListener(WuKongEvent.CONNECT, it) }
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+
+        // Fragment 视图销毁时清理监听器
+        messageListener?.let {
+            easySDK.removeEventListener(WuKongEvent.MESSAGE, it)
+            messageListener = null
+        }
+
+        connectListener?.let {
+            easySDK.removeEventListener(WuKongEvent.CONNECT, it)
+            connectListener = null
+        }
+    }
+
+    private fun handleMessage(message: Message) {
+        // 处理消息逻辑
+    }
+
+    private fun handleConnect(result: ConnectResult) {
+        // 处理连接成功逻辑
+    }
+}
+```
+
+### 2.5 连接服务器
+
+```kotlin
+// 4. 连接到服务器
+lifecycleScope.launch {
+    try {
+        easySDK.connect()
+        Log.d("WuKong", "连接成功！")
+    } catch (e: Exception) {
+        Log.e("WuKong", "连接失败: $e")
+    }
+}
+```
+
+### 2.6 发送消息
+
+```kotlin
+// 5. 发送消息示例
+private fun sendMessage() {
+    val targetChannelID = "friend_user_id" // 目标用户 ID
+    val messagePayload = MessagePayload(
+        type = 1,
+        content = "Hello from Android EasySDK!"
+    ) // 您的自定义消息载荷
+
+    lifecycleScope.launch {
+        try {
+            val result = easySDK.send(
+                channelId = targetChannelID,
+                channelType = WuKongChannelType.PERSON,
+                payload = messagePayload
+            )
+            Log.d("WuKong", "消息发送成功: $result")
+        } catch (e: Exception) {
+            Log.e("WuKong", "消息发送失败: $e")
+        }
+    }
+}
+```
+
+## 步骤 3：错误处理和最佳实践
+
+### 3.1 错误处理
+
+<Note>
+  **SDK 内置自动重连**：Android EasySDK 内置了智能重连机制，无需手动实现重连逻辑。SDK 会在连接断开时自动尝试重连。
+</Note>
+
+```kotlin
+// 正确的连接状态监听
+easySDK.addEventListener(WuKongEvent.CONNECT, object : WuKongEventListener<ConnectResult> {
+    override fun onEvent(result: ConnectResult) {
+        Log.d("WuKong", "连接成功: $result")
+        // 更新UI状态，启用发送功能
+        runOnUiThread {
+            updateConnectionUI(true)
+        }
+    }
+})
+
+easySDK.addEventListener(WuKongEvent.DISCONNECT, object : WuKongEventListener<DisconnectInfo> {
+    override fun onEvent(disconnectInfo: DisconnectInfo) {
+        Log.d("WuKong", "连接断开: $disconnectInfo")
+        Log.d("WuKong", "断开代码: ${disconnectInfo.code}, 原因: ${disconnectInfo.reason}")
+        // 更新UI状态，禁用发送功能
+        runOnUiThread {
+            updateConnectionUI(false)
+        }
+        // SDK 会自动尝试重连，无需手动处理
+    }
+})
+
+easySDK.addEventListener(WuKongEvent.ERROR, object : WuKongEventListener<WuKongError> {
+    override fun onEvent(error: WuKongError) {
+        Log.e("WuKong", "发生错误: $error")
+
+        // 根据错误类型进行处理
+        runOnUiThread {
+            when (error.code) {
+                WuKongErrorCode.AUTH_FAILED -> {
+                    // 认证失败，需要重新获取token
+                    handleAuthError()
+                }
+                WuKongErrorCode.NETWORK_ERROR -> {
+                    // 网络错误，显示网络提示
+                    showNetworkError()
+                }
+                else -> {
+                    // 其他错误
+                    showGeneralError(error.message)
+                }
+            }
+        }
+    }
+})
+
+// 消息发送错误处理
+private suspend fun sendMessageWithErrorHandling(targetId: String, content: String) {
+    try {
+        val messagePayload = MessagePayload(type = 1, content = content)
+        val result = easySDK.send(
+            channelId = targetId,
+            channelType = WuKongChannelType.PERSON,
+            payload = messagePayload
+        )
+        Log.d("WuKong", "消息发送成功: $result")
+    } catch (e: Exception) {
+        Log.e("WuKong", "消息发送失败: $e")
+
+        // 根据错误类型提供用户友好的提示
+        val errorMessage = when (e) {
+            is WuKongNotConnectedException -> "未连接到服务器，请检查网络连接"
+            is WuKongInvalidChannelException -> "目标用户不存在或无权限发送消息"
+            is WuKongMessageTooLargeException -> "消息内容过大，请减少内容长度"
+            else -> "发送失败: ${e.message ?: "未知错误"}"
+        }
+
+        throw Exception(errorMessage)
+    }
+}
+```
+
+## 相关资源
+
+<CardGroup cols={2}>
+  <Card title="完整示例代码" icon="code" href="https://github.com/WuKongIM/EasyJSSDK/blob/main/example/app.js">
+    查看完整的示例代码和更多功能演示
+  </Card>
+  <Card title="协议完整文档" icon="file-text" href="https://github.com/WuKongIM/WuKongIM/blob/main/pkg/jsonrpc/wukongim_rpc_schema.json">
+    查看 WuKongIM 的完整协议文档
+  </Card>
+  <Card title="GitHub 仓库" icon="github" href="https://github.com/WuKongIM/EasyJSSDK">
+    访问 EasyJSSDK 的 GitHub 仓库
+  </Card>
+  <Card title="问题反馈" icon="bug" href="https://github.com/WuKongIM/EasyJSSDK/issues">
+    报告问题或提出建议
+  </Card>
+</CardGroup>
+
+## 下一步
+
+恭喜！您已经成功集成了 WuKongIM Android EasySDK。现在您可以：
+
+1. **扩展功能**：添加群组聊天、文件传输等功能
+2. **自定义 UI**：根据您的应用设计定制聊天界面
+3. **集成到项目**：将聊天功能集成到您的现有项目中
+4. **性能优化**：根据实际使用情况优化性能
+
+<Tip>
+  如果您需要更复杂的功能或更高的性能要求，建议考虑使用完整版的 WuKongIMSDK。
+</Tip>

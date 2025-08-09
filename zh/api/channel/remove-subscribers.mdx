@@ -1,0 +1,157 @@
+---
+title: "移除频道订阅者"
+description: "从频道移除订阅者（成员）"
+api: "POST /channel/subscriber_remove"
+---
+
+## 概述
+
+从频道移除订阅者（成员），支持批量移除操作。
+
+## 请求体
+
+<ParamField body="channel_id" type="string" required>
+频道 ID
+</ParamField>
+
+<ParamField body="channel_type" type="integer" required>
+频道类型
+- `1` - 个人频道
+- `2` - 群组频道
+</ParamField>
+
+<ParamField body="subscribers" type="array" required>
+要移除的订阅者用户 ID 列表
+<ParamField body="subscribers[]" type="string">
+用户 ID
+</ParamField>
+</ParamField>
+
+<ParamField body="temp_subscriber" type="integer" default={0}>
+是否为临时订阅者
+- `0` - 永久订阅者
+- `1` - 临时订阅者
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "http://localhost:5001/channel/subscriber_remove" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "channel_id": "group123",
+    "channel_type": 2,
+    "subscribers": ["user4", "user5"],
+    "temp_subscriber": 0
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5001/channel/subscriber_remove', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    channel_id: 'group123',
+    channel_type: 2,
+    subscribers: ['user4', 'user5'],
+    temp_subscriber: 0
+  })
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+
+data = {
+    "channel_id": "group123",
+    "channel_type": 2,
+    "subscribers": ["user4", "user5"],
+    "temp_subscriber": 0
+}
+
+response = requests.post('http://localhost:5001/channel/subscriber_remove', json=data)
+result = response.json()
+print(result)
+```
+
+```go Go
+package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    data := map[string]interface{}{
+        "channel_id":      "group123",
+        "channel_type":    2,
+        "subscribers":     []string{"user4", "user5"},
+        "temp_subscriber": 0,
+    }
+    
+    jsonData, _ := json.Marshal(data)
+    
+    resp, err := http.Post(
+        "http://localhost:5001/channel/subscriber_remove",
+        "application/json",
+        bytes.NewBuffer(jsonData),
+    )
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    var result map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Printf("%+v\n", result)
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json 成功响应
+{
+  "status": "ok"
+}
+```
+</ResponseExample>
+
+## 响应字段
+
+<ResponseField name="status" type="string" required>
+操作状态，成功时返回 `"ok"`
+</ResponseField>
+
+## 状态码
+
+| 状态码 | 说明 |
+|--------|------|
+| 200 | 订阅者移除成功 |
+| 400 | 请求参数错误 |
+| 403 | 没有操作权限 |
+| 404 | 频道不存在或用户不在频道中 |
+| 500 | 服务器内部错误 |
+
+## 参数说明
+
+### 临时订阅者 (temp_subscriber)
+
+| 值 | 类型 | 说明 | 影响 |
+|----|------|------|------|
+| 0 | 永久订阅者 | 移除正式成员 | 完全移除成员关系 |
+| 1 | 临时订阅者 | 移除临时成员 | 移除临时访问权限 |
+
+## 使用场景
+
+### 群组管理
+
+- **踢出成员**：群主或管理员移除违规成员
+- **成员退群**：用户主动退出群组
+- **批量清理**：清理不活跃或无效的成员

@@ -1,0 +1,455 @@
+---
+title: "Chat Management"
+description: "WuKongIM JavaScript SDK chat management functionality, including message sending, receiving and history message handling"
+icon: "message-square"
+---
+
+## Message Sending
+
+### Method Description
+
+Send method explanation:
+
+```javascript
+/**
+ * Send message
+ * @param content Message content
+ * @param channel Channel object (personal channel, group channel)
+ * @returns Complete message object
+ */
+WKSDK.shared().chatManager.send(content: MessageContent, channel: Channel)
+```
+
+Example usage:
+
+```javascript
+// Import corresponding packages
+import { MessageText, Channel, WKSDK, ChannelTypePerson, ChannelTypeGroup } from "wukongimjssdk";
+
+// Example: Send text message "hello" to user u10001
+const text = new MessageText("hello") // Text message
+WKSDK.shared().chatManager.send(text, new Channel("u10001", ChannelTypePerson))
+
+// Example: Send text message "hello" to group channel g10001
+WKSDK.shared().chatManager.send(text, new Channel("g10001", ChannelTypeGroup))
+```
+
+### Send Text Message
+
+```javascript
+// Text message
+const msgContent = new MessageText("hello")
+
+// Send
+WKSDK.shared().chatManager.send(msgContent, channel)
+```
+
+### Send Image Message
+
+#### Self-uploaded Image
+
+```javascript
+// Image message
+const msgContent = new MessageImage()
+msgContent.url = url // Image download URL
+msgContent.width = width // Image width
+msgContent.height = height // Image height
+
+// Send
+WKSDK.shared().chatManager.send(msgContent, channel)
+```
+
+#### SDK Upload File
+
+`Need to implement file upload data source` Reference: [File Upload Data Source](/en/sdk/wukongim/javascript/datasource#file-upload-data-source)
+
+```javascript
+const msgContent = new MessageImage() // Image message
+msgContent.file = file  // Upload image file object, e.g., file object from <input type="file" />
+msgContent.width = width // Image width
+msgContent.height = height // Image height
+
+// Send - SDK will check if image has been uploaded, if not, will call upload task to upload image
+WKSDK.shared().chatManager.send(msgContent, channel)
+```
+
+### Send Voice Message
+
+```javascript
+// Voice message
+const msgContent = new MessageVoice()
+msgContent.url = voiceUrl // Voice file URL
+msgContent.second = duration // Voice duration in seconds
+msgContent.file = voiceFile // Voice file object (if uploading via SDK)
+
+// Send
+WKSDK.shared().chatManager.send(msgContent, channel)
+```
+
+### Send Location Message
+
+```javascript
+// Location message
+const msgContent = new MessageLocation()
+msgContent.latitude = latitude // Latitude
+msgContent.longitude = longitude // Longitude
+msgContent.address = address // Address description
+
+// Send
+WKSDK.shared().chatManager.send(msgContent, channel)
+```
+
+### Send Custom Message
+
+Reference custom messages: [Custom Messages](/en/sdk/wukongim/javascript/advance#custom-messages)
+
+```typescript
+const msgContent = new XXXX() // XXXX is custom message content
+
+// Send
+WKSDK.shared().chatManager.send(msgContent, channel)
+```
+
+## Message Listening
+
+### Listen for Message Send Status
+
+```javascript
+const listen = (packet: SendackPacket) => {
+  console.log('Message clientSeq->', packet.clientSeq); // Message client sequence number to match corresponding sent message
+  if (packet.reasonCode === 1) {
+    // Send successful
+  } else {
+    // Send failed
+  }
+}
+```
+
+Add listener:
+
+```javascript
+// Message send status listener
+WKSDK.shared().chatManager.addMessageStatusListener(listen);
+```
+
+Remove listener:
+
+```javascript
+// Remove message send status listener
+WKSDK.shared().chatManager.removeMessageStatusListener(listen)
+```
+
+### Listen for Regular Messages
+
+```javascript
+const listen = (message: Message) => {
+    message.content // Message content
+    message.channel // Message channel
+    message.fromUID // Message sender
+    // ...
+}
+```
+
+Add listener:
+
+```javascript
+WKSDK.shared().chatManager.addMessageListener(listen);
+```
+
+Remove listener:
+
+```javascript
+WKSDK.shared().chatManager.removeMessageListener(listen)
+```
+
+### Listen for CMD Messages
+
+```javascript
+const listen = (message: Message) => {
+    const cmdContent = message.content as CMDContent
+    const cmd = cmdContent.cmd   // Command name
+    const param = cmdContent.param // Command parameters
+    // ...
+}
+```
+
+Add listener:
+
+```javascript
+WKSDK.shared().chatManager.addCMDListener(listen)
+```
+
+Remove listener:
+
+```javascript
+WKSDK.shared().chatManager.removeCMDListener(listen)
+```
+
+## Message History
+
+`Need to implement sync channel message data source` Reference: [Sync Channel Message Data Source](/en/sdk/wukongim/javascript/datasource#sync-channel-message-data-source)
+
+Get history messages for a channel:
+
+```javascript
+const messages = await WKSDK.shared().chatManager.syncMessages(channel, opts)
+```
+
+Options parameter explanation:
+
+```javascript
+{
+    startMessageSeq: number = 0 // Start message sequence (result includes message with startMessageSeq)
+    endMessageSeq: number = 0 //  End message sequence (result excludes message with endMessageSeq) 0 means no limit
+    limit: number = 30 // Limit per request
+    pullMode: PullMode = PullMode.Down // Pull mode 0: pull down 1: pull up
+}
+```
+
+Detailed explanation:
+
+```
+Using startMessageSeq as baseline, pullMode controls pull direction, endMessageSeq and limit control end position
+
+------------------ Pull Up ------------------
+
+pullMode = 1 means pull up, logic as follows:
+
+Messages start from startMessageSeq, load messages greater than or equal to startMessageSeq, 
+load until exceeding endMessageSeq (result excludes endMessageSeq) or exceeding limit, 
+if endMessageSeq is 0 then use limit as criterion
+
+Examples:
+startMessageSeq=100 endMessageSeq=200 limit=10 use limit, returns messages with messageSeq 100-110
+startMessageSeq=100 endMessageSeq=105 limit=10 use endMessageSeq, returns messages with messageSeq 100-104
+startMessageSeq=100 endMessageSeq=0 limit=10 use limit, returns messages with messageSeq 100-110
+
+------------------ Pull Down ------------------
+
+pullMode = 0 means pull down, logic as follows:
+
+Messages start from startMessageSeq, load messages less than or equal to startMessageSeq,
+load until exceeding endMessageSeq (result excludes endMessageSeq) or exceeding limit,
+if endMessageSeq is 0 then use limit as criterion
+
+Examples:
+startMessageSeq=100 endMessageSeq=50 limit=10 use limit, returns messages with messageSeq 100-91
+startMessageSeq=100 endMessageSeq=95 limit=10 use endMessageSeq, returns messages with messageSeq 100-96
+startMessageSeq=100 endMessageSeq=0 limit=10 use limit, returns messages with messageSeq 100-91
+
+If both startMessageSeq and endMessageSeq are 0, regardless of pullMode, load the latest limit messages.
+```
+
+### History Message Loading Example
+
+```javascript
+class ChatManager {
+    constructor(channel) {
+        this.channel = channel;
+        this.messages = [];
+        this.isLoading = false;
+        this.hasMoreHistory = true;
+    }
+    
+    // Load initial messages
+    async loadInitialMessages() {
+        try {
+            const messages = await WKSDK.shared().chatManager.syncMessages(this.channel, {
+                startMessageSeq: 0,
+                endMessageSeq: 0,
+                limit: 20,
+                pullMode: PullMode.Down
+            });
+            
+            this.messages = messages;
+            this.updateUI();
+        } catch (error) {
+            console.error('Failed to load initial messages:', error);
+        }
+    }
+    
+    // Load more history messages (pull to refresh)
+    async loadMoreHistory() {
+        if (this.isLoading || !this.hasMoreHistory) return;
+        
+        this.isLoading = true;
+        
+        try {
+            const oldestMessage = this.messages[0];
+            const startSeq = oldestMessage ? oldestMessage.messageSeq : 0;
+            
+            const messages = await WKSDK.shared().chatManager.syncMessages(this.channel, {
+                startMessageSeq: startSeq,
+                endMessageSeq: 0,
+                limit: 20,
+                pullMode: PullMode.Down
+            });
+            
+            if (messages.length > 0) {
+                this.messages.unshift(...messages);
+                this.updateUI();
+            } else {
+                this.hasMoreHistory = false;
+            }
+        } catch (error) {
+            console.error('Failed to load history messages:', error);
+        } finally {
+            this.isLoading = false;
+        }
+    }
+    
+    updateUI() {
+        // Update your UI here
+        console.log('Messages updated:', this.messages.length);
+    }
+}
+```
+
+## Offline Messages
+
+In WuKongIM, to handle massive offline messages, an on-demand pull mechanism is adopted. For example, with 10 conversations each having 100,000 messages, **WuKongIM** will not pull all 1 million messages to local storage. Instead, it pulls information for these 10 conversations and the corresponding latest 20 messages, which means actually only 200 messages are pulled. Compared to 1 million messages, this greatly improves offline pull speed. Users will only pull messages for a specific conversation when they enter that conversation. These mechanisms are already encapsulated within the SDK, so users don't need to worry about them. Users only need to focus on recent conversation changes.
+
+### Offline Message Sync Example
+
+```javascript
+// Listen for connection status to trigger offline sync
+WKSDK.shared().connectManager.addConnectStatusListener((status) => {
+    if (status === ConnectStatus.Connected) {
+        // Connection successful, sync offline data
+        syncOfflineData();
+    }
+});
+
+async function syncOfflineData() {
+    try {
+        // Sync conversations first
+        await WKSDK.shared().conversationManager.syncConversations();
+        
+        // Then sync recent messages for each conversation
+        const conversations = WKSDK.shared().conversationManager.getConversations();
+        
+        for (const conversation of conversations) {
+            // Load latest messages for each conversation
+            await WKSDK.shared().chatManager.syncMessages(conversation.channel, {
+                startMessageSeq: 0,
+                endMessageSeq: 0,
+                limit: 20,
+                pullMode: PullMode.Down
+            });
+        }
+        
+        console.log('Offline sync completed');
+    } catch (error) {
+        console.error('Offline sync failed:', error);
+    }
+}
+```
+
+## Best Practices
+
+### 1. Message Deduplication
+
+```javascript
+class MessageManager {
+    constructor() {
+        this.messageMap = new Map(); // Use Map for message deduplication
+    }
+    
+    addMessage(message) {
+        // Use clientMsgNO for deduplication
+        if (!this.messageMap.has(message.clientMsgNO)) {
+            this.messageMap.set(message.clientMsgNO, message);
+            this.updateUI();
+        }
+    }
+    
+    updateMessage(message) {
+        if (this.messageMap.has(message.clientMsgNO)) {
+            this.messageMap.set(message.clientMsgNO, message);
+            this.updateUI();
+        }
+    }
+}
+```
+
+### 2. Message Status Handling
+
+```javascript
+// Handle message send status
+WKSDK.shared().chatManager.addMessageStatusListener((packet) => {
+    const message = findMessageByClientSeq(packet.clientSeq);
+    if (message) {
+        switch (packet.reasonCode) {
+            case 1:
+                message.status = 'sent';
+                break;
+            default:
+                message.status = 'failed';
+                break;
+        }
+        updateMessageInUI(message);
+    }
+});
+```
+
+### 3. Memory Management
+
+```javascript
+class ChatComponent {
+    constructor() {
+        this.messageListener = this.handleMessage.bind(this);
+        this.statusListener = this.handleStatus.bind(this);
+    }
+    
+    mount() {
+        WKSDK.shared().chatManager.addMessageListener(this.messageListener);
+        WKSDK.shared().chatManager.addMessageStatusListener(this.statusListener);
+    }
+    
+    unmount() {
+        WKSDK.shared().chatManager.removeMessageListener(this.messageListener);
+        WKSDK.shared().chatManager.removeMessageStatusListener(this.statusListener);
+    }
+    
+    handleMessage(message) {
+        // Handle incoming message
+    }
+    
+    handleStatus(packet) {
+        // Handle message status
+    }
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Channel Management"
+    icon="hash"
+    href="/en/sdk/wukongim/javascript/channel"
+  >
+    Learn how to manage channels and groups
+  </Card>
+  <Card
+    title="Conversation Management"
+    icon="users"
+    href="/en/sdk/wukongim/javascript/conversation"
+  >
+    Handle conversation lists and unread messages
+  </Card>
+  <Card
+    title="Data Source Configuration"
+    icon="database"
+    href="/en/sdk/wukongim/javascript/datasource"
+  >
+    Configure data sources and sync logic
+  </Card>
+  <Card
+    title="Advanced Features"
+    icon="cog"
+    href="/en/sdk/wukongim/javascript/advance"
+  >
+    Explore advanced features and custom messages
+  </Card>
+</CardGroup>

@@ -1,0 +1,249 @@
+---
+title: "System Requirements"
+description: "Hardware and software requirements for WuKongIM deployment"
+---
+
+# System Requirements
+
+Before installing WuKongIM, ensure your system meets the minimum requirements for optimal performance.
+
+## Hardware Requirements
+
+### Single Node Deployment
+
+For applications with up to 400k daily active users:
+
+<Tabs>
+  <Tab title="Minimum Configuration">
+    - **CPU**: 2 cores
+    - **Memory**: 8GB RAM
+    - **Storage**: SSD (recommended)
+    - **Network**: 1Gbps bandwidth
+    - **OS**: Linux (Ubuntu 18.04+, CentOS 7+)
+  </Tab>
+  <Tab title="Recommended Configuration">
+    - **CPU**: 4 cores
+    - **Memory**: 16GB RAM
+    - **Storage**: NVMe SSD
+    - **Network**: 10Gbps bandwidth
+    - **OS**: Linux (Ubuntu 20.04+, CentOS 8+)
+  </Tab>
+</Tabs>
+
+<Callout type="info">
+  **Note**: Single node deployment requires manual backup. You can easily scale to a cluster later without data migration.
+</Callout>
+
+### Cluster Deployment
+
+For applications with 1M+ daily active users (3-node cluster):
+
+<Tabs>
+  <Tab title="Per Node">
+    - **CPU**: 4+ cores
+    - **Memory**: 16GB+ RAM
+    - **Storage**: NVMe SSD
+    - **Network**: 10Gbps bandwidth
+    - **OS**: Linux (Ubuntu 20.04+, CentOS 8+)
+  </Tab>
+  <Tab title="Total Cluster">
+    - **Nodes**: 3+ (odd number recommended)
+    - **Total CPU**: 12+ cores
+    - **Total Memory**: 48GB+ RAM
+    - **Replication**: 3x data redundancy
+    - **Network**: Low-latency interconnect
+  </Tab>
+</Tabs>
+
+<Callout type="warning">
+  **Important**: Cluster deployment provides high availability with automatic failover and real-time data replication between nodes.
+</Callout>
+
+## Software Requirements
+
+### Operating System Support
+
+<CardGroup cols={3}>
+  <Card title="Ubuntu" icon="ubuntu">
+    - Ubuntu 18.04 LTS or later
+    - Ubuntu 20.04 LTS (recommended)
+    - Ubuntu 22.04 LTS
+  </Card>
+  <Card title="CentOS/RHEL" icon="redhat">
+    - CentOS 7 or later
+    - CentOS 8 (recommended)
+    - RHEL 7/8/9
+  </Card>
+  <Card title="Other Linux" icon="linux">
+    - Debian 9+ 
+    - Amazon Linux 2
+    - SUSE Linux Enterprise
+  </Card>
+</CardGroup>
+
+### Container Support
+
+<CardGroup cols={2}>
+  <Card title="Docker" icon="docker">
+    - Docker 20.10+ (recommended)
+    - Docker Compose 1.29+
+  </Card>
+  <Card title="Kubernetes" icon="dharmachakra">
+    - Kubernetes 1.20+
+    - Helm 3.0+ (optional)
+  </Card>
+</CardGroup>
+
+## Network Requirements
+
+### Port Configuration
+
+WuKongIM requires the following ports to be available:
+
+| Port | Protocol | Purpose | Required |
+|------|----------|---------|----------|
+| 5001 | HTTP | REST API | Yes |
+| 5100 | TCP | Client connections | Yes |
+| 5200 | WebSocket | Web client connections | Yes |
+| 5210 | WSS | Secure WebSocket | Optional |
+| 5300 | HTTP | Management interface | Optional |
+| 11110 | TCP | Cluster communication | Cluster only |
+
+### Firewall Configuration
+
+<Tabs>
+  <Tab title="Single Node">
+    ```bash
+    # Allow client connections
+    sudo ufw allow 5001/tcp  # API
+    sudo ufw allow 5100/tcp  # TCP clients
+    sudo ufw allow 5200/tcp  # WebSocket clients
+    sudo ufw allow 5210/tcp  # WSS (if using SSL)
+    sudo ufw allow 5300/tcp  # Management (optional)
+    ```
+  </Tab>
+  <Tab title="Cluster">
+    ```bash
+    # Client connections (same as single node)
+    sudo ufw allow 5001/tcp
+    sudo ufw allow 5100/tcp
+    sudo ufw allow 5200/tcp
+    sudo ufw allow 5210/tcp
+    sudo ufw allow 5300/tcp
+    
+    # Cluster communication
+    sudo ufw allow 11110/tcp  # Inter-node communication
+    ```
+  </Tab>
+</Tabs>
+
+## Storage Requirements
+
+### Disk Space
+
+- **Minimum**: 20GB free space
+- **Recommended**: 100GB+ for production
+- **Message Storage**: Plan for message retention requirements
+- **Log Storage**: 5-10GB for system logs
+
+### Storage Performance
+
+<Callout type="info">
+  **Performance Tip**: WuKongIM is optimized for SSD storage. Using traditional HDDs will significantly impact performance.
+</Callout>
+
+- **IOPS**: 1000+ IOPS recommended
+- **Throughput**: 100MB/s+ sequential read/write
+- **Latency**: &lt;10ms average latency
+
+## Memory Requirements
+
+### Memory Usage Patterns
+
+- **Base System**: 2-4GB for OS and system processes
+- **WuKongIM Process**: 1-8GB depending on load
+- **Message Cache**: Configurable, 1-4GB recommended
+- **Connection Cache**: ~1MB per 1000 concurrent connections
+
+### Memory Optimization
+
+```yaml
+# Example memory configuration
+channel:
+  cacheCount: 1000  # Number of channels to cache in memory
+  
+memory:
+  maxMessageCache: 1000000  # Maximum messages in memory cache
+  gcInterval: 300           # Garbage collection interval (seconds)
+```
+
+## Performance Expectations
+
+### Single Node Performance
+
+| Metric | Minimum Config | Recommended Config |
+|--------|----------------|-------------------|
+| **Concurrent Connections** | 10,000 | 50,000+ |
+| **Messages/Second** | 10,000 | 50,000+ |
+| **Daily Active Users** | 100K | 400K |
+| **Storage Growth** | 1GB/day | 5GB/day |
+
+### Cluster Performance
+
+| Metric | 3-Node Cluster | 5-Node Cluster |
+|--------|----------------|----------------|
+| **Concurrent Connections** | 150,000+ | 500,000+ |
+| **Messages/Second** | 150,000+ | 500,000+ |
+| **Daily Active Users** | 1M+ | 5M+ |
+| **Fault Tolerance** | 1 node failure | 2 node failures |
+
+## Pre-Installation Checklist
+
+<Steps>
+  <Step title="System Resources">
+    Verify CPU, memory, and storage meet requirements
+  </Step>
+  <Step title="Network Configuration">
+    Ensure required ports are available and accessible
+  </Step>
+  <Step title="Operating System">
+    Update OS to latest stable version
+  </Step>
+  <Step title="Dependencies">
+    Install Docker/Kubernetes if using containerized deployment
+  </Step>
+  <Step title="Security">
+    Configure firewall rules and security groups
+  </Step>
+  <Step title="Monitoring">
+    Plan for system monitoring and log collection
+  </Step>
+</Steps>
+
+## Next Steps
+
+Once you've verified your system meets the requirements:
+
+<CardGroup cols={3}>
+  <Card
+    title="Docker Installation"
+    icon="docker"
+    href="/installation/docker/single-node"
+  >
+    Quick setup with Docker Compose
+  </Card>
+  <Card
+    title="Kubernetes Installation"
+    icon="dharmachakra"
+    href="/installation/k8s/single-node"
+  >
+    Cloud-native deployment
+  </Card>
+  <Card
+    title="Linux Installation"
+    icon="linux"
+    href="/installation/linux/single-node"
+  >
+    Direct installation on Linux
+  </Card>
+</CardGroup>

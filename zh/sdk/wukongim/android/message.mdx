@@ -1,0 +1,579 @@
+---
+title: "消息管理"
+description: "WuKongIM Android SDK 消息管理功能，包括消息收发、历史消息和消息监听"
+icon: "message-square"
+---
+
+消息管理器负责消息的增删改查、新消息监听、刷新消息监听、消息入库、发送消息回执监听、监听同步某个聊天数据等。
+
+## 发送消息
+
+### 基础发送方法
+
+<CodeGroup>
+```java Java
+/**
+ * 发送消息
+ * @param textContent 消息正文
+ * @param channelID 投递的频道ID
+ * @param channelType 投递的频道类型（个人频道，群频道，客服频道等等）
+ */
+WKIM.getInstance().getMsgManager().sendMessage(textContent, channelID, channelType);
+```
+
+```kotlin Kotlin
+WKIM.getInstance().msgManager.send(textContent, channel)
+```
+</CodeGroup>
+
+<Note>
+SDK 内置频道类型可通过 `WKChannelType` 查看
+</Note>
+
+### 文本消息
+
+<CodeGroup>
+```java Java
+// 定义文本消息
+WKTextContent textContent = new WKTextContent("你好，悟空");
+// 发送消息
+WKIM.getInstance().getMsgManager().send(textContent, channel);
+```
+
+```kotlin Kotlin
+// 定义文本消息
+val textContent = WKTextContent("你好，悟空")
+// 发送消息
+WKIM.getInstance().msgManager.send(textContent, channel)
+```
+</CodeGroup>
+
+### 图片消息
+
+<CodeGroup>
+```java Java
+// 定义图片消息
+WKImageContent imageContent = new WKImageContent(localPath);
+// 发送消息
+WKIM.getInstance().getMsgManager().send(imageContent, channel);
+```
+
+```kotlin Kotlin
+// 定义图片消息
+val imageContent = WKImageContent(localPath)
+// 发送消息
+WKIM.getInstance().msgManager.send(imageContent, channel)
+```
+</CodeGroup>
+
+<Note>
+在构建图片消息正文时，无需传递图片的高宽。SDK 会自动获取图片高宽
+</Note>
+
+### 完整发送示例
+
+```java
+public class ChatActivity extends AppCompatActivity {
+    
+    private String channelID;
+    private byte channelType;
+    
+    // 发送文本消息
+    private void sendTextMessage(String content) {
+        WKTextContent textContent = new WKTextContent(content);
+        WKIM.getInstance().getMsgManager().send(textContent, channelID, channelType);
+    }
+    
+    // 发送图片消息
+    private void sendImageMessage(String imagePath) {
+        WKImageContent imageContent = new WKImageContent(imagePath);
+        WKIM.getInstance().getMsgManager().send(imageContent, channelID, channelType);
+    }
+    
+    // 发送语音消息
+    private void sendVoiceMessage(String voicePath, int duration) {
+        WKVoiceContent voiceContent = new WKVoiceContent(voicePath, duration);
+        WKIM.getInstance().getMsgManager().send(voiceContent, channelID, channelType);
+    }
+    
+    // 发送位置消息
+    private void sendLocationMessage(double latitude, double longitude, String address) {
+        WKLocationContent locationContent = new WKLocationContent(latitude, longitude, address);
+        WKIM.getInstance().getMsgManager().send(locationContent, channelID, channelType);
+    }
+}
+```
+
+### 自定义消息
+
+参考自定义消息: [自定义消息](/zh/sdk/wukongim/android/advance#自定义消息)
+
+## 消息入库监听
+
+在发送消息时，SDK 将消息保存在本地数据库后就会触发入库回调。此时消息并未进行发送，可在此监听中将消息展示在 UI 上。
+
+<CodeGroup>
+```java Java
+WKIM.getInstance().getMsgManager().addOnSendMsgCallback("key", new ISendMsgCallBackListener() {
+    @Override
+    public void onInsertMsg(WKMsg wkMsg) {
+        // 可以在这里将保存在数据库的消息`wkMsg`展示在UI上
+        runOnUiThread(() -> {
+            addMessageToUI(wkMsg);
+        });
+    }
+});
+```
+
+```kotlin Kotlin
+WKIM.getInstance().msgManager.addOnSendMsgCallback("key") { wkMsg ->
+    // 将消息wkMsg展示在UI上
+    runOnUiThread {
+        addMessageToUI(wkMsg)
+    }
+}
+```
+</CodeGroup>
+
+<Note>
+关于事件是否传入唯一 key 说明请查看[事件监听](/zh/sdk/android#说明)
+</Note>
+
+## 收到新消息监听
+
+<CodeGroup>
+```java Java
+// 添加监听
+WKIM.getInstance().getMsgManager().addOnNewMsgListener("key", new INewMsgListener() {
+    @Override
+    public void newMsg(List<WKMsg> list) {
+        // list:接收到的消息
+        runOnUiThread(() -> {
+            handleNewMessages(list);
+        });
+    }
+});
+
+// 退出页面时移除监听
+WKIM.getInstance().getMsgManager().removeNewMsgListener("key");
+```
+
+```kotlin Kotlin
+// 添加监听
+WKIM.getInstance().msgManager.addOnNewMsgListener("key") { list ->
+    // list:接收到的消息
+    runOnUiThread {
+        handleNewMessages(list)
+    }
+}
+
+// 退出页面时移除监听
+WKIM.getInstance().msgManager.removeNewMsgListener("key")
+```
+</CodeGroup>
+
+<Note>
+如果在聊天页面内收到新消息时需判断该消息是否属于当前会话，可通过消息对象 `WKMsg` 的 `channelID` 和 `channelType` 判断
+</Note>
+
+### 新消息处理示例
+
+```java
+public class ChatActivity extends AppCompatActivity {
+    
+    private List<WKMsg> messageList = new ArrayList<>();
+    private MessageAdapter messageAdapter;
+    
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        
+        // 添加新消息监听
+        WKIM.getInstance().getMsgManager().addOnNewMsgListener("ChatActivity", new INewMsgListener() {
+            @Override
+            public void newMsg(List<WKMsg> list) {
+                handleNewMessages(list);
+            }
+        });
+    }
+    
+    private void handleNewMessages(List<WKMsg> newMessages) {
+        for (WKMsg msg : newMessages) {
+            // 判断是否是当前会话的消息
+            if (msg.channelID.equals(this.channelID) && msg.channelType == this.channelType) {
+                runOnUiThread(() -> {
+                    messageList.add(msg);
+                    messageAdapter.notifyItemInserted(messageList.size() - 1);
+                    
+                    // 滚动到最新消息
+                    recyclerView.scrollToPosition(messageList.size() - 1);
+                    
+                    // 标记消息为已读
+                    markMessageAsRead(msg);
+                });
+            }
+        }
+    }
+    
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        // 移除监听器
+        WKIM.getInstance().getMsgManager().removeNewMsgListener("ChatActivity");
+    }
+}
+```
+
+## 刷新消息监听
+
+在 SDK 更新过消息时，如：消息发送状态、有人点赞消息、消息已读回执、消息撤回、消息被编辑等等，SDK 都将回调以下事件。UI 可通过消息对象 `WKMsg` 的 `clientMsgNO` 来判断具体是哪条消息发生了更改。
+
+<CodeGroup>
+```java Java
+// 添加刷新监听
+WKIM.getInstance().getMsgManager().addOnRefreshMsgListener("key", new IRefreshMsg() {
+    @Override
+    public void onRefresh(WKMsg wkMsg, boolean isEnd) {
+        // wkMsg：刷新的消息对象
+        // isEnd：为了避免频繁刷新UI导致卡顿，当isEnd为true时再刷新UI
+        if (isEnd) {
+            runOnUiThread(() -> {
+                refreshMessageInUI(wkMsg);
+            });
+        }
+    }
+});
+
+// 退出页面时移除刷新监听
+WKIM.getInstance().getMsgManager().removeRefreshMsgListener("key");
+```
+
+```kotlin Kotlin
+// 添加刷新监听
+WKIM.getInstance().msgManager.addOnRefreshMsgListener("key") { wkMsg, isEnd ->
+    // wkMsg：刷新的消息对象
+    // isEnd：为了避免频繁刷新UI导致卡顿，当isEnd为true时再刷新UI
+    if (isEnd) {
+        runOnUiThread {
+            refreshMessageInUI(wkMsg)
+        }
+    }
+}
+
+// 退出页面时移除刷新监听
+WKIM.getInstance().msgManager.removeRefreshMsgListener("key")
+```
+</CodeGroup>
+
+### 消息刷新处理示例
+
+```java
+private void refreshMessageInUI(WKMsg updatedMsg) {
+    // 根据clientMsgNO找到对应的消息并更新
+    for (int i = 0; i < messageList.size(); i++) {
+        WKMsg msg = messageList.get(i);
+        if (msg.clientMsgNO.equals(updatedMsg.clientMsgNO)) {
+            messageList.set(i, updatedMsg);
+            messageAdapter.notifyItemChanged(i);
+            break;
+        }
+    }
+}
+```
+
+## 查看历史消息
+
+<CodeGroup>
+```java Java
+/**
+ * 查询或同步某个频道消息
+ *
+ * @param channelId                频道ID
+ * @param channelType              频道类型
+ * @param oldestOrderSeq           最后一次消息大orderSeq 第一次进入聊天传入0
+ * @param contain                  是否包含 oldestOrderSeq 这条消息
+ * @param dropDown                 是否下拉
+ * @param aroundMsgOrderSeq        查询此消息附近消息 如 aroundMsgOrderSeq=20 返回数据则是 [16,17,19,20,21,22,23,24,25]
+ * @param limit                    每次获取数量
+ * @param iGetOrSyncHistoryMsgBack 请求返回
+ */
+WKIM.getInstance().getMsgManager().getOrSyncHistoryMessages(
+    channelId, 
+    channelType, 
+    oldestOrderSeq, 
+    contain, 
+    dropDown, 
+    limit, 
+    aroundMsgOrderSeq, 
+    new IGetOrSyncHistoryMsgBack() {
+        @Override
+        public void onSyncing() {
+            // 正在同步中 按需显示loading
+        }
+
+        @Override
+        public void onResult(List<WKMsg> list) {
+            // 展示消息
+        }
+    }
+);
+```
+
+```kotlin Kotlin
+WKIM.getInstance().msgManager.getOrSyncHistoryMessages(
+    channelId,
+    channelType,
+    oldestOrderSeq,
+    contain,
+    dropDown,
+    limit,
+    aroundMsgOrderSeq,
+    object : IGetOrSyncHistoryMsgBack {
+        override fun onSyncing() {
+            // 正在同步中
+        }
+        
+        override fun onResult(list: MutableList<WKMsg>?) {
+            // list 获取到的消息 展示到UI
+        }
+    }
+)
+```
+</CodeGroup>
+
+<Note>
+获取历史消息并不是同步方法，因为有可能存在非连续性时会往服务器同步数据
+</Note>
+
+### 历史消息加载示例
+
+```java
+public class ChatActivity extends AppCompatActivity {
+    
+    private boolean isLoadingHistory = false;
+    private long oldestOrderSeq = 0;
+    
+    // 加载历史消息
+    private void loadHistoryMessages() {
+        if (isLoadingHistory) return;
+        
+        isLoadingHistory = true;
+        showLoadingIndicator();
+        
+        WKIM.getInstance().getMsgManager().getOrSyncHistoryMessages(
+            channelID,
+            channelType,
+            oldestOrderSeq,
+            false,  // 不包含oldestOrderSeq这条消息
+            true,   // 下拉加载
+            20,     // 每次加载20条
+            0,      // 不查询周围消息
+            new IGetOrSyncHistoryMsgBack() {
+                @Override
+                public void onSyncing() {
+                    // 正在同步中
+                    runOnUiThread(() -> showSyncingIndicator());
+                }
+
+                @Override
+                public void onResult(List<WKMsg> list) {
+                    runOnUiThread(() -> {
+                        hideLoadingIndicator();
+                        isLoadingHistory = false;
+                        
+                        if (list != null && !list.isEmpty()) {
+                            // 将历史消息插入到列表开头
+                            messageList.addAll(0, list);
+                            messageAdapter.notifyItemRangeInserted(0, list.size());
+                            
+                            // 更新最旧消息的orderSeq
+                            oldestOrderSeq = list.get(0).orderSeq;
+                            
+                            // 保持滚动位置
+                            recyclerView.scrollToPosition(list.size());
+                        }
+                    });
+                }
+            }
+        );
+    }
+    
+    // 下拉刷新触发
+    private void onPullToRefresh() {
+        loadHistoryMessages();
+    }
+}
+```
+
+## 离线消息接收
+
+需要实现同步频道消息数据源: [频道消息数据源](/zh/sdk/wukongim/android/datasource#频道消息数据源)
+
+因为 WuKongIM 是支持消息永久存储，所以会产生海量的离线消息。对此我们采用了按需拉取的机制，如 10 个会话一个会话 10 万条消息，WuKongIM 不会把这个 10×10 万=100 万条消息都拉取到本地。而是采用拉取这 10 个会话的信息和对应的最新 20 条消息，也就是实际只拉取了 200 条消息相对 100 万条消息来说大大提高了离线拉取速度。用户点进对应的会话才会去按需拉取这个会话的消息。这些机制 SDK 内部都已做好了封装，使用者其实不需要关心。使用者只需要关心最近会话的变化和监听获取数据的回调即可。
+
+## 数据结构说明
+
+### 消息类核心属性
+
+```java
+public class WKMsg {
+    // 服务器消息ID(全局唯一，无序)
+    public String messageID;
+    // 本地唯一ID
+    public String clientMsgNO;
+    // 服务器时间 (10位时间戳)
+    public long timestamp;
+    // 消息来源发送者
+    public String fromUID;
+    // 聊天频道ID
+    public String channelID;
+    // 聊天频道类型
+    public byte channelType;
+    // 消息正文
+    public WKMessageContent baseContentMsgModel;
+    // 消息头
+    public WKMsgHeader header;
+    // 本地扩展字段
+    public HashMap localExtraMap;
+    // 远程扩展
+    public WKMsgExtra remoteExtra;
+    // ...
+}
+```
+
+### 消息正文核心属性
+
+```java
+public class WKMessageContent {
+    // 消息内容类型
+    public int type;
+    // 消息中的@提醒信息
+    public WKMentionInfo mentionInfo;
+    // 消息回复对象
+    public WKReply reply;
+    
+    // 编码消息 上层需实现该方法并编码
+    public JSONObject encodeMsg() {
+        return new JSONObject();
+    }
+    
+    // 解码消息 上层需实现该方法并解码
+    public WKMessageContent decodeMsg(JSONObject jsonObject) {
+        return this;
+    }
+    // ...
+}
+```
+
+### 消息属性说明
+
+| 属性 | 类型 | 说明 |
+|------|------|------|
+| `messageID` | String | 服务器消息ID（全局唯一，无序） |
+| `clientMsgNO` | String | 本地唯一ID，用于消息去重和更新 |
+| `timestamp` | long | 服务器时间（10位时间戳） |
+| `fromUID` | String | 消息发送者UID |
+| `channelID` | String | 聊天频道ID |
+| `channelType` | byte | 聊天频道类型 |
+| `baseContentMsgModel` | WKMessageContent | 消息正文内容 |
+| `header` | WKMsgHeader | 消息头信息 |
+| `localExtraMap` | HashMap | 本地扩展字段 |
+| `remoteExtra` | WKMsgExtra | 远程扩展信息 |
+
+## 最佳实践
+
+### 1. 消息列表性能优化
+
+```java
+// 使用RecyclerView的ViewHolder模式
+public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.ViewHolder> {
+    
+    @Override
+    public void onBindViewHolder(ViewHolder holder, int position) {
+        WKMsg msg = messageList.get(position);
+        
+        // 避免频繁的类型判断
+        if (holder.getItemViewType() == msg.baseContentMsgModel.type) {
+            holder.bindMessage(msg);
+        }
+    }
+    
+    @Override
+    public int getItemViewType(int position) {
+        return messageList.get(position).baseContentMsgModel.type;
+    }
+}
+```
+
+### 2. 消息状态管理
+
+```java
+private void updateMessageStatus(WKMsg msg) {
+    switch (msg.status) {
+        case WKSendMsgResult.send_success:
+            // 发送成功
+            showSuccessStatus(msg);
+            break;
+        case WKSendMsgResult.send_fail:
+            // 发送失败
+            showFailStatus(msg);
+            break;
+        case WKSendMsgResult.send_ing:
+            // 发送中
+            showSendingStatus(msg);
+            break;
+    }
+}
+```
+
+### 3. 内存管理
+
+```java
+@Override
+protected void onDestroy() {
+    super.onDestroy();
+    
+    // 移除所有监听器
+    WKIM.getInstance().getMsgManager().removeNewMsgListener("ChatActivity");
+    WKIM.getInstance().getMsgManager().removeRefreshMsgListener("ChatActivity");
+    WKIM.getInstance().getMsgManager().removeOnSendMsgCallback("ChatActivity");
+    
+    // 清理消息列表
+    if (messageList != null) {
+        messageList.clear();
+    }
+}
+```
+
+## 下一步
+
+<CardGroup cols={2}>
+  <Card
+    title="频道管理"
+    icon="hash"
+    href="/zh/sdk/wukongim/android/channel"
+  >
+    学习如何管理频道和群组
+  </Card>
+  <Card
+    title="会话管理"
+    icon="users"
+    href="/zh/sdk/wukongim/android/conversation"
+  >
+    处理会话列表和未读消息
+  </Card>
+  <Card
+    title="频道成员管理"
+    icon="user-group"
+    href="/zh/sdk/wukongim/android/channel-member"
+  >
+    管理频道成员信息
+  </Card>
+  <Card
+    title="数据源配置"
+    icon="database"
+    href="/zh/sdk/wukongim/android/datasource"
+  >
+    配置数据源和同步逻辑
+  </Card>
+</CardGroup>

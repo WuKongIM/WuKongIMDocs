@@ -1,0 +1,500 @@
+---
+title: "Multi-Node Deployment"
+description: "Deploy WuKongIM multi-node cluster using Docker Compose"
+icon: "network"
+---
+
+WuKongIM multi-node cluster provides high availability, disaster recovery capability and load balancing, suitable for large applications with high data security requirements.
+
+## Cluster Features
+
+**Advantages**:
+- High availability and strong disaster recovery capability
+- Supports online scaling
+- Real-time automatic backup between multiple replicas
+- Load balancing
+
+**Disadvantages**:
+- Slightly complex deployment
+- Requires multiple machines
+
+<Note>
+  **Cluster Principle**: WuKongIM follows the `2n+1` principle, where n represents the number of nodes allowed to fail.
+  - Allow 1 machine to fail: requires 3 machines (2×1+1=3)
+  - Allow 2 machines to fail: requires 5 machines (2×2+1=5)
+</Note>
+
+## Environment Requirements
+
+- **Number of machines**: 4 or more
+- **Operating System**: Linux (Ubuntu recommended)
+- **Configuration**: 2 cores 4GB or 4 cores 8GB
+- **Docker**: Version 24.0.4 or above
+
+**Example server configuration**:
+| Role | Description | Internal IP | External IP |
+|------|-------------|-------------|-------------|
+| Load balancer and monitoring | gateway | 10.206.0.2 | 119.45.33.109 |
+| WuKongIM node | node1 (ID: 1) | 10.206.0.10 | 146.56.249.208 |
+| WuKongIM node | node2 (ID: 2) | 10.206.0.12 | 129.211.171.99 |
+| WuKongIM node | node3 (ID: 3) | 10.206.0.5 | 119.45.175.82 |
+
+## Deployment Steps
+
+### 1. Install Load Balancer and Monitoring
+
+Create installation directory on the `gateway` node:
+
+```bash
+mkdir ~/gateway
+cd ~/gateway
+```
+
+Create `docker-compose.yml` file:
+
+```yaml
+version: '3.7'
+services:
+  prometheus:  # Monitoring service
+    image: registry.cn-shanghai.aliyuncs.com/wukongim/prometheus:v2.53.1
+    volumes:
+      - "./prometheus.yml:/etc/prometheus/prometheus.yml"
+    ports:
+      - "9090:9090"
+  nginx:  # Load balancer
+    image: registry.cn-shanghai.aliyuncs.com/wukongim/nginx:1.27.0
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    ports:
+      - "15001:15001"
+      - "15100:15100"
+      - "15200:15200"
+      - "15300:15300"
+      - "15172:15172"
+```
+
+Create `nginx.conf` file (replace IP addresses with actual addresses):
+
+```nginx
+user  nginx;
+worker_processes  auto;
+
+error_log  /var/log/nginx/error.log notice;
+pid        /var/run/nginx.pid;
+
+events {
+    use epoll;
+    worker_connections  4096;
+    multi_accept on;
+    accept_mutex off;
+}
+
+http {
+    include       /etc/nginx/mime.types;
+    default_type  application/octet-stream;
+
+    log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+                      '$status $body_bytes_sent "$http_referer" '
+                      '"$http_user_agent" "$http_x_forwarded_for"';
+
+    access_log  /var/log/nginx/access.log  main;
+    sendfile        on;
+    keepalive_timeout  65;
+
+    # API load balancing
+    upstream wukongimapi {
+        server 10.206.0.10:5001;
+        server 10.206.0.12:5001;
+        server 10.206.0.5:5001;
+    }
+
+    # Demo load balancing
+    upstream wukongimdemo {
+        server 10.206.0.10:5172;
+        server 10.206.0.12:5172;
+        server 10.206.0.5:5172;
+    }
+
+    # Manager load balancing
+    upstream wukongimanager {
+        server 10.206.0.10:5300;
+        server 10.206.0.12:5300;
+        server 10.206.0.5:5300;
+    }
+
+    # WebSocket load balancing
+    upstream wukongimws {
+        server 10.206.0.10:5200;
+        server 10.206.0.12:5200;
+        server 10.206.0.5:5200;
+    }
+
+    # HTTP API forwarding
+    server {
+        listen 15001;
+        location / {
+            proxy_pass http://wukongimapi;
+            proxy_connect_timeout 20s;
+            proxy_read_timeout 60s;
+        }
+    }
+
+    # Demo interface
+    server {
+        listen 15172;
+        location / {
+            proxy_pass http://wukongimdemo;
+            proxy_connect_timeout 20s;
+            proxy_read_timeout 60s;
+        }
+        location /login {
+            rewrite ^ /chatdemo?apiurl=http://119.45.33.109:15001;
+            proxy_pass http://wukongimdemo;
+            proxy_connect_timeout 20s;
+            proxy_read_timeout 60s;
+        }
+    }
+
+    # Manager interface
+    server {
+        listen 15300;
+        location / {
+            proxy_pass http://wukongimanager;
+            proxy_connect_timeout 60s;
+            proxy_read_timeout 60s;
+        }
+    }
+
+    # WebSocket forwarding
+    server {
+        listen 15200;
+        location / {
+            proxy_pass http://wukongimws;
+            proxy_redirect off;
+            proxy_http_version 1.1;
+            proxy_read_timeout 180s;
+            proxy_send_timeout 120s;
+            proxy_connect_timeout 4s;
+            proxy_set_header  X-Real-IP $remote_addr;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+        }
+    }
+}
+
+# TCP load balancing
+stream {
+    upstream wukongimtcp {
+        server 10.206.0.10:5100;
+        server 10.206.0.12:5100;
+        server 10.206.0.5:5100;
+    }
+    server {
+        listen 15100;
+        proxy_connect_timeout 4s;
+        proxy_timeout 120s;
+        proxy_pass wukongimtcp;
+    }
+}
+```
+
+Create `prometheus.yml` file (replace IP addresses with actual addresses):
+
+```yaml
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: wukongim1-trace-metrics
+    static_configs:
+    - targets: ['10.206.0.10:5300']
+      labels:
+        id: "1"
+  - job_name: wukongim2-trace-metrics
+    static_configs:
+    - targets: ['10.206.0.12:5300']
+      labels:
+        id: "2"
+  - job_name: wukongim3-trace-metrics
+    static_configs:
+    - targets: ['10.206.0.5:5300']
+      labels:
+        id: "3"
+```
+
+### 2. Install WuKongIM Nodes
+
+Create installation directory on all WuKongIM nodes:
+
+```bash
+mkdir ~/wukongim
+cd ~/wukongim
+```
+
+**Node 1 Configuration** (replace IP addresses with actual addresses):
+
+```yaml
+version: '3.7'
+services:
+  wukongim:
+    image: registry.cn-shanghai.aliyuncs.com/wukongim/wukongim:v2
+    environment:
+      - "WK_MODE=release"
+      - "WK_CLUSTER_NODEID=1"
+      - "WK_EXTERNAL_TCPADDR=10.206.0.10:5100"
+      - "WK_CLUSTER_APIURL=http://10.206.0.10:5001"
+      - "WK_CLUSTER_SERVERADDR=10.206.0.10:11110"
+      - "WK_EXTERNAL_WSADDR=ws://119.45.33.109:15200"
+      - "WK_EXTERNAL_TCPADDR=119.45.33.109:15100"
+      - "WK_TRACE_PROMETHEUSAPIURL=http://10.206.0.2:9090"
+      - "WK_CLUSTER_INITNODES=1@10.206.0.10 2@10.206.0.12 3@10.206.0.5"
+    healthcheck:
+      test: "wget -q -Y off -O /dev/null http://localhost:5001/health > /dev/null 2>&1"
+      interval: 10s
+      timeout: 10s
+      retries: 3
+    restart: always
+    volumes:
+      - ./wukongim_data:/root/wukongim
+    ports:
+      - 11110:11110  # Distributed node communication port
+      - 5001:5001    # Internal API communication port
+      - 5100:5100    # TCP port
+      - 5200:5200    # WebSocket port
+      - 5300:5300    # Management port
+      - 5172:5172    # Demo port
+```
+
+**Node 2 Configuration** (replace IP addresses with actual addresses):
+
+```yaml
+version: '3.7'
+services:
+  wukongim:
+    image: registry.cn-shanghai.aliyuncs.com/wukongim/wukongim:v2
+    environment:
+      - "WK_MODE=release"
+      - "WK_CLUSTER_NODEID=2"
+      - "WK_CLUSTER_APIURL=http://10.206.0.12:5001"
+      - "WK_CLUSTER_SERVERADDR=10.206.0.12:11110"
+      - "WK_EXTERNAL_WSADDR=ws://119.45.33.109:15200"
+      - "WK_EXTERNAL_TCPADDR=119.45.33.109:15100"
+      - "WK_EXTERNAL_TCPADDR=10.206.0.12:5100"
+      - "WK_TRACE_PROMETHEUSAPIURL=http://10.206.0.2:9090"
+      - "WK_CLUSTER_INITNODES=1@10.206.0.10 2@10.206.0.12 3@10.206.0.5"
+    healthcheck:
+      test: "wget -q -Y off -O /dev/null http://localhost:5001/health > /dev/null 2>&1"
+      interval: 10s
+      timeout: 10s
+      retries: 3
+    restart: always
+    volumes:
+      - ./wukongim_data:/root/wukongim
+    ports:
+      - 11110:11110
+      - 5001:5001
+      - 5100:5100
+      - 5200:5200
+      - 5300:5300
+      - 5172:5172
+```
+
+**Node 3 Configuration** (replace IP addresses with actual addresses):
+
+```yaml
+version: '3.7'
+services:
+  wukongim:
+    image: registry.cn-shanghai.aliyuncs.com/wukongim/wukongim:v2
+    environment:
+      - "WK_MODE=release"
+      - "WK_CLUSTER_NODEID=3"
+      - "WK_CLUSTER_APIURL=http://10.206.0.5:5001"
+      - "WK_CLUSTER_SERVERADDR=10.206.0.5:11110"
+      - "WK_EXTERNAL_WSADDR=ws://119.45.33.109:15200"
+      - "WK_EXTERNAL_TCPADDR=119.45.33.109:15100"
+      - "WK_EXTERNAL_TCPADDR=10.206.0.5:5100"
+      - "WK_TRACE_PROMETHEUSAPIURL=http://10.206.0.2:9090"
+      - "WK_CLUSTER_INITNODES=1@10.206.0.10 2@10.206.0.12 3@10.206.0.5"
+    healthcheck:
+      test: "wget -q -Y off -O /dev/null http://localhost:5001/health > /dev/null 2>&1"
+      interval: 10s
+      timeout: 10s
+      retries: 3
+    restart: always
+    volumes:
+      - ./wukongim_data:/root/wukongim
+    ports:
+      - 11110:11110
+      - 5001:5001
+      - 5100:5100
+      - 5200:5200
+      - 5300:5300
+      - 5172:5172
+```
+
+### 3. Start Services
+
+**Startup Order**:
+
+1. First start load balancer and monitoring:
+```bash
+# On gateway node
+cd ~/gateway
+docker-compose up -d
+```
+
+2. Then start all WuKongIM nodes:
+```bash
+# On each WuKongIM node
+cd ~/wukongim
+docker-compose up -d
+```
+
+### 4. Verify Deployment
+
+**Check service status**:
+```bash
+# Check container status
+docker-compose ps
+
+# View logs
+docker-compose logs -f
+```
+
+**Verify cluster status**:
+```bash
+# Check cluster nodes
+curl http://119.45.33.109:15001/cluster/nodes
+
+# Check health status
+curl http://119.45.33.109:15001/health
+```
+
+**Access services**:
+- **Demo Interface**: http://119.45.33.109:15172
+- **Management Interface**: http://119.45.33.109:15300
+- **Monitoring Interface**: http://119.45.33.109:9090
+- **API Address**: http://119.45.33.109:15001
+
+## Configuration Description
+
+### Key Environment Variables
+
+| Variable Name | Description | Example Value |
+|---------------|-------------|---------------|
+| `WK_CLUSTER_NODEID` | Node ID | 1, 2, 3 |
+| `WK_CLUSTER_APIURL` | Node API address | http://10.206.0.10:5001 |
+| `WK_CLUSTER_SERVERADDR` | Node communication address | 10.206.0.10:11110 |
+| `WK_CLUSTER_INITNODES` | Initial node list | 1@10.206.0.10 2@10.206.0.12 3@10.206.0.5 |
+| `WK_EXTERNAL_WSADDR` | External WebSocket address | ws://119.45.33.109:15200 |
+| `WK_EXTERNAL_TCPADDR` | External TCP address | 119.45.33.109:15100 |
+
+### Port Description
+
+| Port | Description | Access Method |
+|------|-------------|---------------|
+| 5001 | HTTP API | Internal access |
+| 5100 | TCP connection | Client connection |
+| 5200 | WebSocket | Client connection |
+| 5300 | Management interface | Web access |
+| 5172 | Demo interface | Web access |
+| 11110 | Cluster communication | Inter-node communication |
+| 15001 | Load balanced API | External access |
+| 15100 | Load balanced TCP | External access |
+| 15200 | Load balanced WebSocket | External access |
+| 15300 | Load balanced management | External access |
+| 15172 | Load balanced Demo | External access |
+
+## Troubleshooting
+
+### Common Issues
+
+**Node cannot join cluster**:
+```bash
+# Check network connectivity
+ping 10.206.0.10
+
+# Check if port is open
+telnet 10.206.0.10 11110
+
+# View node logs
+docker-compose logs wukongim
+```
+
+**Load balancer cannot be accessed**:
+```bash
+# Check nginx configuration
+docker-compose exec nginx nginx -t
+
+# Restart nginx
+docker-compose restart nginx
+```
+
+**Monitoring data anomaly**:
+```bash
+# Check Prometheus configuration
+curl http://119.45.33.109:9090/api/v1/targets
+
+# Restart monitoring service
+docker-compose restart prometheus
+```
+
+### Log Viewing
+
+```bash
+# View all service logs
+docker-compose logs
+
+# View specific service logs
+docker-compose logs wukongim
+docker-compose logs nginx
+docker-compose logs prometheus
+
+# View logs in real-time
+docker-compose logs -f wukongim
+```
+
+## Scaling Operations
+
+Adding new nodes to existing cluster:
+
+1. Create configuration file on new node
+2. Set new node ID
+3. Update `WK_CLUSTER_INITNODES` to include new node
+4. Start new node service
+5. Update load balancer configuration
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Server Configuration"
+    icon="gear"
+    href="/en/server/configuration"
+  >
+    Configure cluster authentication and performance optimization
+  </Card>
+  <Card
+    title="Cluster Configuration"
+    icon="server"
+    href="/en/server/configuration/cluster"
+  >
+    Detailed cluster configuration guide
+  </Card>
+  <Card
+    title="Single Node Deployment"
+    icon="cube"
+    href="/en/installation/docker/single-node"
+  >
+    Learn about single node deployment
+  </Card>
+  <Card
+    title="API Documentation"
+    icon="code"
+    href="/en/api/introduction"
+  >
+    Start using WuKongIM API
+  </Card>
+</CardGroup>

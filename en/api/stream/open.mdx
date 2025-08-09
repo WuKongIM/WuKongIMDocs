@@ -1,0 +1,276 @@
+---
+title: "Open Stream Message"
+description: "Open a new stream message session"
+api: "POST /streamv2/open"
+---
+
+## Overview
+
+Open a new stream message session for real-time streaming of large amounts of data or long text content.
+
+## Request Body
+
+### Required Parameters
+
+<ParamField body="channel_id" type="string" required>
+Target channel ID
+</ParamField>
+
+<ParamField body="channel_type" type="integer" required>
+Channel type (1=personal channel, 2=group channel)
+</ParamField>
+
+<ParamField body="payload" type="string" required>
+Base64 encoded initial message content
+</ParamField>
+
+### Optional Parameters
+
+<ParamField body="header" type="object">
+Message header information
+<Expandable title="header fields">
+<ParamField body="header.no_persist" type="integer">
+Whether to not persist message (0=persist, 1=do not persist)
+</ParamField>
+<ParamField body="header.red_dot" type="integer">
+Whether to show red dot notification (0=do not show, 1=show)
+</ParamField>
+<ParamField body="header.sync_once" type="integer">
+Whether it's write diffusion, generally 0, only cmd messages are 1
+</ParamField>
+</Expandable>
+</ParamField>
+
+<ParamField body="client_msg_no" type="string">
+Client message number for deduplication and status tracking
+</ParamField>
+
+<ParamField body="from_uid" type="string">
+Sender user ID
+</ParamField>
+
+<ParamField body="force_new" type="boolean" default={false}>
+Whether to force create new stream (close other active streams)
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "http://localhost:5001/streamv2/open" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "header": {
+      "no_persist": 0,
+      "red_dot": 1,
+      "sync_once": 0
+    },
+    "client_msg_no": "stream_msg_123",
+    "from_uid": "user123",
+    "channel_id": "group123",
+    "channel_type": 2,
+    "payload": "U3RyZWFtIGJlZ2lucw==",
+    "force_new": false
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5001/streamv2/open', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    header: {
+      no_persist: 0,
+      red_dot: 1,
+      sync_once: 0
+    },
+    client_msg_no: `stream_msg_${Date.now()}`,
+    from_uid: 'user123',
+    channel_id: 'group123',
+    channel_type: 2,
+    payload: btoa(JSON.stringify({
+      type: 'stream_start',
+      content: 'Stream begins...'
+    })),
+    force_new: false
+  })
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+import base64
+import json
+
+stream_content = {
+    "type": "stream_start",
+    "content": "Stream begins..."
+}
+
+data = {
+    "header": {
+        "no_persist": 0,
+        "red_dot": 1,
+        "sync_once": 0
+    },
+    "client_msg_no": "stream_msg_123",
+    "from_uid": "user123",
+    "channel_id": "group123",
+    "channel_type": 2,
+    "payload": base64.b64encode(
+        json.dumps(stream_content).encode()
+    ).decode(),
+    "force_new": False
+}
+
+response = requests.post('http://localhost:5001/streamv2/open', json=data)
+result = response.json()
+print(result)
+```
+
+```go Go
+package main
+
+import (
+    "bytes"
+    "encoding/base64"
+    "encoding/json"
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    streamContent := map[string]interface{}{
+        "type":    "stream_start",
+        "content": "Stream begins...",
+    }
+    
+    contentBytes, _ := json.Marshal(streamContent)
+    payload := base64.StdEncoding.EncodeToString(contentBytes)
+    
+    data := map[string]interface{}{
+        "header": map[string]interface{}{
+            "no_persist": 0,
+            "red_dot":    1,
+            "sync_once":  0,
+        },
+        "client_msg_no": "stream_msg_123",
+        "from_uid":      "user123",
+        "channel_id":    "group123",
+        "channel_type":  2,
+        "payload":       payload,
+        "force_new":     false,
+    }
+    
+    jsonData, _ := json.Marshal(data)
+    
+    resp, err := http.Post(
+        "http://localhost:5001/streamv2/open",
+        "application/json",
+        bytes.NewBuffer(jsonData),
+    )
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    var result map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Printf("%+v\n", result)
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json Success Response
+{
+  "message_id": 123456789,
+  "stream_id": "stream_123456789"
+}
+```
+</ResponseExample>
+
+## Response Fields
+
+<ResponseField name="message_id" type="integer" required>
+Server-generated message ID
+</ResponseField>
+
+<ResponseField name="stream_id" type="string" required>
+Stream message session ID for subsequent write operations
+</ResponseField>
+
+## Status Codes
+
+| Status Code | Description |
+|-------------|-------------|
+| 200 | Stream message session created successfully |
+| 400 | Invalid request parameters |
+| 403 | No send permission |
+| 409 | Active stream already exists (need to set force_new=true) |
+| 500 | Internal server error |
+
+## Stream Message Mechanism
+
+### Stream Message Features
+
+- **Real-time Transmission**: Supports real-time streaming data transmission
+- **Large Capacity**: Suitable for transmitting large amounts of text or data
+- **Fragmented Sending**: Content can be sent in multiple parts
+- **State Management**: Maintains stream open and close states
+
+### Stream Lifecycle
+
+1. **Open Stream**: Use this interface to create stream session
+2. **Write Data**: Use `/streamv2/write` interface to write data
+3. **Close Stream**: Close stream after data transmission is complete
+4. **Resource Cleanup**: System automatically cleans up stream-related resources
+
+## Use Cases
+
+### Long Text Transmission
+
+- **Article Publishing**: Send long article content in segments
+- **Code Sharing**: Real-time transmission of code snippets
+- **Document Collaboration**: Real-time synchronization of document editing
+
+### Real-time Data Streams
+
+- **Log Transmission**: Real-time transmission of system logs
+- **Monitoring Data**: Real-time sending of monitoring metrics
+- **Status Updates**: Real-time updates of task status
+
+### Interactive Content
+
+- **Typing Effect**: Simulate typewriter effect
+- **Progressive Loading**: Content displayed gradually
+- **Real-time Translation**: Translate while typing
+
+## Parameter Description
+
+### Force Create (force_new)
+
+| Value | Behavior | Use Case |
+|-------|----------|----------|
+| false | Fail if active stream exists | Normal situation, avoid conflicts |
+| true | Close existing stream, create new stream | Force restart |
+
+### Initial Content (payload)
+
+Initial content is used for:
+
+- **Stream Identification**: Mark the beginning of stream
+- **Metadata**: Contains basic stream information
+- **First Segment**: First part of stream data
+
+## Best Practices
+
+1. **Unique Identifier**: Use unique client_msg_no to avoid duplicate creation
+2. **Permission Verification**: Ensure sender has send permission for channel
+3. **Resource Management**: Close unused streams promptly
+4. **Error Handling**: Handle stream creation failure scenarios
+5. **Status Tracking**: Track stream status and progress
+6. **Timeout Handling**: Set reasonable stream timeout periods

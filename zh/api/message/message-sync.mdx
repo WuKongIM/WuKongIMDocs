@@ -1,0 +1,217 @@
+---
+title: "同步频道历史消息"
+description: "同步指定频道的历史消息"
+api: "POST /channel/messagesync"
+---
+
+## 概述
+
+同步指定频道的消息，支持按消息序号范围获取消息列表。
+
+## 请求体
+
+### 必传参数
+
+<ParamField body="login_uid" type="string" required>
+当前登录用户 ID
+</ParamField>
+
+<ParamField body="channel_id" type="string" required>
+频道 ID
+</ParamField>
+
+<ParamField body="channel_type" type="integer" required>
+频道类型 (1=个人频道, 2=群组频道)
+</ParamField>
+
+### 可选参数
+
+<ParamField body="start_message_seq" type="integer">
+起始消息序号（包含）
+</ParamField>
+
+<ParamField body="end_message_seq" type="integer">
+结束消息序号（不包含）
+</ParamField>
+
+<ParamField body="limit" type="integer" maximum={10000}>
+返回消息数量限制，最大 10000
+</ParamField>
+
+<ParamField body="pull_mode" type="integer">
+拉取模式 (0=向下拉取, 1=向上拉取)
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "http://localhost:5001/channel/messagesync" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "login_uid": "user123",
+    "channel_id": "group123",
+    "channel_type": 2,
+    "start_message_seq": 1000,
+    "end_message_seq": 1100,
+    "limit": 50,
+    "pull_mode": 0
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5001/channel/messagesync', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    login_uid: 'user123',
+    channel_id: 'group123',
+    channel_type: 2,
+    start_message_seq: 1000,
+    end_message_seq: 1100,
+    limit: 50,
+    pull_mode: 0
+  })
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+
+data = {
+    "login_uid": "user123",
+    "channel_id": "group123",
+    "channel_type": 2,
+    "start_message_seq": 1000,
+    "end_message_seq": 1100,
+    "limit": 50,
+    "pull_mode": 0
+}
+
+response = requests.post('http://localhost:5001/channel/messagesync', json=data)
+result = response.json()
+print(result)
+```
+
+```go Go
+package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    data := map[string]interface{}{
+        "login_uid":         "user123",
+        "channel_id":        "group123",
+        "channel_type":      2,
+        "start_message_seq": 1000,
+        "end_message_seq":   1100,
+        "limit":             50,
+        "pull_mode":         0,
+    }
+    
+    jsonData, _ := json.Marshal(data)
+    
+    resp, err := http.Post(
+        "http://localhost:5001/channel/messagesync",
+        "application/json",
+        bytes.NewBuffer(jsonData),
+    )
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    var result []map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Printf("%+v\n", result)
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json 成功响应
+[
+  {
+    "message_id": 123456789,
+    "message_seq": 1001,
+    "client_msg_no": "client_msg_123",
+    "from_uid": "user123",
+    "channel_id": "group123",
+    "channel_type": 2,
+    "timestamp": 1640995200,
+    "payload": "SGVsbG8gV29ybGQ="
+  },
+  {
+    "message_id": 123456790,
+    "message_seq": 1002,
+    "client_msg_no": "client_msg_124",
+    "from_uid": "user456",
+    "channel_id": "group123",
+    "channel_type": 2,
+    "timestamp": 1640995260,
+    "payload": "SGkgdGhlcmU="
+  }
+]
+```
+</ResponseExample>
+
+## 响应字段
+
+响应是一个消息对象数组，每个消息对象包含：
+
+<ResponseField name="message_id" type="integer" required>
+消息 ID
+</ResponseField>
+
+<ResponseField name="message_seq" type="integer" required>
+消息序列号
+</ResponseField>
+
+<ResponseField name="client_msg_no" type="string" required>
+客户端消息编号
+</ResponseField>
+
+<ResponseField name="from_uid" type="string" required>
+发送者用户 ID
+</ResponseField>
+
+<ResponseField name="channel_id" type="string" required>
+频道 ID
+</ResponseField>
+
+<ResponseField name="channel_type" type="integer" required>
+频道类型
+</ResponseField>
+
+<ResponseField name="timestamp" type="integer" required>
+消息时间戳
+</ResponseField>
+
+<ResponseField name="payload" type="string" required>
+Base64 编码的消息内容
+</ResponseField>
+
+## 状态码
+
+| 状态码 | 说明 |
+|--------|------|
+| 200 | 消息同步成功 |
+| 400 | 请求参数错误 |
+| 403 | 没有访问权限 |
+| 500 | 服务器内部错误 |
+
+## 最佳实践
+
+1. **合理设置范围**：避免一次性同步过多消息
+2. **分页处理**：使用 limit 参数控制返回数量
+3. **错误处理**：处理网络错误和权限错误
+4. **缓存策略**：合理缓存已同步的消息
+5. **性能优化**：根据实际需求调整同步频率

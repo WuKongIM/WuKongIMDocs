@@ -1,0 +1,252 @@
+---
+title: "Stress Test Report (Single Node)"
+description: "Detailed performance stress test report for WuKongIM single node mode"
+icon: "chart-bar"
+---
+
+## Preface
+
+The excellence of a communication system is primarily measured by four indicators: `high performance`, `stability`, `reliability`, and `ordering`.
+
+**High performance**: Extreme stress testing of message sending concurrency and message receiving concurrency.
+
+**Stability**: Testing whether CPU and memory remain stable during long-term operation under high concurrency.
+
+**Reliability**: Testing whether messages are lost.
+
+**Ordering**: Testing whether messages are out of order.
+
+## Test Environment
+
+All stress test results can be reproduced on your own server according to the test content and hardware specifications.
+
+**WuKongIM Test Version**: `v2.1.2-20250120`
+
+### Hardware Information
+
+| Resource Description | Hardware Configuration | Quantity |
+|:---------------------|:-----------------------|:---------|
+| WuKongIM Server | Ubuntu 22.04 LTS SA5.4XLARGE32 (Standard SA5, 16 cores 32GB), 50G Enhanced SSD Cloud Disk, Baseline Performance: 4300 IOPS | 1 unit |
+| Stress Test Machine | Ubuntu 22.04 LTS SA5.4XLARGE32 (Standard SA5, 16 cores 32GB), 50G Enhanced SSD Cloud Disk, Baseline Performance: 4300 IOPS | 1 unit |
+
+## Performance Testing
+
+`Core indicator of whether a communication system is high-performance: message sending concurrency and message receiving concurrency (in simple terms: the maximum number of messages the system can process for sending and delivery per second)`
+
+### Send Rate Testing
+
+**Test Content**
+
+| Content | Online | Send Rate |
+|:--------|:-------|:----------|
+| 100 groups of 100 people each | 1 person online per group | 24,000 messages per minute per group |
+
+**Total Send Rate**: `100 * (24000/60) = 40,000 messages/second`
+
+**Test Screenshots**
+
+| Test Content | System Top Information |
+|:-------------|:-----------------------|
+| ![Running Stress Test](/images/stress-report/send_rate_bench.png) | ![Running Stress Test](/images/stress-report/send_rate_bench_btop.png) |
+
+<video controls width="600" src="/videos/stress-report/send.mp4">
+</video>
+
+**Test Results**
+
+| Metric | Value |
+|:-------|:------|
+| Total Messages Sent | `20 million` |
+| Message Sending Concurrency | `40,000/second` |
+| Average Send Latency | `400ms～600ms` |
+| Memory Usage | `1～2G` |
+| CPU Usage | `60～80%` |
+
+**Summary**: With sending concurrency reaching `40,000/second`, the average message sending latency is still within milliseconds, memory is stable, CPU usage is within expectations. Excellent performance! 👍
+
+(If you have no concept of `40,000/second`, compared to MySQL, a 16-core server has write performance of about 3,000～8,000/second. `40,000/second` is close to Redis write performance with AOF mode enabled)
+
+### Receive Rate Testing
+
+**Test Content**
+
+| Content | Online | Send Rate |
+|:--------|:-------|:----------|
+| 1 group of 10,000 people | 5,000 group members online (50%) | 2,400 messages per minute |
+
+**Total Receive Rate**: `5000 * (2400/60) = 200,000 messages/second`
+
+**Test Screenshots**
+
+| Test Content | System Top Information |
+|:-------------|:-----------------------|
+| ![Image](/images/stress-report/收消息性能压测.png) | ![Image](/images/stress-report/收消息btop.png) |
+
+<video controls width="600" src="/videos/stress-report/收消息性能压测.mp4">
+</video>
+
+**Test Results**
+
+| Metric | Value |
+|:-------|:------|
+| Total Messages Received | `100 million` |
+| Message Receiving Concurrency | `200,000/second` |
+| Average Receive Latency | `Under 1s` |
+| Memory Usage | `1～2G` |
+| CPU Usage | `40～60%` |
+
+**Summary**: Under maximum server performance utilization, receiving concurrency reached `200,000/s`, demonstrating very strong performance.
+
+### Mixed Testing
+
+**Test Content**
+
+| Content | Online | Send Rate |
+|:--------|:-------|:----------|
+| 1,000 one-on-one chats | 1,000 people online | 600 messages per minute per pair |
+| 100 groups of 100 people each | 1 person online per group | 1,200 messages per minute per group |
+| 1 group of 10,000 people | 5,000 group members online | 300 messages per minute |
+
+**Total Send Rate**: `1000 * (600/60) + 100 * (1200/60) + 1 * (600/60) = 12,010 messages/second`
+
+**Total Receive Rate**: `1000 * (600/60) + 100 * (600/60) + 1 * 5000 * (300/60) = 36,000 messages/second`
+
+**Test Screenshots**
+
+| Test Content | System Top Information |
+|:-------------|:-----------------------|
+| ![Image](/images/stress-report/混合测试.png) | ![Image](/images/stress-report/混合测试btop.png) |
+
+<video controls width="600" src="/videos/stress-report/混合测试.mp4">
+</video>
+
+**Test Results**
+
+| Metric | Value |
+|:-------|:------|
+| Messages Sent | `~4 million` |
+| Send Concurrency | `12,000 messages/second` |
+| Average Send Latency | `10～500ms` |
+| Messages Received | `~10 million` |
+| Receive Concurrency | `36,000 messages/second` |
+| Average Receive Latency | `Under 1s` |
+| Memory Usage | `1～2G` |
+| CPU Usage | `70～80%` |
+
+**Summary**: Under maximum server performance utilization, send and receive concurrency reached `12,000/s` and `36,000/s` respectively, showing excellent performance.
+
+## Stability Testing
+
+Testing whether the system can run stably under low message latency
+
+### Test Objective
+
+Test whether the system can run smoothly under high-frequency sending and receiving concurrency, with average message latency in ideal state (under 500ms).
+
+### Test Content
+
+**20,000 people online simultaneously**
+
+| Content | Online | Send Rate |
+|:--------|:-------|:----------|
+| 1,000 one-on-one chats | 1,000 people online | 30 messages per minute per pair |
+| 200 groups of 200 people each | 50 (25%) people online per group | 30 messages per minute per group |
+| 100 groups of 500 people each | 125 (25%) people online per group | 30 messages per minute per group |
+| 1 group of 10,000 people | 2,500 group members online (25%) | 30 messages per minute per group |
+
+**Duration**: 24 hours
+
+### Test Results
+
+**Result Screenshots**
+
+| Test Content | System Top Information |
+|:-------------|:-----------------------|
+| ![Image](/images/stress-report/稳定性测试.png) | ![Image](/images/stress-report/稳定性测试btop.png) |
+
+<video controls width="600" src="/videos/stress-report/稳定性测试2.mp4">
+</video>
+
+**Core Metrics**
+
+| Content | Result |
+|:--------|:-------|
+| Continuous Test Duration | 48 hours |
+| Simultaneous Online | 20,000 |
+| Messages Sent | 100 million |
+| Messages Received | 2 billion |
+| Success Rate | 100% |
+| Send Rate | ~600 messages/second |
+| Receive Rate | ~15,000 messages/second |
+| Average Send Latency | 1～30ms |
+| Average Receive Latency | 1～200ms |
+| Memory | ~5G |
+| CPU | Maintained at ~20% |
+
+**Summary**: With a 16-core 32GB server under high-frequency messaging in numerous group chats and one-on-one chats, CPU remained stable at around 20%, memory stable at 4-5G, and average message latency remained at millisecond level. Excellent performance.
+
+## Reliability Testing
+
+Testing whether messages are lost
+
+### Test Objective
+
+Under massive message sending and receiving, all recipients can receive all messages completely.
+
+### Test Content
+
+| Content | Online | Send Rate |
+|:--------|:-------|:----------|
+| 1,000 one-on-one chats | 1,000 people online | 30 messages per minute per pair |
+| 200 groups of 200 people each | 50 (25%) people online per group | 30 messages per minute per group |
+| 100 groups of 500 people each | 125 (25%) people online per group | 30 messages per minute per group |
+| 1 group of 10,000 people | 2,500 group members online (25%) | 30 messages per minute per group |
+
+**Duration**: 24 hours
+
+### Test Results
+
+**Result Screenshots**
+
+| Test Content | Expected Messages Received |
+|:-------------|:---------------------------|
+| ![Image](/images/stress-report/可靠性测试结果.png) | ![Image](/images/stress-report/可靠性测试结果2.png) |
+
+<video controls width="600" src="/videos/stress-report/稳定性测试2.mp4">
+</video>
+
+**Core Metrics**
+
+| Content | Result |
+|:--------|:-------|
+| Simultaneous Online | 20,000 |
+| Messages Sent | 102,335,788 |
+| Messages Received | 2,021,201,206 |
+| Success Rate | 100% |
+| Expected Messages to Receive | 2,021,201,206 |
+| Actual Messages Received | 2,021,201,206 |
+
+**Summary**: After massive message sending and receiving, the actual number of messages received is completely consistent with the expected number calculated by the program based on test data. That is, after sending over 100 million messages, all online recipients received them completely. This fully demonstrates the reliability of `WuKongIM`.
+
+## Ordering Testing
+
+Testing whether messages are out of order
+
+### Test Objective
+
+Rapidly send messages within a channel to see if the recipient's order is consistent with the sender's.
+
+### Test Content
+
+| Content | Online | Send Rate |
+|:--------|:-------|:----------|
+| 1 one-on-one chat | 2 people online | Rapid message sending |
+
+### Test Results
+
+**Test Video**
+
+<video controls width="600" src="/videos/stress-report/顺序性测试.mp4">
+</video>
+
+**Summary**: When one user rapidly sends messages to another user, the recipient's message order is completely consistent with the sender's order.

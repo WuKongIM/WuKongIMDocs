@@ -1,0 +1,389 @@
+---
+title: "5-Minute Android Integration"
+description: "Quickly integrate WuKongIM Android EasySDK and implement chat functionality in 5 minutes"
+icon: "android"
+---
+
+## Overview
+
+WuKongIM Android EasySDK is a lightweight Android SDK that enables you to add real-time chat functionality to your Android application in just 5 minutes. This guide will take you through the complete process from installation to sending your first message.
+
+<Note>
+  **System Requirements**: Android 5.0 (API level 21) or higher, Kotlin 1.5.0 or higher
+</Note>
+
+## Step 1: Install SDK
+
+Choose any of the following methods to install Android EasySDK:
+
+<Tabs>
+  <Tab title="Gradle (Recommended)">
+    Add to your `app/build.gradle`:
+    ```kotlin
+    dependencies {
+        implementation 'com.githubim:easysdk-android:1.0.0'
+    }
+    ```
+  </Tab>
+  <Tab title="Gradle (Kotlin DSL)">
+    Add to your `app/build.gradle.kts`:
+    ```kotlin
+    dependencies {
+        implementation("com.githubim:easysdk-android:1.0.0")
+    }
+    ```
+  </Tab>
+  <Tab title="Maven">
+    Add to your `pom.xml`:
+    ```xml
+    <dependency>
+        <groupId>com.githubim</groupId>
+        <artifactId>easysdk-android</artifactId>
+        <version>1.0.0</version>
+    </dependency>
+    ```
+  </Tab>
+</Tabs>
+
+## Step 2: Basic Integration
+
+### 2.1 Import SDK
+
+```kotlin
+import com.githubim.easysdk.WuKongEasySDK
+import com.githubim.easysdk.WuKongConfig
+import com.githubim.easysdk.WuKongChannelType
+import com.githubim.easysdk.WuKongEvent
+import com.githubim.easysdk.listener.WuKongEventListener
+```
+
+### 2.2 Initialize SDK
+
+```kotlin
+// 1. Initialize SDK
+val config = WuKongConfig.Builder()
+    .serverUrl("ws://your-wukongim-server.com:5200")
+    .uid("your_user_id")        // Your user ID
+    .token("your_auth_token")   // Your authentication token
+    // .deviceId("optional_device_id") // Optional: Device ID
+    // .deviceFlag(WuKongDeviceFlag.APP) // Optional: Device flag, default is APP
+    .build()
+
+val easySDK = WuKongEasySDK.getInstance()
+easySDK.init(this, config) // this is Application or Activity context
+```
+
+### 2.3 Listen for Events
+
+```kotlin
+// 2. Listen for various events
+easySDK.addEventListener(WuKongEvent.CONNECT, object : WuKongEventListener<ConnectResult> {
+    override fun onEvent(result: ConnectResult) {
+        Log.d("WuKong", "Event: Connected! $result")
+        // Connection successful, can start sending messages
+        runOnUiThread {
+            updateUI(true)
+        }
+    }
+})
+
+easySDK.addEventListener(WuKongEvent.DISCONNECT, object : WuKongEventListener<DisconnectInfo> {
+    override fun onEvent(disconnectInfo: DisconnectInfo) {
+        Log.d("WuKong", "Event: Disconnected. $disconnectInfo")
+        Log.d("WuKong", "Disconnect code: ${disconnectInfo.code}, reason: ${disconnectInfo.reason}")
+        // Connection lost, update UI status
+        runOnUiThread {
+            updateUI(false)
+        }
+    }
+})
+
+easySDK.addEventListener(WuKongEvent.MESSAGE, object : WuKongEventListener<Message> {
+    override fun onEvent(message: Message) {
+        Log.d("WuKong", "Event: Message Received $message")
+        // Handle received messages
+        runOnUiThread {
+            displayMessage(message)
+        }
+    }
+})
+
+easySDK.addEventListener(WuKongEvent.ERROR, object : WuKongEventListener<WuKongError> {
+    override fun onEvent(error: WuKongError) {
+        Log.e("WuKong", "Event: Error Occurred ${error.message}")
+        // Handle errors, may need to update UI or reconnect
+        runOnUiThread {
+            handleError(error)
+        }
+    }
+})
+
+// You can add multiple listeners for the same event
+easySDK.addEventListener(WuKongEvent.MESSAGE, object : WuKongEventListener<Message> {
+    override fun onEvent(message: Message) {
+        Log.d("WuKong", "Second listener also received message: ${message.messageId}")
+        // Add different processing logic here
+    }
+})
+```
+
+### 2.4 Remove Event Listeners
+
+In some cases, you may need to remove event listeners to avoid memory leaks or duplicate processing. Android EasySDK provides methods to remove listeners.
+
+<Note>
+  **Important Reminder**: In Android, removing event listeners requires maintaining references to the listeners. It's recommended to use class properties to store listener references for later removal.
+</Note>
+
+#### Correct Usage
+
+```kotlin
+class ChatActivity : AppCompatActivity() {
+    private lateinit var easySDK: WuKongEasySDK
+    
+    // Save listener references
+    private var messageListener: WuKongEventListener<Message>? = null
+    private var connectListener: WuKongEventListener<ConnectResult>? = null
+    private var disconnectListener: WuKongEventListener<DisconnectInfo>? = null
+    private var errorListener: WuKongEventListener<WuKongError>? = null
+    
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_chat)
+        
+        easySDK = WuKongEasySDK.getInstance()
+        setupEventListeners()
+        connectToServer()
+    }
+    
+    private fun setupEventListeners() {
+        // ✅ Correct: Save listener references
+        messageListener = object : WuKongEventListener<Message> {
+            override fun onEvent(message: Message) {
+                Log.d("WuKong", "Handle message: $message")
+                runOnUiThread {
+                    handleMessage(message)
+                }
+            }
+        }
+        
+        connectListener = object : WuKongEventListener<ConnectResult> {
+            override fun onEvent(result: ConnectResult) {
+                Log.d("WuKong", "Connection successful: $result")
+                runOnUiThread {
+                    handleConnect(result)
+                }
+            }
+        }
+        
+        disconnectListener = object : WuKongEventListener<DisconnectInfo> {
+            override fun onEvent(disconnectInfo: DisconnectInfo) {
+                Log.d("WuKong", "Connection lost: $disconnectInfo")
+                Log.d("WuKong", "Disconnect code: ${disconnectInfo.code}, reason: ${disconnectInfo.reason}")
+                runOnUiThread {
+                    handleDisconnect(disconnectInfo)
+                }
+            }
+        }
+        
+        errorListener = object : WuKongEventListener<WuKongError> {
+            override fun onEvent(error: WuKongError) {
+                Log.e("WuKong", "Error occurred: $error")
+                runOnUiThread {
+                    handleError(error)
+                }
+            }
+        }
+        
+        // Add event listeners
+        messageListener?.let { easySDK.addEventListener(WuKongEvent.MESSAGE, it) }
+        connectListener?.let { easySDK.addEventListener(WuKongEvent.CONNECT, it) }
+        disconnectListener?.let { easySDK.addEventListener(WuKongEvent.DISCONNECT, it) }
+        errorListener?.let { easySDK.addEventListener(WuKongEvent.ERROR, it) }
+    }
+    
+    private fun removeEventListeners() {
+        // Remove specific event listeners - use saved references
+        messageListener?.let { 
+            easySDK.removeEventListener(WuKongEvent.MESSAGE, it)
+            messageListener = null
+        }
+        
+        connectListener?.let { 
+            easySDK.removeEventListener(WuKongEvent.CONNECT, it)
+            connectListener = null
+        }
+        
+        disconnectListener?.let { 
+            easySDK.removeEventListener(WuKongEvent.DISCONNECT, it)
+            disconnectListener = null
+        }
+        
+        errorListener?.let { 
+            easySDK.removeEventListener(WuKongEvent.ERROR, it)
+            errorListener = null
+        }
+    }
+    
+    override fun onDestroy() {
+        super.onDestroy()
+        // Clean up listeners when Activity is destroyed
+        removeEventListeners()
+    }
+    
+    private fun handleMessage(message: Message) {
+        // Message handling logic
+    }
+    
+    private fun handleConnect(result: ConnectResult) {
+        // Connection success handling logic
+    }
+    
+    private fun handleDisconnect(disconnectInfo: DisconnectInfo) {
+        // Connection lost handling logic
+        Log.d("WuKong", "Handle disconnect event - code: ${disconnectInfo.code}, reason: ${disconnectInfo.reason}")
+    }
+    
+    private fun handleError(error: WuKongError) {
+        // Error handling logic
+    }
+    
+    private fun connectToServer() {
+        lifecycleScope.launch {
+            try {
+                easySDK.connect()
+                Log.d("WuKong", "Connection successful!")
+            } catch (e: Exception) {
+                Log.e("WuKong", "Connection failed: $e")
+            }
+        }
+    }
+}
+```
+
+### 2.5 Connect to Server
+
+```kotlin
+// 4. Connect to server
+lifecycleScope.launch {
+    try {
+        easySDK.connect()
+        Log.d("WuKong", "Connection successful!")
+    } catch (e: Exception) {
+        Log.e("WuKong", "Connection failed: $e")
+    }
+}
+```
+
+### 2.6 Send Messages
+
+```kotlin
+// 5. Send message example
+private fun sendMessage() {
+    val targetChannelID = "friend_user_id" // Target user ID
+    val messagePayload = MessagePayload(
+        type = 1,
+        content = "Hello from Android EasySDK!"
+    ) // Your custom message payload
+
+    lifecycleScope.launch {
+        try {
+            val result = easySDK.send(
+                channelId = targetChannelID,
+                channelType = WuKongChannelType.PERSON,
+                payload = messagePayload
+            )
+            Log.d("WuKong", "Message sent successfully: $result")
+        } catch (e: Exception) {
+            Log.e("WuKong", "Message sending failed: $e")
+        }
+    }
+}
+```
+
+## Step 3: Error Handling and Best Practices
+
+### 3.1 Error Handling
+
+<Note>
+  **Built-in Auto Reconnection**: Android EasySDK has built-in intelligent reconnection mechanism, no need to manually implement reconnection logic. The SDK will automatically attempt to reconnect when the connection is lost.
+</Note>
+
+```kotlin
+// Proper connection status listening
+easySDK.addEventListener(WuKongEvent.CONNECT, object : WuKongEventListener<ConnectResult> {
+    override fun onEvent(result: ConnectResult) {
+        Log.d("WuKong", "Connection successful: $result")
+        // Update UI status, enable sending functionality
+        runOnUiThread {
+            updateConnectionUI(true)
+        }
+    }
+})
+
+easySDK.addEventListener(WuKongEvent.DISCONNECT, object : WuKongEventListener<DisconnectInfo> {
+    override fun onEvent(disconnectInfo: DisconnectInfo) {
+        Log.d("WuKong", "Connection lost: $disconnectInfo")
+        Log.d("WuKong", "Disconnect code: ${disconnectInfo.code}, reason: ${disconnectInfo.reason}")
+        // Update UI status, disable sending functionality
+        runOnUiThread {
+            updateConnectionUI(false)
+        }
+        // SDK will automatically attempt to reconnect, no manual handling needed
+    }
+})
+
+easySDK.addEventListener(WuKongEvent.ERROR, object : WuKongEventListener<WuKongError> {
+    override fun onEvent(error: WuKongError) {
+        Log.e("WuKong", "Error occurred: $error")
+
+        // Handle based on error type
+        runOnUiThread {
+            when (error.code) {
+                WuKongErrorCode.AUTH_FAILED -> {
+                    // Authentication failed, need to get new token
+                    handleAuthError()
+                }
+                WuKongErrorCode.NETWORK_ERROR -> {
+                    // Network error, show network prompt
+                    showNetworkError()
+                }
+                else -> {
+                    // Other errors
+                    showGeneralError(error.message)
+                }
+            }
+        }
+    }
+})
+```
+
+## Related Resources
+
+<CardGroup cols={2}>
+  <Card title="Complete Example Code" icon="code" href="https://github.com/WuKongIM/EasyJSSDK/blob/main/example/app.js">
+    View complete example code and more feature demonstrations
+  </Card>
+  <Card title="Complete Protocol Documentation" icon="file-text" href="https://github.com/WuKongIM/WuKongIM/blob/main/pkg/jsonrpc/wukongim_rpc_schema.json">
+    View WuKongIM's complete protocol documentation
+  </Card>
+  <Card title="GitHub Repository" icon="github" href="https://github.com/WuKongIM/EasyJSSDK">
+    Visit EasyJSSDK's GitHub repository
+  </Card>
+  <Card title="Issue Feedback" icon="bug" href="https://github.com/WuKongIM/EasyJSSDK/issues">
+    Report issues or provide suggestions
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+Congratulations! You have successfully integrated WuKongIM Android EasySDK. Now you can:
+
+1. **Extend Functionality**: Add group chat, file transfer and other features
+2. **Customize UI**: Customize chat interface according to your app design
+3. **Integrate into Project**: Integrate chat functionality into your existing project
+4. **Performance Optimization**: Optimize performance based on actual usage
+
+<Tip>
+  If you need more complex functionality or higher performance requirements, consider using the full version of WuKongIMSDK.
+</Tip>

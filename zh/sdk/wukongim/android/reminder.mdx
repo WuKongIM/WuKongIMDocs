@@ -1,0 +1,601 @@
+---
+title: "提醒管理"
+description: "WuKongIM Android SDK 提醒管理功能，处理会话提醒项和通知"
+icon: "bell"
+---
+
+提醒项管理负责处理会话中的各种提醒信息，如@提醒、群内审核等。会话提醒目前只支持服务器下发指令，客户端只需监听同步会话提醒和监听刷新会话消息即可。
+
+## 获取提醒项
+
+### 获取指定会话的提醒项
+
+<CodeGroup>
+```java Java
+// 获取指定会话的提醒项
+WKIM.getInstance().getReminderManager().getReminders(channelId, channelType);
+```
+
+```kotlin Kotlin
+// 获取指定会话的提醒项
+WKIM.getInstance().reminderManager.getReminders(channelId, channelType)
+```
+</CodeGroup>
+
+### 获取指定类型的提醒项
+
+<CodeGroup>
+```java Java
+// 获取指定类型的提醒项
+WKIM.getInstance().getReminderManager().getRemindersWithType(String channelID, byte channelType, int type);
+```
+
+```kotlin Kotlin
+// 获取指定类型的提醒项
+WKIM.getInstance().reminderManager.getRemindersWithType(channelID, channelType, type);
+```
+</CodeGroup>
+
+### 完整获取示例
+
+```java
+public class ReminderHelper {
+    
+    // 获取所有@我的提醒
+    public List<WKReminder> getMentionReminders(String channelId, byte channelType) {
+        return WKIM.getInstance().getReminderManager().getRemindersWithType(channelId, channelType, 1);
+    }
+    
+    // 获取群内审核提醒
+    public List<WKReminder> getAuditReminders(String channelId, byte channelType) {
+        return WKIM.getInstance().getReminderManager().getRemindersWithType(channelId, channelType, 2);
+    }
+    
+    // 获取所有未完成的提醒
+    public List<WKReminder> getUnfinishedReminders(String channelId, byte channelType) {
+        List<WKReminder> allReminders = WKIM.getInstance().getReminderManager().getReminders(channelId, channelType);
+        List<WKReminder> unfinishedReminders = new ArrayList<>();
+        
+        if (allReminders != null) {
+            for (WKReminder reminder : allReminders) {
+                if (reminder.done == 0) { // 0表示未完成
+                    unfinishedReminders.add(reminder);
+                }
+            }
+        }
+        
+        return unfinishedReminders;
+    }
+    
+    // 按类型统计提醒数量
+    public Map<Integer, Integer> getReminderCountByType(String channelId, byte channelType) {
+        List<WKReminder> allReminders = WKIM.getInstance().getReminderManager().getReminders(channelId, channelType);
+        Map<Integer, Integer> countMap = new HashMap<>();
+        
+        if (allReminders != null) {
+            for (WKReminder reminder : allReminders) {
+                if (reminder.done == 0) { // 只统计未完成的
+                    countMap.put(reminder.type, countMap.getOrDefault(reminder.type, 0) + 1);
+                }
+            }
+        }
+        
+        return countMap;
+    }
+    
+    // 获取最新的提醒
+    public WKReminder getLatestReminder(String channelId, byte channelType) {
+        List<WKReminder> reminders = WKIM.getInstance().getReminderManager().getReminders(channelId, channelType);
+        
+        if (reminders == null || reminders.isEmpty()) {
+            return null;
+        }
+        
+        // 按版本号排序，获取最新的
+        WKReminder latestReminder = reminders.get(0);
+        for (WKReminder reminder : reminders) {
+            if (reminder.version > latestReminder.version) {
+                latestReminder = reminder;
+            }
+        }
+        
+        return latestReminder;
+    }
+}
+```
+
+## 保存提醒项
+
+<CodeGroup>
+```java Java
+// 保存提醒项
+WKIM.getInstance().getReminderManager().saveOrUpdateReminders(List<WKReminder> reminderList);
+```
+
+```kotlin Kotlin
+// 保存提醒项
+WKIM.getInstance().reminderManager.saveOrUpdateReminders(list)
+```
+</CodeGroup>
+
+### 保存操作示例
+
+```java
+public class ReminderManager {
+    
+    // 批量保存提醒项
+    public void saveReminders(List<WKReminder> reminders) {
+        if (reminders != null && !reminders.isEmpty()) {
+            WKIM.getInstance().getReminderManager().saveOrUpdateReminders(reminders);
+            Log.d("ReminderManager", "保存了 " + reminders.size() + " 个提醒项");
+        }
+    }
+    
+    // 创建并保存@提醒
+    public void createMentionReminder(String channelId, byte channelType, String messageId, 
+                                    long messageSeq, String mentionedBy, String text) {
+        WKReminder reminder = new WKReminder();
+        reminder.reminderID = System.currentTimeMillis(); // 使用时间戳作为ID
+        reminder.messageID = messageId;
+        reminder.channelID = channelId;
+        reminder.channelType = channelType;
+        reminder.messageSeq = messageSeq;
+        reminder.type = 1; // @提醒类型
+        reminder.uid = mentionedBy;
+        reminder.text = text;
+        reminder.version = System.currentTimeMillis();
+        reminder.done = 0; // 未完成
+        reminder.needUpload = 0; // 不需要上传
+        reminder.publisher = mentionedBy;
+        
+        // 保存单个提醒
+        List<WKReminder> reminderList = new ArrayList<>();
+        reminderList.add(reminder);
+        saveReminders(reminderList);
+    }
+    
+    // 标记提醒为已完成
+    public void markReminderAsDone(long reminderId) {
+        // 这里需要先获取提醒，然后更新状态
+        // 实际实现中可能需要提供更直接的更新方法
+        Log.d("ReminderManager", "标记提醒 " + reminderId + " 为已完成");
+    }
+    
+    // 删除过期的提醒
+    public void cleanupExpiredReminders(String channelId, byte channelType, long expireTime) {
+        List<WKReminder> allReminders = WKIM.getInstance().getReminderManager().getReminders(channelId, channelType);
+        List<WKReminder> validReminders = new ArrayList<>();
+        
+        if (allReminders != null) {
+            for (WKReminder reminder : allReminders) {
+                if (reminder.version > expireTime) {
+                    validReminders.add(reminder);
+                }
+            }
+            
+            // 重新保存有效的提醒
+            if (validReminders.size() != allReminders.size()) {
+                saveReminders(validReminders);
+                Log.d("ReminderManager", "清理了 " + (allReminders.size() - validReminders.size()) + " 个过期提醒");
+            }
+        }
+    }
+}
+```
+
+## 事件监听
+
+### 监听新增提醒项
+
+<CodeGroup>
+```java Java
+// 监听新增提醒项
+WKIM.getInstance().getReminderManager().addOnNewReminderListener("key", new INewReminderListener() {
+    @Override
+    public void newReminder(List<WKReminder> list) {
+        // 处理新增的提醒项
+        handleNewReminders(list);
+    }
+});
+
+// 移除监听
+WKIM.getInstance().getReminderManager().removeNewReminderListener("key");
+```
+
+```kotlin Kotlin
+// 监听新增提醒项
+WKIM.getInstance().reminderManager.addOnNewReminderListener("key", object : INewReminderListener {
+    override fun newReminder(list: List<WKReminder>) {
+        // 处理新增的提醒项
+        handleNewReminders(list)
+    }
+})
+
+// 移除监听
+WKIM.getInstance().reminderManager.removeNewReminderListener("key");
+```
+</CodeGroup>
+
+<Note>
+key为监听的唯一标识，可以为任意字符串，添加监听和移出监听时需要传入相同的key
+</Note>
+
+### 完整监听示例
+
+```java
+public class ReminderListener {
+    
+    private static final String LISTENER_KEY = "ReminderListener";
+    
+    public void initialize() {
+        // 添加新提醒监听器
+        WKIM.getInstance().getReminderManager().addOnNewReminderListener(LISTENER_KEY, this::handleNewReminders);
+    }
+    
+    private void handleNewReminders(List<WKReminder> reminders) {
+        if (reminders == null || reminders.isEmpty()) {
+            return;
+        }
+        
+        Log.d("ReminderListener", "收到 " + reminders.size() + " 个新提醒");
+        
+        for (WKReminder reminder : reminders) {
+            switch (reminder.type) {
+                case 1: // @提醒
+                    handleMentionReminder(reminder);
+                    break;
+                case 2: // 群内审核
+                    handleAuditReminder(reminder);
+                    break;
+                default:
+                    handleUnknownReminder(reminder);
+                    break;
+            }
+        }
+        
+        // 更新UI
+        updateReminderUI(reminders);
+        
+        // 发送通知
+        sendReminderNotifications(reminders);
+    }
+    
+    private void handleMentionReminder(WKReminder reminder) {
+        Log.d("ReminderListener", "处理@提醒: " + reminder.text);
+        
+        // 更新会话列表中的@标识
+        updateConversationMentionStatus(reminder.channelID, reminder.channelType, true);
+        
+        // 发送本地通知
+        sendMentionNotification(reminder);
+    }
+    
+    private void handleAuditReminder(WKReminder reminder) {
+        Log.d("ReminderListener", "处理审核提醒: " + reminder.text);
+        
+        // 更新群管理界面
+        updateGroupAuditStatus(reminder.channelID);
+        
+        // 发送审核通知
+        sendAuditNotification(reminder);
+    }
+    
+    private void handleUnknownReminder(WKReminder reminder) {
+        Log.w("ReminderListener", "未知提醒类型: " + reminder.type);
+    }
+    
+    private void updateReminderUI(List<WKReminder> reminders) {
+        // 通知UI更新提醒状态
+        Intent intent = new Intent("com.app.REMINDER_UPDATED");
+        intent.putExtra("reminder_count", reminders.size());
+        LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
+    }
+    
+    private void sendReminderNotifications(List<WKReminder> reminders) {
+        for (WKReminder reminder : reminders) {
+            if (shouldShowNotification(reminder)) {
+                showReminderNotification(reminder);
+            }
+        }
+    }
+    
+    private boolean shouldShowNotification(WKReminder reminder) {
+        // 检查是否应该显示通知
+        // 可以根据用户设置、应用状态等决定
+        return !isAppInForeground() && reminder.done == 0;
+    }
+    
+    private void showReminderNotification(WKReminder reminder) {
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setContentTitle(getReminderTitle(reminder))
+                .setContentText(reminder.text)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setAutoCancel(true);
+        
+        // 设置点击意图
+        Intent intent = new Intent(context, ChatActivity.class);
+        intent.putExtra("channel_id", reminder.channelID);
+        intent.putExtra("channel_type", reminder.channelType);
+        intent.putExtra("message_id", reminder.messageID);
+        
+        PendingIntent pendingIntent = PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+        builder.setContentIntent(pendingIntent);
+        
+        NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        notificationManager.notify((int) reminder.reminderID, builder.build());
+    }
+    
+    private String getReminderTitle(WKReminder reminder) {
+        switch (reminder.type) {
+            case 1:
+                return "有人@你";
+            case 2:
+                return "群内审核";
+            default:
+                return "新提醒";
+        }
+    }
+    
+    private void updateConversationMentionStatus(String channelId, byte channelType, boolean hasMention) {
+        // 更新会话列表中的@状态
+        Intent intent = new Intent("com.app.CONVERSATION_MENTION_UPDATED");
+        intent.putExtra("channel_id", channelId);
+        intent.putExtra("channel_type", channelType);
+        intent.putExtra("has_mention", hasMention);
+        LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
+    }
+    
+    private void updateGroupAuditStatus(String groupId) {
+        // 更新群管理界面的审核状态
+        Intent intent = new Intent("com.app.GROUP_AUDIT_UPDATED");
+        intent.putExtra("group_id", groupId);
+        LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
+    }
+    
+    private void sendMentionNotification(WKReminder reminder) {
+        // 发送@提醒通知
+        showReminderNotification(reminder);
+    }
+    
+    private void sendAuditNotification(WKReminder reminder) {
+        // 发送审核提醒通知
+        showReminderNotification(reminder);
+    }
+    
+    private boolean isAppInForeground() {
+        ActivityManager activityManager = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+        List<ActivityManager.RunningAppProcessInfo> appProcesses = activityManager.getRunningAppProcesses();
+        
+        if (appProcesses == null) {
+            return false;
+        }
+        
+        final String packageName = context.getPackageName();
+        for (ActivityManager.RunningAppProcessInfo appProcess : appProcesses) {
+            if (appProcess.importance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND &&
+                appProcess.processName.equals(packageName)) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    public void destroy() {
+        WKIM.getInstance().getReminderManager().removeNewReminderListener(LISTENER_KEY);
+    }
+}
+```
+
+## WKReminder 数据结构
+
+### 提醒项属性
+
+```java
+public class WKReminder {
+    public long reminderID;     // 提醒项ID
+    public String messageID;    // 消息ID
+    public String channelID;    // 频道ID
+    public byte channelType;    // 频道类型
+    public long messageSeq;     // 消息序列号
+    public int type;            // 提醒类型[1、有人@你][2、群内审核] 等
+    public String uid;          // 用户ID
+    public String text;         // 提醒内容
+    public Map data;            // 提醒包含的自定义数据
+    public long version;        // 版本号 增量同步需要用到
+    public int done;            // 0.未完成 1.已完成
+    public int needUpload;      // 0.不需要上传 1.需要上传
+    public String publisher;    // 发布者
+}
+```
+
+### 属性说明
+
+| 属性 | 类型 | 说明 |
+|------|------|------|
+| `reminderID` | long | 提醒项唯一标识 |
+| `messageID` | String | 关联的消息ID |
+| `channelID` | String | 频道ID |
+| `channelType` | byte | 频道类型 |
+| `messageSeq` | long | 消息序列号 |
+| `type` | int | 提醒类型（1=@提醒，2=群内审核等） |
+| `uid` | String | 相关用户ID |
+| `text` | String | 提醒显示文本 |
+| `data` | Map | 自定义数据 |
+| `version` | long | 版本号，用于增量同步 |
+| `done` | int | 完成状态（0=未完成，1=已完成） |
+| `needUpload` | int | 是否需要上传（0=否，1=是） |
+| `publisher` | String | 发布者ID |
+
+### 提醒类型说明
+
+| 类型值 | 说明 | 使用场景 |
+|--------|------|----------|
+| `1` | @提醒 | 有人在群聊中@了当前用户 |
+| `2` | 群内审核 | 群管理员需要审核的事项 |
+| 其他 | 自定义提醒 | 根据业务需求扩展 |
+
+## 最佳实践
+
+### 1. 提醒状态管理
+
+```java
+public class ReminderStatusManager {
+    
+    // 获取未读提醒数量
+    public int getUnreadReminderCount(String channelId, byte channelType) {
+        List<WKReminder> reminders = WKIM.getInstance().getReminderManager().getReminders(channelId, channelType);
+        int count = 0;
+        
+        if (reminders != null) {
+            for (WKReminder reminder : reminders) {
+                if (reminder.done == 0) {
+                    count++;
+                }
+            }
+        }
+        
+        return count;
+    }
+    
+    // 检查是否有@提醒
+    public boolean hasMentionReminder(String channelId, byte channelType) {
+        List<WKReminder> mentionReminders = WKIM.getInstance().getReminderManager()
+                .getRemindersWithType(channelId, channelType, 1);
+        
+        if (mentionReminders != null) {
+            for (WKReminder reminder : mentionReminders) {
+                if (reminder.done == 0) {
+                    return true;
+                }
+            }
+        }
+        
+        return false;
+    }
+    
+    // 获取提醒摘要文本
+    public String getReminderSummary(String channelId, byte channelType) {
+        Map<Integer, Integer> countMap = getReminderCountByType(channelId, channelType);
+        
+        if (countMap.isEmpty()) {
+            return "";
+        }
+        
+        StringBuilder summary = new StringBuilder();
+        
+        if (countMap.containsKey(1)) {
+            summary.append("[有人@你]");
+        }
+        
+        if (countMap.containsKey(2)) {
+            if (summary.length() > 0) {
+                summary.append(" ");
+            }
+            summary.append("[群内审核]");
+        }
+        
+        return summary.toString();
+    }
+    
+    private Map<Integer, Integer> getReminderCountByType(String channelId, byte channelType) {
+        List<WKReminder> allReminders = WKIM.getInstance().getReminderManager().getReminders(channelId, channelType);
+        Map<Integer, Integer> countMap = new HashMap<>();
+        
+        if (allReminders != null) {
+            for (WKReminder reminder : allReminders) {
+                if (reminder.done == 0) {
+                    countMap.put(reminder.type, countMap.getOrDefault(reminder.type, 0) + 1);
+                }
+            }
+        }
+        
+        return countMap;
+    }
+}
+```
+
+### 2. 内存管理
+
+```java
+@Override
+protected void onDestroy() {
+    super.onDestroy();
+    
+    // 移除提醒监听器
+    WKIM.getInstance().getReminderManager().removeNewReminderListener("ActivityKey");
+    
+    // 清理本地广播接收器
+    if (reminderReceiver != null) {
+        LocalBroadcastManager.getInstance(this).unregisterReceiver(reminderReceiver);
+    }
+}
+```
+
+### 3. 通知权限处理
+
+```java
+public class ReminderNotificationHelper {
+    
+    public void checkNotificationPermission(Activity activity) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(activity, Manifest.permission.POST_NOTIFICATIONS) 
+                != PackageManager.PERMISSION_GRANTED) {
+                
+                ActivityCompat.requestPermissions(activity, 
+                    new String[]{Manifest.permission.POST_NOTIFICATIONS}, 
+                    REQUEST_NOTIFICATION_PERMISSION);
+            }
+        }
+    }
+    
+    public void createNotificationChannel(Context context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel(
+                REMINDER_CHANNEL_ID,
+                "提醒通知",
+                NotificationManager.IMPORTANCE_HIGH
+            );
+            channel.setDescription("聊天提醒通知");
+            channel.enableLights(true);
+            channel.enableVibration(true);
+            
+            NotificationManager notificationManager = context.getSystemService(NotificationManager.class);
+            notificationManager.createNotificationChannel(channel);
+        }
+    }
+}
+```
+
+## 下一步
+
+<CardGroup cols={2}>
+  <Card
+    title="高级功能"
+    icon="cog"
+    href="/zh/sdk/wukongim/android/advance"
+  >
+    探索高级功能和优化
+  </Card>
+  <Card
+    title="数据源配置"
+    icon="database"
+    href="/zh/sdk/wukongim/android/datasource"
+  >
+    回到数据源配置
+  </Card>
+  <Card
+    title="会话管理"
+    icon="users"
+    href="/zh/sdk/wukongim/android/conversation"
+  >
+    回到会话管理功能
+  </Card>
+  <Card
+    title="命令管理"
+    icon="terminal"
+    href="/zh/sdk/wukongim/android/cmd"
+  >
+    回到命令管理功能
+  </Card>
+</CardGroup>

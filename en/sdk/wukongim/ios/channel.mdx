@@ -1,0 +1,352 @@
+---
+title: "Channel Management"
+description: "WuKongIM iOS SDK channel management functionality, including channel information retrieval, updates and monitoring"
+icon: "hash"
+---
+
+The channel manager is responsible for CRUD operations on channel information data. Through channel management, you can implement user/group nicknames, user/group avatars, user/group pinning, user/group do not disturb, and other features.
+
+<Note>
+Personal channels and group channels are collectively called channels. Personal information and group information are collectively called channel information.
+</Note>
+
+<Note>
+This documentation only covers core methods. For more details, check the `[WKSDK shared].channelManager` interface in the code.
+</Note>
+
+## Getting Channel Information
+
+### Basic Retrieval Method
+
+Get channel information from the client's local storage. If not available locally, call `fetchChannelInfo` to trigger the data source to request from the server.
+
+When `fetchChannelInfo` is called and channel information data is obtained, it will trigger data monitoring. In the listener, refresh the UI again, and then `[[WKSDK shared].channelManager getChannelInfo:channel]` will be able to get the channel information data.
+
+```objc
+WKChannelInfo *channelInfo = [[WKSDK shared].channelManager getChannelInfo:channel];
+if(!channelInfo) {
+    [[WKSDK shared].channelManager fetchChannelInfo:channel];
+}
+```
+
+### Data Monitoring
+
+`Trigger timing: When channelInfo data changes`
+
+Add `WKChannelManagerDelegate` delegate:
+
+```objc
+[[WKSDK shared].channelManager addDelegate:self]
+```
+
+`WKChannelManagerDelegate` description:
+
+```objc
+// Channel update
+//  @param channelInfo New channel information
+//  @param oldChannelInfo Old channel information
+-(void) channelInfoUpdate:(WKChannelInfo*)channelInfo oldChannelInfo:(WKChannelInfo* __nullable)oldChannelInfo {
+    // Handle channel information update
+    // Update UI with new channel information
+}
+```
+
+### Data Source
+
+`Trigger timing: Triggered when calling [[WKSDK shared].channelManager fetchChannelInfo]`
+
+Channel information data source, needs to implement logic to request channel information from server:
+
+```objc
+// channel Channel
+// callback Should call this callback when getting data from server (Note: callback must be called regardless of success or failure)
+[[WKSDK shared] setChannelInfoUpdate:^WKTaskOperator * (WKChannel * _Nonnull channel, WKChannelInfoCallback  _Nonnull callback) {
+    // Implement your server API call here
+    // Example:
+    [YourAPIManager getChannelInfo:channel.channelId 
+                       channelType:channel.channelType 
+                           success:^(WKChannelInfo *channelInfo) {
+        callback(channelInfo, nil);
+    } failure:^(NSError *error) {
+        callback(nil, error);
+    }];
+    
+    return nil; // Return task operator if needed for cancellation
+}];
+```
+
+## Modifying Channels
+
+### Data Operations
+
+Modify channel information (triggers data monitoring simultaneously):
+
+```objc
+// Update channel information
+[[WKSDK shared].channelManager updateChannelInfo:(WKChannelInfo*) channelInfo]
+
+// Add or update channel information
+[[WKSDK shared].channelManager addOrUpdateChannelInfo:(WKChannelInfo*) channelInfo]
+```
+
+### Example Usage
+
+```objc
+// Get current channel info
+WKChannel *channel = [[WKChannel alloc] initWith:@"user123" channelType:WK_PERSON];
+WKChannelInfo *channelInfo = [[WKSDK shared].channelManager getChannelInfo:channel];
+
+if (channelInfo) {
+    // Update channel properties
+    channelInfo.stick = YES; // Pin the channel
+    channelInfo.mute = NO;   // Turn off do not disturb
+    channelInfo.name = @"New Name"; // Update name
+    
+    // Save changes
+    [[WKSDK shared].channelManager updateChannelInfo:channelInfo];
+} else {
+    // Create new channel info
+    WKChannelInfo *newChannelInfo = [[WKChannelInfo alloc] init];
+    newChannelInfo.channel = channel;
+    newChannelInfo.name = @"User Name";
+    newChannelInfo.logo = @"avatar_url";
+    newChannelInfo.stick = NO;
+    newChannelInfo.mute = NO;
+    
+    // Add to manager
+    [[WKSDK shared].channelManager addOrUpdateChannelInfo:newChannelInfo];
+}
+```
+
+## Channel Settings Management
+
+### Pin/Unpin Channel
+
+```objc
+// Pin a channel
+WKChannelInfo *channelInfo = [[WKSDK shared].channelManager getChannelInfo:channel];
+channelInfo.stick = YES;
+[[WKSDK shared].channelManager updateChannelInfo:channelInfo];
+
+// Unpin a channel
+channelInfo.stick = NO;
+[[WKSDK shared].channelManager updateChannelInfo:channelInfo];
+```
+
+### Mute/Unmute Channel
+
+```objc
+// Mute a channel (do not disturb)
+WKChannelInfo *channelInfo = [[WKSDK shared].channelManager getChannelInfo:channel];
+channelInfo.mute = YES;
+[[WKSDK shared].channelManager updateChannelInfo:channelInfo];
+
+// Unmute a channel
+channelInfo.mute = NO;
+[[WKSDK shared].channelManager updateChannelInfo:channelInfo];
+```
+
+### Update Channel Avatar and Name
+
+```objc
+WKChannelInfo *channelInfo = [[WKSDK shared].channelManager getChannelInfo:channel];
+if (channelInfo) {
+    channelInfo.name = @"New Channel Name";
+    channelInfo.logo = @"https://example.com/new-avatar.jpg";
+    [[WKSDK shared].channelManager updateChannelInfo:channelInfo];
+}
+```
+
+## Batch Operations
+
+### Get Multiple Channel Information
+
+```objc
+NSArray<WKChannel*> *channels = @[channel1, channel2, channel3];
+for (WKChannel *channel in channels) {
+    WKChannelInfo *channelInfo = [[WKSDK shared].channelManager getChannelInfo:channel];
+    if (!channelInfo) {
+        [[WKSDK shared].channelManager fetchChannelInfo:channel];
+    }
+}
+```
+
+### Batch Update Channel Settings
+
+```objc
+// Batch mute multiple channels
+NSArray<WKChannel*> *channelsToMute = @[channel1, channel2, channel3];
+for (WKChannel *channel in channelsToMute) {
+    WKChannelInfo *channelInfo = [[WKSDK shared].channelManager getChannelInfo:channel];
+    if (channelInfo) {
+        channelInfo.mute = YES;
+        [[WKSDK shared].channelManager updateChannelInfo:channelInfo];
+    }
+}
+```
+
+## Core Class Properties
+
+```objc
+@interface WKChannelInfo : NSObject<NSCopying>
+
+// Channel
+@property(nonatomic,strong) WKChannel *channel;
+
+/**
+ Channel name
+ */
+@property(nonatomic,copy) NSString *name;
+
+/**
+ Channel logo/avatar
+ */
+@property(nonatomic,copy) NSString *logo;
+
+/**
+ Whether pinned
+ */
+@property(nonatomic,assign) BOOL stick;
+
+/**
+ Whether muted (do not disturb)
+ */
+@property(nonatomic,assign) BOOL mute;
+
+/// Whether all members are muted
+@property(nonatomic,assign) BOOL forbidden;
+
+/**
+ Whether followed 0.Not followed (stranger) 1.Followed (friend)
+ */
+@property(nonatomic,assign) WKChannelInfoFollow follow;
+
+/**
+ Extension field, custom channel business properties can be added to extension fields
+ */
+@property(nonatomic,strong) NSMutableDictionary<WKChannelExtraKey,id> *extra;
+
+/**
+ Channel status (online/offline for personal channels)
+ */
+@property(nonatomic,assign) WKChannelStatus status;
+
+/**
+ Member count (for group channels)
+ */
+@property(nonatomic,assign) NSInteger memberCount;
+
+/**
+ Channel description
+ */
+@property(nonatomic,copy) NSString *channelDesc;
+
+@end
+```
+
+### Channel Follow Status
+
+```objc
+typedef NS_ENUM(NSInteger, WKChannelInfoFollow) {
+    WKChannelInfoFollowUnknown = 0,  // Unknown
+    WKChannelInfoFollowNo = 1,       // Not followed (stranger)
+    WKChannelInfoFollowYes = 2,      // Followed (friend)
+};
+```
+
+### Channel Status
+
+```objc
+typedef NS_ENUM(NSInteger, WKChannelStatus) {
+    WKChannelStatusUnknown = 0,  // Unknown
+    WKChannelStatusOffline = 1,  // Offline
+    WKChannelStatusOnline = 2,   // Online
+};
+```
+
+## Best Practices
+
+### 1. Efficient Channel Info Loading
+
+```objc
+// Check local cache first, then fetch if needed
+- (void)loadChannelInfo:(WKChannel *)channel completion:(void(^)(WKChannelInfo *channelInfo))completion {
+    WKChannelInfo *cachedInfo = [[WKSDK shared].channelManager getChannelInfo:channel];
+    if (cachedInfo) {
+        completion(cachedInfo);
+    } else {
+        // Set up one-time listener for this specific channel
+        __weak typeof(self) weakSelf = self;
+        [[WKSDK shared].channelManager addDelegate:weakSelf];
+        
+        // Fetch from server
+        [[WKSDK shared].channelManager fetchChannelInfo:channel];
+    }
+}
+
+// In delegate method
+-(void) channelInfoUpdate:(WKChannelInfo*)channelInfo oldChannelInfo:(WKChannelInfo* __nullable)oldChannelInfo {
+    // Handle the update and remove delegate if needed
+    // completion(channelInfo);
+}
+```
+
+### 2. Handle Channel Settings Changes
+
+```objc
+-(void) channelInfoUpdate:(WKChannelInfo*)channelInfo oldChannelInfo:(WKChannelInfo* __nullable)oldChannelInfo {
+    // Check what changed
+    if (oldChannelInfo) {
+        if (channelInfo.stick != oldChannelInfo.stick) {
+            // Handle pin status change
+            [self handlePinStatusChange:channelInfo];
+        }
+        
+        if (channelInfo.mute != oldChannelInfo.mute) {
+            // Handle mute status change
+            [self handleMuteStatusChange:channelInfo];
+        }
+        
+        if (![channelInfo.name isEqualToString:oldChannelInfo.name]) {
+            // Handle name change
+            [self handleNameChange:channelInfo];
+        }
+    }
+    
+    // Update UI
+    [self updateChannelUI:channelInfo];
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Conversation Management"
+    icon="users"
+    href="/en/sdk/wukongim/ios/conversation"
+  >
+    Learn how to manage conversation lists
+  </Card>
+  <Card
+    title="Media Messages"
+    icon="image"
+    href="/en/sdk/wukongim/ios/media"
+  >
+    Handle images, voice, and video messages
+  </Card>
+  <Card
+    title="Chat Management"
+    icon="message-circle"
+    href="/en/sdk/wukongim/ios/chat"
+  >
+    Return to chat message management
+  </Card>
+  <Card
+    title="Connection Management"
+    icon="link"
+    href="/en/sdk/wukongim/ios/connection"
+  >
+    Manage connection status
+  </Card>
+</CardGroup>

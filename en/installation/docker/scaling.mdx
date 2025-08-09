@@ -1,0 +1,493 @@
+---
+title: "Cluster Scaling"
+description: "WuKongIM Docker cluster scaling operations guide"
+icon: "expand"
+---
+
+WuKongIM supports dynamic scaling in Docker environments, allowing flexible adjustment of cluster size based on business requirements.
+
+## Single Node Mode Scaling
+
+### Description
+
+The previously deployed [single node mode](./single-node) now needs to be scaled to multiple servers. Here we use two servers as an example to explain how to scale.
+
+Assume there are two servers with the following information:
+
+| Name | Internal IP | External IP | Description |
+| --- | --- | --- | --- | 
+| node1(1001) | 192.168.1.10 | 221.123.68.10 | Master node (originally deployed single node) |
+| node2(1002) | 192.168.1.20 | 221.123.68.20 | New node to be added |
+
+node1 is the originally deployed single node, now we want to scale to two servers, node2 is the newly added node.
+
+<Note>
+The following file contents are set with assumed server IPs, just replace the corresponding IPs with your own.
+</Note>
+
+### Deploy WuKongIM on node2
+
+#### 1. Create Installation Directory
+
+Create directory:
+
+```bash
+mkdir ~/wukongim
+```
+
+Enter directory:
+
+```bash
+cd ~/wukongim
+```
+
+#### 2. Create docker-compose.yml File in Installation Directory
+
+Content as follows (note to replace corresponding IPs with your own):
+
+```yaml
+version: '3.7'
+services:
+  wukongim: # WuKongIM service
+    image: registry.cn-shanghai.aliyuncs.com/wukongim/wukongim:v2
+    environment:
+      - "WK_MODE=release" # release mode
+      - "WK_CLUSTER_NODEID=1002" 
+      # - "WK_TOKENAUTHON=true"  # Enable token authentication, strongly recommended for production
+      - "WK_EXTERNAL_IP=221.123.68.20" # Server external IP
+      - "WK_EXTERNAL_WSADDR=ws://221.123.68.10:15200"  # WebSocket address for web clients, note this is node1's external IP
+      - "WK_EXTERNAL_TCPADDR=221.123.68.10:15100"  # TCP address for app clients, note this is node1's external IP
+      - "WK_CLUSTER_APIURL=http://192.168.1.20:5001" # Node internal communication API URL, replace IP with actual node2 internal IP  
+      - "WK_CLUSTER_SERVERADDR=192.168.1.20:11110" # Node internal communication request address
+      - "WK_CLUSTER_SEED=1001@192.168.1.10:11110" # Seed node, any node in original cluster can be seed node, here use node1 as seed
+      - "WK_TRACE_PROMETHEUSAPIURL=http://192.168.1.10:9090" # Prometheus monitoring address, node1's internal address
+    healthcheck:
+      test: "wget -q -Y off -O /dev/null http://localhost:5001/health > /dev/null 2>&1"
+      interval: 10s
+      timeout: 10s
+      retries: 3       
+    restart: always  
+    volumes:
+      - ./wukongim_data:/root/wukongim # Mount data to physical machine directory
+    ports:
+      - 11110:11110 # Distributed node communication port
+      - 5001:5001 # Internal API communication port
+      - 5100:5100 # TCP port
+      - 5200:5200 # WebSocket port
+      - 5300:5300 # Management port
+```
+
+### Adjust node1's Original docker-compose.yml Configuration
+
+Add the following content under the `wukongim1` service:
+
+```yaml
+  wukongim1: 
+    ...
+    environment:
+      - "WK_EXTERNAL_WSADDR=ws://221.123.68.10:15200"  # WebSocket address for web clients, using load balancer address
+      - "WK_EXTERNAL_TCPADDR=221.123.68.10:15100"  # TCP address for app clients, using load balancer address
+      - "WK_CLUSTER_APIURL=http://192.168.1.10:5001" # Node internal API URL, replace IP with actual node1 internal IP  
+      - "WK_CLUSTER_SERVERADDR=192.168.1.10:11110" # Node internal communication request address
+    ...
+```
+
+### Deploy Load Balancer nginx
+
+Add the following content to the `docker-compose.yml` file on `node1`:
+
+```yaml
+  nginx:
+    image: registry.cn-shanghai.aliyuncs.com/wukongim/nginx:1.27.0
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    ports:
+      - "15001:5001"
+      - "15100:5100"
+      - "15200:5200"
+      - "15300:5300"
+      - "15172:5172" 
+```
+
+Create `nginx.conf` file in `node1`'s installation directory with the following content:
+
+```nginx
+user  nginx;
+worker_processes  auto;
+
+error_log  /var/log/nginx/error.log notice;
+pid        /var/run/nginx.pid;
+
+events {
+    use epoll;                        # Use epoll (Linux) or kqueue (BSD), suitable for high concurrency
+    worker_connections  40960;          # Maximum connections per worker process
+    multi_accept on;                   # Accept multiple connections at once
+    accept_mutex off;                  # Disable accept_mutex to improve performance
+}
+
+http {
+    include       /etc/nginx/mime.types;
+    default_type  application/octet-stream;
+
+    log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+                      '$status $body_bytes_sent "$http_referer" '
+                      '"$http_user_agent" "$http_x_forwarded_for"';
+
+    access_log  /var/log/nginx/access.log  main;
+
+    sendfile        on;
+    keepalive_timeout  65;
+
+    # API load balancing
+    upstream wukongimapi {
+        server 192.168.1.10:5001;
+        server 192.168.1.20:5001;
+    }
+    # Demo load balancing
+    upstream wukongimdemo {
+        server 192.168.1.10:5172;
+        server 192.168.1.20:5172;
+    }
+    # Manager load balancing
+    upstream wukongimanager {
+        server 192.168.1.10:5300;
+        server 192.168.1.20:5300;
+    }
+    # WebSocket load balancing
+    upstream wukongimws {
+        server 192.168.1.10:5200;
+        server 192.168.1.20:5200;
+    }
+    # HTTP API forwarding
+    server {
+        listen 5001;
+        location / {
+            proxy_pass http://wukongimapi;
+            proxy_connect_timeout 20s;
+            proxy_read_timeout 60s;
+        }
+    }
+    # Demo
+    server {
+        listen 5172;
+        location / {
+            proxy_pass http://wukongimdemo;
+            proxy_connect_timeout 20s;
+            proxy_read_timeout 60s;
+        }
+        location /login {
+            rewrite ^ /chatdemo?apiurl=http://221.123.68.10:15001;
+            proxy_pass http://wukongimdemo;
+            proxy_connect_timeout 20s;
+            proxy_read_timeout 60s;
+        }
+    }
+    # Manager
+    server {
+        listen 5300;
+        location / {
+            proxy_pass http://wukongimanager;
+            proxy_connect_timeout 60s;
+            proxy_read_timeout 60s;
+        }
+    }
+    # WebSocket
+    server {
+        listen 5200;
+        location / {
+            proxy_pass http://wukongimws;
+            proxy_redirect off;
+            proxy_http_version 1.1;
+            proxy_read_timeout 120s;
+            proxy_send_timeout 120s; 
+            proxy_connect_timeout 4s; 
+            proxy_set_header  X-Real-IP $remote_addr;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+        }
+    }
+}
+
+# TCP
+stream {
+  # TCP load balancing
+  upstream wukongimtcp {
+    server 192.168.1.10:5100;
+    server 192.168.1.20:5100;
+  }
+  server {
+    listen 5100;
+    proxy_connect_timeout 4s;
+    proxy_timeout 120s;
+    proxy_pass wukongimtcp;
+  }
+}
+```
+
+### Include New Node in Monitoring prometheus.yml
+
+Modify the `prometheus.yml` file on node1, complete content as follows:
+
+```yaml
+global:
+  scrape_interval:     10s
+  evaluation_interval: 10s
+scrape_configs:
+  - job_name: wukongim1-trace-metrics
+    static_configs:
+    - targets: ['wukongim:5300']
+      labels:
+        id: "1001"
+  - job_name: wukongim2-trace-metrics
+    static_configs:
+    - targets: ['192.168.1.20:5300']
+      labels:
+        id: "1002"
+```
+
+### Start and Stop
+
+Execute the following commands in each node's installation directory:
+
+#### Start
+
+```bash
+sudo docker-compose up -d
+```
+
+#### Stop
+
+```bash
+sudo docker-compose stop
+```
+
+### Port Configuration
+
+#### External Network Ports
+
+| Port | Description |
+| --- | --- |
+| 15001 | HTTP API port (only open to internal LAN) |
+| 15100 | TCP port, app clients need access |
+| 15200 | WebSocket port, web IM clients need access |
+| 15300 | Management system port |
+| 15172 | Demo port, for demonstrating WuKongIM communication capabilities |
+
+#### Internal Network Ports (nodes need to access each other)
+
+| Port | Description |
+| --- | --- |
+| 5001 | HTTP API port (only open to internal LAN) |
+| 5100 | TCP port, only needs internal network access in distributed setup |
+| 5200 | WebSocket port, only needs internal network access in distributed setup |
+| 5300 | Management system port |
+
+### Verification
+
+Log into the management system, in node management you can see if the newly added node's status is "Joined". If so, scaling is successful.
+
+## Multi-Node Scaling Mode
+
+### Description
+
+Nodes originally deployed using [multi-node deployment](./multi-node) can expand cluster size by adding nodes. This document describes how to expand cluster size by adding nodes.
+
+Assume the newly added node information is as follows:
+
+| Name | Internal IP | External IP |
+| --- | --- | --- |
+| node4(1004) | 10.206.0.6 | 146.56.232.98 |
+
+### Deploy WuKongIM on node4
+
+#### 1. Create Installation Directory
+
+Create directory:
+
+```bash
+mkdir ~/wukongim
+```
+
+Enter directory:
+
+```bash
+cd ~/wukongim
+```
+
+#### 2. Create docker-compose.yml File in Installation Directory
+
+```yaml
+version: '3.7'
+services:
+  wukongim: # WuKongIM service
+    image: registry.cn-shanghai.aliyuncs.com/wukongim/wukongim:v2
+    environment:
+      - "WK_CLUSTER_NODEID=1004"
+      # - "WK_TOKENAUTHON=true"  # Enable token authentication, strongly recommended for production
+      - "WK_CLUSTER_APIURL=http://10.206.0.6:5001" # Node internal communication API URL, replace IP with actual node4 internal IP
+      - "WK_CLUSTER_SERVERADDR=10.206.0.6:11110" # Node internal communication request address
+      - "WK_EXTERNAL_WSADDR=ws://119.45.229.172:15200"  # WebSocket address for web clients
+      - "WK_EXTERNAL_TCPADDR=119.45.229.172:15100"  # TCP address for app clients
+      - "WK_TRACE_PROMETHEUSAPIURL=http://10.206.0.13:9090" # Monitoring address
+      - "WK_CLUSTER_SEED=1001@10.206.0.13:11110" # Seed node, any node in original cluster can be seed node, here use node1 as seed
+    healthcheck:
+      test: "wget -q -Y off -O /dev/null http://localhost:5001/health > /dev/null 2>&1"
+      interval: 10s
+      timeout: 10s
+      retries: 3
+    restart: always
+    volumes:
+      - ./wukongim_data:/root/wukongim # Mount data to physical machine directory
+    ports:
+      - 11110:11110 # Distributed node communication port
+      - 5001:5001 # Internal API communication port
+      - 5100:5100 # TCP port
+      - 5200:5200 # WebSocket port
+      - 5300:5300 # Management port
+      - 5172:5172 # Demo port
+```
+
+#### 3. Configure Monitoring
+
+In the original `node1`'s installation directory (`~/wukongim`), add the following content under `scrape_configs` in the `prometheus.yml` file:
+
+```yaml
+scrape_configs:
+    ...
+    - job_name: 'wukongim4-trace-metrics'
+        static_configs:
+        - targets: ['10.206.0.6:5300']
+          labels:
+            id: "1004"
+```
+
+#### 4. Configure Load Balancer
+
+In the `gateway` node's installation directory (`~/gateway`), add the following content under all upstream sections in the `nginx.conf` file:
+
+```nginx
+upstream wukongimapi {
+    ...
+    server 10.206.0.6:5001;
+}
+
+upstream wukongimdemo {
+    ...
+    server 10.206.0.6:5172;
+}
+
+upstream wukongimanager {
+    ...
+    server 10.206.0.6:5300;
+}
+upstream wukongimws {
+    ...
+    server 10.206.0.6:5200;
+}
+
+stream {
+  ...
+  upstream wukongimtcp {
+      ...
+      server 10.206.0.6:5100;
+  }
+...
+}
+```
+
+#### 5. Restart Gateway
+
+In the gateway node, enter the installation directory (`~/gateway`) and execute the following command:
+
+```bash
+sudo docker-compose restart
+```
+
+#### 6. Start node4
+
+In `node4`, enter the installation directory (`~/wukongim`) and execute the following command:
+
+```bash
+sudo docker-compose up -d
+```
+
+### Verification
+
+Log into the management system, in node management you can see if the newly added node's status is "Joined". If so, scaling is successful.
+
+## Best Practices
+
+### Pre-scaling Checklist
+
+1. **Resource Planning**: Ensure new nodes have adequate CPU, memory, and storage
+2. **Network Connectivity**: Verify all nodes can communicate with each other
+3. **Backup**: Create backup of existing cluster before scaling
+4. **Monitoring**: Ensure monitoring is configured for new nodes
+
+### Post-scaling Verification
+
+1. **Cluster Status**: Check all nodes are in "Joined" state
+2. **Load Distribution**: Verify traffic is distributed across all nodes
+3. **Performance**: Monitor system performance after scaling
+4. **Data Consistency**: Verify data replication is working correctly
+
+## Troubleshooting
+
+### Common Issues
+
+**New node cannot join cluster**:
+```bash
+# Check network connectivity
+ping <existing_node_ip>
+
+# Check if cluster ports are accessible
+telnet <existing_node_ip> 11110
+
+# View node logs
+docker-compose logs wukongim
+```
+
+**Load balancer not distributing traffic**:
+```bash
+# Check nginx configuration
+docker-compose exec nginx nginx -t
+
+# Restart nginx
+docker-compose restart nginx
+
+# Check upstream status
+curl http://<gateway_ip>:15001/health
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Performance Monitoring"
+    icon="chart-line"
+    href="/en/installation/linux/monitoring"
+  >
+    Set up comprehensive monitoring for scaled cluster
+  </Card>
+  <Card
+    title="Cluster Configuration"
+    icon="gear"
+    href="/en/server/configuration/cluster"
+  >
+    Advanced cluster configuration options
+  </Card>
+  <Card
+    title="Best Practices"
+    icon="shield"
+    href="/en/examples/best-practices"
+  >
+    Backup strategies and cluster best practices
+  </Card>
+  <Card
+    title="Load Testing"
+    icon="gauge"
+    href="/en/getting-started/stress-report"
+  >
+    Test cluster performance under load
+  </Card>
+</CardGroup>

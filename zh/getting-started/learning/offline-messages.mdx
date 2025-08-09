@@ -1,0 +1,21 @@
+---
+title: "离线消息"
+description: "了解 WuKongIM 的离线消息处理机制和最近会话同步"
+icon: "inbox"
+---
+
+# 离线消息
+
+*WuKongIM* 采用读扩散模式, 什么是读扩散和写扩散？ 参考文章：[链接](https://blog.csdn.net/m0_53246313/article/details/122674197)
+
+*WuKongIM*开启最近会话配置后，*WuKongIM*会在服务端为每个用户维护一份属于自己的最近会话列表。
+
+1. 应用由离线变成在线后，需要同步最近会话列表，如下图
+
+![离线消息同步流程](/images/stress-report/offlinemsg1.png)
+
+2. 应用在线后，应用应该在线维护最近会话列表。
+
+3. 当点击某个会话（频道）进入到聊天界面时，需要同步该会话（频道）的消息，如下图（同时需要将最近会话的红点数清空 `/conversations/setUnread`）
+
+![会话消息同步](/images/stress-report/offlinemsg2.png)

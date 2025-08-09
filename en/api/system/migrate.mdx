@@ -1,0 +1,589 @@
+---
+title: "Get Migration Result"
+description: "Get the result status of data migration process"
+api: "GET /migrate/result"
+---
+
+## Overview
+
+Get the result status of data migration process, used to monitor the progress and status of data migration.
+
+<RequestExample>
+```bash cURL
+curl -X GET "http://localhost:5001/migrate/result"
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5001/migrate/result');
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+
+response = requests.get('http://localhost:5001/migrate/result')
+data = response.json()
+print(data)
+```
+
+```go Go
+package main
+
+import (
+    "encoding/json"
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    resp, err := http.Get("http://localhost:5001/migrate/result")
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    var result map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Printf("%+v\n", result)
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json Migration Completed
+{
+  "status": "completed",
+  "step": "message",
+  "last_err": null,
+  "try_count": 1
+}
+```
+
+```json Migration In Progress
+{
+  "status": "running",
+  "step": "user",
+  "last_err": null,
+  "try_count": 2
+}
+```
+
+```json Migration Already Completed (Historical Status)
+{
+  "status": "migrated",
+  "step": "channel",
+  "last_err": null,
+  "try_count": 1
+}
+```
+
+```json Migration Error
+{
+  "status": "running",
+  "step": "message",
+  "last_err": "Database connection timeout",
+  "try_count": 3
+}
+```
+</ResponseExample>
+
+## Response Fields
+
+<ResponseField name="status" type="string" required>
+Migration status:
+- `running` - Migration is in progress
+- `completed` - Migration has completed
+- `migrated` - Migration has completed (historical status)
+- `failed` - Migration has failed
+</ResponseField>
+
+<ResponseField name="step" type="string" required>
+Current migration step, e.g., `message`, `user`, `channel`, etc.
+</ResponseField>
+
+<ResponseField name="last_err" type="string" nullable>
+Last error message, `null` if no error occurred
+</ResponseField>
+
+<ResponseField name="try_count" type="integer" required>
+Number of attempts made
+</ResponseField>
+
+## Status Codes
+
+| Status Code | Description |
+|-------------|-------------|
+| 200 | Successfully retrieved migration result |
+| 500 | Internal server error |
+
+## Use Cases
+
+### Migration Monitoring
+
+**Real-time Migration Monitoring**:
+```javascript
+// Monitor migration progress in real-time
+class MigrationMonitor {
+    constructor(checkInterval = 5000) {
+        this.checkInterval = checkInterval;
+        this.isMonitoring = false;
+        this.lastStatus = null;
+        this.callbacks = {
+            onProgress: null,
+            onComplete: null,
+            onError: null
+        };
+    }
+    
+    async startMonitoring() {
+        if (this.isMonitoring) return;
+        
+        this.isMonitoring = true;
+        console.log('Starting migration monitoring...');
+        
+        while (this.isMonitoring) {
+            try {
+                const status = await this.checkMigrationStatus();
+                await this.handleStatusUpdate(status);
+                
+                // Stop monitoring if migration is complete or failed
+                if (status.status === 'completed' || status.status === 'migrated') {
+                    this.isMonitoring = false;
+                    if (this.callbacks.onComplete) {
+                        this.callbacks.onComplete(status);
+                    }
+                    break;
+                }
+                
+                // Handle errors
+                if (status.last_err) {
+                    if (this.callbacks.onError) {
+                        this.callbacks.onError(status);
+                    }
+                }
+                
+                await this.delay(this.checkInterval);
+            } catch (error) {
+                console.error('Migration monitoring error:', error);
+                if (this.callbacks.onError) {
+                    this.callbacks.onError({ error: error.message });
+                }
+                await this.delay(this.checkInterval);
+            }
+        }
+    }
+    
+    async checkMigrationStatus() {
+        const response = await fetch('/migrate/result');
+        return await response.json();
+    }
+    
+    async handleStatusUpdate(status) {
+        // Check if status has changed
+        if (!this.lastStatus || this.hasStatusChanged(this.lastStatus, status)) {
+            console.log(`Migration status: ${status.status}, step: ${status.step}, attempts: ${status.try_count}`);
+            
+            if (status.last_err) {
+                console.warn(`Migration error: ${status.last_err}`);
+            }
+            
+            if (this.callbacks.onProgress) {
+                this.callbacks.onProgress(status);
+            }
+            
+            this.lastStatus = status;
+        }
+    }
+    
+    hasStatusChanged(oldStatus, newStatus) {
+        return oldStatus.status !== newStatus.status ||
+               oldStatus.step !== newStatus.step ||
+               oldStatus.try_count !== newStatus.try_count ||
+               oldStatus.last_err !== newStatus.last_err;
+    }
+    
+    stopMonitoring() {
+        this.isMonitoring = false;
+        console.log('Migration monitoring stopped');
+    }
+    
+    onProgress(callback) {
+        this.callbacks.onProgress = callback;
+    }
+    
+    onComplete(callback) {
+        this.callbacks.onComplete = callback;
+    }
+    
+    onError(callback) {
+        this.callbacks.onError = callback;
+    }
+    
+    delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+}
+
+// Usage
+const monitor = new MigrationMonitor(3000); // Check every 3 seconds
+
+monitor.onProgress((status) => {
+    updateProgressUI(status);
+});
+
+monitor.onComplete((status) => {
+    showCompletionNotification(status);
+});
+
+monitor.onError((status) => {
+    showErrorAlert(status);
+});
+
+await monitor.startMonitoring();
+```
+
+### Migration Dashboard
+
+**Migration Dashboard Implementation**:
+```javascript
+// Create a comprehensive migration dashboard
+class MigrationDashboard {
+    constructor() {
+        this.migrationHistory = [];
+        this.currentMigration = null;
+        this.monitor = new MigrationMonitor(2000);
+        this.setupEventHandlers();
+    }
+    
+    setupEventHandlers() {
+        this.monitor.onProgress((status) => {
+            this.updateCurrentMigration(status);
+            this.renderDashboard();
+        });
+        
+        this.monitor.onComplete((status) => {
+            this.completeMigration(status);
+            this.renderDashboard();
+            this.showNotification('Migration completed successfully!', 'success');
+        });
+        
+        this.monitor.onError((status) => {
+            this.handleMigrationError(status);
+            this.renderDashboard();
+            this.showNotification(`Migration error: ${status.last_err || status.error}`, 'error');
+        });
+    }
+    
+    async startDashboard() {
+        // Initialize dashboard
+        this.renderDashboard();
+        
+        // Check initial status
+        try {
+            const initialStatus = await this.monitor.checkMigrationStatus();
+            this.updateCurrentMigration(initialStatus);
+            
+            // Start monitoring if migration is in progress
+            if (initialStatus.status === 'running') {
+                await this.monitor.startMonitoring();
+            }
+        } catch (error) {
+            console.error('Failed to get initial migration status:', error);
+        }
+    }
+    
+    updateCurrentMigration(status) {
+        this.currentMigration = {
+            ...status,
+            timestamp: new Date().toISOString(),
+            progress: this.calculateProgress(status.step)
+        };
+    }
+    
+    calculateProgress(step) {
+        const steps = ['user', 'channel', 'message', 'conversation', 'cleanup'];
+        const stepIndex = steps.indexOf(step);
+        return stepIndex >= 0 ? ((stepIndex + 1) / steps.length) * 100 : 0;
+    }
+    
+    completeMigration(status) {
+        const completedMigration = {
+            ...this.currentMigration,
+            completedAt: new Date().toISOString(),
+            duration: this.calculateDuration()
+        };
+        
+        this.migrationHistory.push(completedMigration);
+        this.currentMigration = null;
+    }
+    
+    handleMigrationError(status) {
+        if (this.currentMigration) {
+            this.currentMigration.hasError = true;
+            this.currentMigration.errorDetails = status.last_err || status.error;
+        }
+    }
+    
+    calculateDuration() {
+        if (!this.currentMigration || !this.currentMigration.timestamp) {
+            return null;
+        }
+        
+        const start = new Date(this.currentMigration.timestamp);
+        const end = new Date();
+        return Math.round((end - start) / 1000); // Duration in seconds
+    }
+    
+    renderDashboard() {
+        const dashboardHTML = `
+            <div class="migration-dashboard">
+                <h2>Migration Dashboard</h2>
+                
+                ${this.renderCurrentMigration()}
+                ${this.renderMigrationHistory()}
+                ${this.renderControls()}
+            </div>
+        `;
+        
+        document.getElementById('migration-dashboard').innerHTML = dashboardHTML;
+    }
+    
+    renderCurrentMigration() {
+        if (!this.currentMigration) {
+            return '<div class="no-migration">No active migration</div>';
+        }
+        
+        const status = this.currentMigration;
+        const progressBar = `
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: ${status.progress}%"></div>
+            </div>
+        `;
+        
+        return `
+            <div class="current-migration">
+                <h3>Current Migration</h3>
+                <div class="status">Status: ${status.status}</div>
+                <div class="step">Step: ${status.step}</div>
+                <div class="attempts">Attempts: ${status.try_count}</div>
+                ${status.hasError ? `<div class="error">Error: ${status.errorDetails}</div>` : ''}
+                <div class="progress">
+                    Progress: ${status.progress.toFixed(1)}%
+                    ${progressBar}
+                </div>
+            </div>
+        `;
+    }
+    
+    renderMigrationHistory() {
+        if (this.migrationHistory.length === 0) {
+            return '<div class="no-history">No migration history</div>';
+        }
+        
+        const historyItems = this.migrationHistory.map(migration => `
+            <div class="history-item">
+                <div class="timestamp">${new Date(migration.completedAt).toLocaleString()}</div>
+                <div class="duration">Duration: ${migration.duration}s</div>
+                <div class="final-step">Final Step: ${migration.step}</div>
+            </div>
+        `).join('');
+        
+        return `
+            <div class="migration-history">
+                <h3>Migration History</h3>
+                ${historyItems}
+            </div>
+        `;
+    }
+    
+    renderControls() {
+        return `
+            <div class="dashboard-controls">
+                <button onclick="dashboard.refreshStatus()">Refresh Status</button>
+                <button onclick="dashboard.exportLogs()">Export Logs</button>
+                ${this.currentMigration ? 
+                    '<button onclick="dashboard.stopMonitoring()">Stop Monitoring</button>' :
+                    '<button onclick="dashboard.startMonitoring()">Start Monitoring</button>'
+                }
+            </div>
+        `;
+    }
+    
+    async refreshStatus() {
+        try {
+            const status = await this.monitor.checkMigrationStatus();
+            this.updateCurrentMigration(status);
+            this.renderDashboard();
+            this.showNotification('Status refreshed', 'info');
+        } catch (error) {
+            this.showNotification('Failed to refresh status', 'error');
+        }
+    }
+    
+    async startMonitoring() {
+        await this.monitor.startMonitoring();
+        this.renderDashboard();
+    }
+    
+    stopMonitoring() {
+        this.monitor.stopMonitoring();
+        this.renderDashboard();
+    }
+    
+    exportLogs() {
+        const logs = {
+            currentMigration: this.currentMigration,
+            history: this.migrationHistory,
+            exportedAt: new Date().toISOString()
+        };
+        
+        const blob = new Blob([JSON.stringify(logs, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `migration-logs-${Date.now()}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+    
+    showNotification(message, type) {
+        // Implement notification display
+        console.log(`[${type.toUpperCase()}] ${message}`);
+    }
+}
+
+// Initialize dashboard
+const dashboard = new MigrationDashboard();
+dashboard.startDashboard();
+```
+
+### Automated Migration Management
+
+**Automated Migration Workflow**:
+```javascript
+// Automated migration management with retry logic
+class MigrationManager {
+    constructor() {
+        this.maxRetries = 3;
+        this.retryDelay = 30000; // 30 seconds
+        this.healthCheckInterval = 10000; // 10 seconds
+    }
+    
+    async manageMigration() {
+        let retryCount = 0;
+        
+        while (retryCount < this.maxRetries) {
+            try {
+                const result = await this.runMigrationWithMonitoring();
+                
+                if (result.success) {
+                    await this.postMigrationTasks(result);
+                    return result;
+                } else {
+                    retryCount++;
+                    if (retryCount < this.maxRetries) {
+                        console.log(`Migration failed, retrying in ${this.retryDelay/1000} seconds... (${retryCount}/${this.maxRetries})`);
+                        await this.delay(this.retryDelay);
+                    }
+                }
+            } catch (error) {
+                retryCount++;
+                console.error(`Migration attempt ${retryCount} failed:`, error);
+                
+                if (retryCount < this.maxRetries) {
+                    await this.delay(this.retryDelay);
+                }
+            }
+        }
+        
+        throw new Error(`Migration failed after ${this.maxRetries} attempts`);
+    }
+    
+    async runMigrationWithMonitoring() {
+        const monitor = new MigrationMonitor(this.healthCheckInterval);
+        
+        return new Promise((resolve, reject) => {
+            let migrationResult = null;
+            
+            monitor.onComplete((status) => {
+                migrationResult = { success: true, status };
+                resolve(migrationResult);
+            });
+            
+            monitor.onError((status) => {
+                if (status.try_count >= 3) { // Max retries reached
+                    migrationResult = { success: false, status };
+                    resolve(migrationResult);
+                }
+            });
+            
+            // Start monitoring
+            monitor.startMonitoring().catch(reject);
+            
+            // Set timeout for migration
+            setTimeout(() => {
+                monitor.stopMonitoring();
+                if (!migrationResult) {
+                    reject(new Error('Migration timeout'));
+                }
+            }, 30 * 60 * 1000); // 30 minute timeout
+        });
+    }
+    
+    async postMigrationTasks(result) {
+        console.log('Running post-migration tasks...');
+        
+        // Verify migration integrity
+        await this.verifyMigrationIntegrity();
+        
+        // Update system configuration
+        await this.updateSystemConfiguration();
+        
+        // Notify stakeholders
+        await this.notifyMigrationComplete(result);
+        
+        console.log('Post-migration tasks completed');
+    }
+    
+    async verifyMigrationIntegrity() {
+        // Implement migration verification logic
+        console.log('Verifying migration integrity...');
+    }
+    
+    async updateSystemConfiguration() {
+        // Update system configuration after migration
+        console.log('Updating system configuration...');
+    }
+    
+    async notifyMigrationComplete(result) {
+        // Notify relevant parties about migration completion
+        console.log('Notifying migration completion...');
+    }
+    
+    delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+}
+
+// Usage
+const migrationManager = new MigrationManager();
+
+try {
+    const result = await migrationManager.manageMigration();
+    console.log('Migration completed successfully:', result);
+} catch (error) {
+    console.error('Migration management failed:', error);
+}
+```
+
+## Best Practices
+
+1. **Regular Monitoring**: Check migration status every 5-10 seconds during active migration
+2. **Error Handling**: Handle network errors and server errors gracefully
+3. **Status Caching**: Avoid redundant processing when status hasn't changed
+4. **Notification System**: Notify relevant personnel when migration completes or fails
+5. **Logging**: Record key status changes during the migration process
+6. **Timeout Management**: Set appropriate timeouts for migration operations
+7. **Retry Logic**: Implement retry mechanisms for failed migration attempts
+8. **Progress Tracking**: Provide clear progress indicators for long-running migrations

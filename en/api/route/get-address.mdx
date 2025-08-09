@@ -1,0 +1,296 @@
+---
+title: "Get User IM Address"
+description: "Get the IM connection address for users"
+api: "GET /route"
+---
+
+## Overview
+
+Get the IM connection address for users, including TCP, WebSocket, and WebSocket Secure addresses.
+
+## Query Parameters
+
+<ParamField query="intranet" type="integer" default={0}>
+Whether to return intranet address
+- `0` - Return external network address
+- `1` - Return internal network address
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X GET "http://localhost:5001/route?intranet=0"
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5001/route?intranet=0');
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+
+response = requests.get('http://localhost:5001/route', params={'intranet': 0})
+data = response.json()
+print(data)
+```
+
+```go Go
+package main
+
+import (
+    "encoding/json"
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    resp, err := http.Get("http://localhost:5001/route?intranet=0")
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    var result map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Printf("%+v\n", result)
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json Success Response
+{
+  "tcp_addr": "127.0.0.1:5100",
+  "ws_addr": "ws://127.0.0.1:5200",
+  "wss_addr": "wss://127.0.0.1:5300"
+}
+```
+</ResponseExample>
+
+## Response Fields
+
+<ResponseField name="tcp_addr" type="string" required>
+TCP connection address, format: `host:port`
+</ResponseField>
+
+<ResponseField name="ws_addr" type="string" required>
+WebSocket connection address, format: `ws://host:port`
+</ResponseField>
+
+<ResponseField name="wss_addr" type="string" required>
+WebSocket Secure connection address, format: `wss://host:port`
+</ResponseField>
+
+## Status Codes
+
+| Status Code | Description |
+|-------------|-------------|
+| 200 | Successfully retrieved IM connection address |
+| 500 | Internal server error |
+
+## Use Cases
+
+### Client Connection Setup
+
+**Dynamic Connection Discovery**:
+```javascript
+// Get connection addresses and establish connection
+async function connectToWuKongIM() {
+    try {
+        // Get connection addresses
+        const addresses = await fetch('/route?intranet=0').then(r => r.json());
+        
+        // Choose appropriate connection type based on environment
+        let connectionUrl;
+        if (window.location.protocol === 'https:') {
+            connectionUrl = addresses.wss_addr;
+        } else {
+            connectionUrl = addresses.ws_addr;
+        }
+        
+        // Establish WebSocket connection
+        const ws = new WebSocket(connectionUrl);
+        
+        ws.onopen = () => {
+            console.log('Connected to WuKongIM:', connectionUrl);
+        };
+        
+        return ws;
+    } catch (error) {
+        console.error('Failed to connect to WuKongIM:', error);
+    }
+}
+```
+
+### Load Balancing
+
+**Multiple Server Discovery**:
+```javascript
+// Get addresses from multiple servers for load balancing
+async function discoverWuKongIMServers(serverList) {
+    const availableServers = [];
+    
+    for (const server of serverList) {
+        try {
+            const response = await fetch(`${server}/route?intranet=0`);
+            const addresses = await response.json();
+            
+            availableServers.push({
+                server: server,
+                addresses: addresses,
+                priority: calculateServerPriority(server)
+            });
+        } catch (error) {
+            console.warn(`Server ${server} is not available:`, error);
+        }
+    }
+    
+    // Sort by priority and return best server
+    availableServers.sort((a, b) => b.priority - a.priority);
+    return availableServers[0]?.addresses;
+}
+```
+
+### Environment-based Connection
+
+**Internal vs External Network**:
+```javascript
+// Choose connection type based on network environment
+async function getOptimalConnection() {
+    try {
+        // Try internal network first (faster)
+        const internalAddresses = await fetch('/route?intranet=1').then(r => r.json());
+        
+        // Test internal connectivity
+        const isInternalReachable = await testConnectivity(internalAddresses.ws_addr);
+        
+        if (isInternalReachable) {
+            return internalAddresses;
+        } else {
+            // Fallback to external network
+            const externalAddresses = await fetch('/route?intranet=0').then(r => r.json());
+            return externalAddresses;
+        }
+    } catch (error) {
+        console.error('Failed to get optimal connection:', error);
+        throw error;
+    }
+}
+
+async function testConnectivity(wsUrl) {
+    return new Promise((resolve) => {
+        const testWs = new WebSocket(wsUrl);
+        const timeout = setTimeout(() => {
+            testWs.close();
+            resolve(false);
+        }, 3000);
+        
+        testWs.onopen = () => {
+            clearTimeout(timeout);
+            testWs.close();
+            resolve(true);
+        };
+        
+        testWs.onerror = () => {
+            clearTimeout(timeout);
+            resolve(false);
+        };
+    });
+}
+```
+
+### Connection Failover
+
+**Automatic Failover**:
+```javascript
+class WuKongIMConnector {
+    constructor(serverUrls) {
+        this.serverUrls = serverUrls;
+        this.currentServerIndex = 0;
+        this.connection = null;
+    }
+    
+    async connect() {
+        for (let i = 0; i < this.serverUrls.length; i++) {
+            try {
+                const serverUrl = this.serverUrls[this.currentServerIndex];
+                const addresses = await this.getAddresses(serverUrl);
+                
+                this.connection = await this.establishConnection(addresses);
+                console.log(`Connected to server: ${serverUrl}`);
+                return this.connection;
+                
+            } catch (error) {
+                console.warn(`Failed to connect to server ${this.currentServerIndex}:`, error);
+                this.currentServerIndex = (this.currentServerIndex + 1) % this.serverUrls.length;
+            }
+        }
+        
+        throw new Error('Failed to connect to any WuKongIM server');
+    }
+    
+    async getAddresses(serverUrl) {
+        const response = await fetch(`${serverUrl}/route?intranet=0`);
+        return await response.json();
+    }
+    
+    async establishConnection(addresses) {
+        return new Promise((resolve, reject) => {
+            const ws = new WebSocket(addresses.ws_addr);
+            
+            ws.onopen = () => resolve(ws);
+            ws.onerror = (error) => reject(error);
+            
+            setTimeout(() => reject(new Error('Connection timeout')), 5000);
+        });
+    }
+}
+
+// Usage
+const connector = new WuKongIMConnector([
+    'http://server1.example.com:5001',
+    'http://server2.example.com:5001',
+    'http://server3.example.com:5001'
+]);
+
+const connection = await connector.connect();
+```
+
+### Mobile App Integration
+
+**Platform-specific Connection**:
+```javascript
+// React Native example
+import { Platform } from 'react-native';
+
+async function getMobileConnection() {
+    try {
+        const addresses = await fetch('/route?intranet=0').then(r => r.json());
+        
+        // Use appropriate connection for mobile platforms
+        if (Platform.OS === 'ios' || Platform.OS === 'android') {
+            // Mobile apps typically use WebSocket
+            return addresses.ws_addr;
+        } else {
+            // Web apps use secure WebSocket if available
+            return window.location.protocol === 'https:' 
+                ? addresses.wss_addr 
+                : addresses.ws_addr;
+        }
+    } catch (error) {
+        console.error('Failed to get mobile connection:', error);
+        throw error;
+    }
+}
+```
+
+## Best Practices
+
+1. **Connection Type Selection**: Choose appropriate connection type based on environment (HTTP/HTTPS)
+2. **Failover Strategy**: Implement failover mechanism for high availability
+3. **Network Detection**: Detect internal vs external network for optimal performance
+4. **Connection Testing**: Test connectivity before establishing full connection
+5. **Caching**: Cache connection addresses to reduce API calls
+6. **Error Handling**: Handle network errors gracefully with retry logic
+7. **Security**: Use secure connections (WSS) in production environments

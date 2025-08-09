@@ -1,0 +1,375 @@
+---
+title: "Channel Management"
+description: "WuKongIM HarmonyOS SDK channel management functionality, including channel information retrieval and monitoring"
+icon: "hash"
+---
+
+Channel is an abstract concept in WuKongIM. Messages are first sent to channels, and channels deliver messages according to their configuration rules. Channels are divided into channel and channel details. For more information, please refer to [What is a Channel](/en/guide/initialize#channels).
+
+## Data Source
+
+`Need to implement channel information data source` [Channel Information Data Source](/en/sdk/wukongim/harmonyos/datasource#channel-information-data-source)
+
+## Channel Information
+
+### Get Channel Information
+
+```typescript
+// Get channel information
+let channel = WKIM.shared.channelManager().getChannel(channelId, channelType)
+```
+
+### Force Refresh Channel Information
+
+```typescript
+// Force refresh channel information
+WKIM.shared.channelManager().fetchChannelInfo(channelId, channelType)
+```
+
+## Events
+
+### Listen for Channel Information Updates
+
+```typescript
+refreshChannelListener = (channel: WKChannel) => {
+   // Refresh
+  }
+  // Add refresh channel listener
+WKIM.shared.channelManager().addRefreshListener(this.refreshChannelListener)
+
+// Remove listener when exiting page
+WKIM.shared.channelManager().removeRefreshListener(this.refreshChannelListener)
+```
+
+## Common Methods
+
+```typescript
+// Save channel information
+WKIM.shared.channelManager().addOrUpdate(channel: WKChannel)
+
+// Batch save
+WKIM.shared.channelManager().addOrUpdates(list: WKChannel[])
+
+// Update channel avatar cache key
+WKIM.shared.channelManager().updateAvatarCacheKey(channelId: string, channelType: number, key: string)
+```
+
+## Complete Channel Management Example
+
+```typescript
+import { WKIM, WKChannel, WKChannelType } from '@wukong/wkim';
+
+@Component
+export struct ChannelManager {
+  @State private channels: Map<string, WKChannel> = new Map();
+  @State private loading: boolean = false;
+  
+  private refreshChannelListener = (channel: WKChannel) => {
+    this.handleChannelRefresh(channel);
+  }
+  
+  aboutToAppear(): void {
+    this.setupChannelListener();
+  }
+  
+  aboutToDisappear(): void {
+    this.removeChannelListener();
+  }
+  
+  private setupChannelListener(): void {
+    WKIM.shared.channelManager().addRefreshListener(this.refreshChannelListener);
+  }
+  
+  private removeChannelListener(): void {
+    WKIM.shared.channelManager().removeRefreshListener(this.refreshChannelListener);
+  }
+  
+  private handleChannelRefresh(channel: WKChannel): void {
+    const channelKey = `${channel.channelId}_${channel.channelType}`;
+    this.channels.set(channelKey, channel);
+    console.log('Channel refreshed:', channel.channelId);
+  }
+  
+  // Get channel with caching
+  public getChannelWithCache(channelId: string, channelType: number): WKChannel | null {
+    const channelKey = `${channelId}_${channelType}`;
+    
+    // First check cache
+    if (this.channels.has(channelKey)) {
+      return this.channels.get(channelKey)!;
+    }
+    
+    // Get from SDK
+    const channel = WKIM.shared.channelManager().getChannel(channelId, channelType);
+    if (channel) {
+      this.channels.set(channelKey, channel);
+      return channel;
+    }
+    
+    // Trigger network request
+    this.fetchChannelInfo(channelId, channelType);
+    return null;
+  }
+  
+  // Force refresh channel information
+  public fetchChannelInfo(channelId: string, channelType: number): void {
+    this.loading = true;
+    
+    try {
+      WKIM.shared.channelManager().fetchChannelInfo(channelId, channelType);
+    } catch (error) {
+      console.error('Failed to fetch channel info:', error);
+      this.loading = false;
+    }
+  }
+  
+  // Save channel information
+  public saveChannel(channel: WKChannel): void {
+    try {
+      WKIM.shared.channelManager().addOrUpdate(channel);
+      
+      const channelKey = `${channel.channelId}_${channel.channelType}`;
+      this.channels.set(channelKey, channel);
+      
+      console.log('Channel saved:', channel.channelId);
+    } catch (error) {
+      console.error('Failed to save channel:', error);
+    }
+  }
+  
+  // Batch save channels
+  public saveChannels(channels: WKChannel[]): void {
+    try {
+      WKIM.shared.channelManager().addOrUpdates(channels);
+      
+      channels.forEach(channel => {
+        const channelKey = `${channel.channelId}_${channel.channelType}`;
+        this.channels.set(channelKey, channel);
+      });
+      
+      console.log('Channels saved:', channels.length);
+    } catch (error) {
+      console.error('Failed to save channels:', error);
+    }
+  }
+  
+  // Update avatar cache key
+  public updateAvatarCacheKey(channelId: string, channelType: number, key: string): void {
+    try {
+      WKIM.shared.channelManager().updateAvatarCacheKey(channelId, channelType, key);
+      
+      // Update local cache
+      const channelKey = `${channelId}_${channelType}`;
+      const channel = this.channels.get(channelKey);
+      if (channel) {
+        channel.avatarCacheKey = key;
+        this.channels.set(channelKey, channel);
+      }
+      
+      console.log('Avatar cache key updated:', channelId, key);
+    } catch (error) {
+      console.error('Failed to update avatar cache key:', error);
+    }
+  }
+  
+  // Get channel display name
+  public getChannelDisplayName(channel: WKChannel): string {
+    return channel.channelRemark || channel.channelName || channel.channelId;
+  }
+  
+  // Check if channel is online
+  public isChannelOnline(channel: WKChannel): boolean {
+    return channel.online === 1;
+  }
+  
+  // Check if channel is muted
+  public isChannelMuted(channel: WKChannel): boolean {
+    return channel.mute === 1;
+  }
+  
+  // Check if channel is pinned
+  public isChannelPinned(channel: WKChannel): boolean {
+    return channel.top === 1;
+  }
+  
+  // Get channel type text
+  public getChannelTypeText(channelType: number): string {
+    switch (channelType) {
+      case WKChannelType.personal:
+        return 'Personal';
+      case WKChannelType.group:
+        return 'Group';
+      default:
+        return 'Unknown';
+    }
+  }
+  
+  // Clear channel cache
+  public clearChannelCache(): void {
+    this.channels.clear();
+    console.log('Channel cache cleared');
+  }
+  
+  build() {
+    Column() {
+      Text('Channel Manager')
+        .fontSize(20)
+        .fontWeight(FontWeight.Bold)
+        .margin({ bottom: 20 })
+      
+      if (this.loading) {
+        Row() {
+          LoadingProgress()
+            .width(20)
+            .height(20)
+          Text('Loading channels...')
+            .margin({ left: 8 })
+        }
+        .margin({ bottom: 20 })
+      }
+      
+      Text(`Cached Channels: ${this.channels.size}`)
+        .fontSize(16)
+        .margin({ bottom: 20 })
+      
+      Button('Clear Cache')
+        .onClick(() => {
+          this.clearChannelCache();
+        })
+    }
+    .width('100%')
+    .padding(20)
+  }
+}
+
+// Channel utility class
+export class ChannelUtils {
+  
+  // Get channel avatar URL with cache key
+  static getChannelAvatarUrl(channel: WKChannel): string {
+    if (channel.avatar) {
+      const cacheKey = channel.avatarCacheKey ? `?v=${channel.avatarCacheKey}` : '';
+      return `${channel.avatar}${cacheKey}`;
+    }
+    return this.getDefaultAvatar(channel.channelId);
+  }
+  
+  // Get default avatar
+  static getDefaultAvatar(channelId: string): string {
+    return `https://ui-avatars.com/api/?name=${channelId}&background=random`;
+  }
+  
+  // Format last offline time
+  static formatLastOfflineTime(lastOffline: number): string {
+    if (lastOffline === 0) return 'Never';
+    
+    const date = new Date(lastOffline * 1000);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins} minutes ago`;
+    if (diffHours < 24) return `${diffHours} hours ago`;
+    if (diffDays < 7) return `${diffDays} days ago`;
+    
+    return date.toLocaleDateString();
+  }
+  
+  // Get device flag text
+  static getDeviceFlagText(deviceFlag: number): string {
+    switch (deviceFlag) {
+      case 0: return 'APP';
+      case 1: return 'WEB';
+      case 2: return 'PC';
+      default: return 'Unknown';
+    }
+  }
+  
+  // Check if channel allows invites
+  static canInviteMembers(channel: WKChannel): boolean {
+    return channel.invite === 1;
+  }
+  
+  // Check if channel has receipt enabled
+  static hasReceiptEnabled(channel: WKChannel): boolean {
+    return channel.receipt === 1;
+  }
+  
+  // Check if channel is a robot
+  static isRobotChannel(channel: WKChannel): boolean {
+    return channel.robot === 1;
+  }
+}
+```
+
+## Data Structure Description
+
+```typescript
+export class WKChannel {
+  channelId: string             // Channel ID
+  channelType: number           // Channel type
+  channelName: string = ""      // Channel name
+  channelRemark: string = ""    // Channel remark
+  showNick: number = 0          // Show nickname 0.no 1.yes
+  top: number = 0               // Pin 0.no 1.yes
+  save: number = 0              // Save to contacts 0.no 1.yes
+  mute: number = 0              // Do not disturb 0.no 1.yes
+  forbidden: number = 0         // Forbidden 0.no 1.yes
+  invite: number = 0            // Allow invite 0.no 1.yes
+  status: number = 0            // Channel status 0.disabled 1.normal
+  follow: number = 0            // Follow status 0.not followed 1.followed
+  isDeleted: number = 0         // Is deleted 0.no 1.yes
+  createdAt: string = ''        // Creation time
+  updatedAt: string = ''        // Update time
+  avatar: string = ''           // Avatar
+  version: number = 0           // Channel version
+  online: number = 0            // Online status 0.offline 1.online
+  lastOffline: number = 0       // Last offline time
+  deviceFlag: number = 0        // Device flag 0.APP 1.WEB 2.PC
+  receipt: number = 0           // Receipt enabled 0.no 1.yes
+  robot: number = 0             // Is robot 0.no 1.yes
+  category: string = ''         // Channel category
+  username: string = ''         // Username
+  avatarCacheKey: string = ''   // Avatar cache key
+  localExtra?: Record<string, Object>   // Local extensions
+  remoteExtra?: Record<string, Object>  // Remote extensions
+  parentChannelId: string = ''          // Parent channel ID
+  parentChannelType: number = 0         // Parent channel type
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Data Source Configuration"
+    icon="database"
+    href="/en/sdk/wukongim/harmonyos/datasource"
+  >
+    Learn how to configure channel data sources
+  </Card>
+  <Card
+    title="Advanced Features"
+    icon="cog"
+    href="/en/sdk/wukongim/harmonyos/advance"
+  >
+    Explore advanced features and custom messages
+  </Card>
+  <Card
+    title="Message Management"
+    icon="message-circle"
+    href="/en/sdk/wukongim/harmonyos/message"
+  >
+    Return to message handling functionality
+  </Card>
+  <Card
+    title="Conversation Management"
+    icon="users"
+    href="/en/sdk/wukongim/harmonyos/conversation"
+  >
+    Return to conversation management
+  </Card>
+</CardGroup>

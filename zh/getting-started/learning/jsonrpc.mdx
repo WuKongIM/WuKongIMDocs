@@ -1,0 +1,332 @@
+---
+title: "JSON-RPC 协议"
+description: "了解 WuKongIM 使用的 JSON-RPC 2.0 通信协议格式和消息类型"
+icon: "braces"
+---
+
+# JSON-RPC 协议
+
+## 概述
+
+WuKongIM 使用 JSON-RPC 2.0 规范进行通信。所有请求、响应和通知都遵循 JSON-RPC 2.0 标准结构。
+
+### 协议字段说明
+
+- `jsonrpc`: **可选** 字符串，固定为 "2.0"。如果省略，服务器应假定其为 "2.0"
+- `method`: 请求或通知的方法名
+- `params`: 请求或通知的参数，通常是一个对象
+- `id`: 请求的唯一标识符（字符串类型）。响应必须包含与请求相同的 id。通知没有 id
+- `result`: 成功响应的结果数据
+- `error`: 错误响应的错误对象
+
+<Note>
+完整的协议 schema 可参考：[wukongim_rpc_schema.json](https://github.com/WuKongIM/WuKongIM/blob/main/pkg/jsonrpc/wukongim_rpc_schema.json)
+</Note>
+
+## 重要注意事项
+
+<Warning>
+1. 建立 WebSocket 连接后，需要在 **2 秒之内** 进行认证（`connect`），超过 2 秒或者认证失败的连接将断开
+2. 定期发送 ping 包，让服务器知道你活着（推荐间隔大概 1-2 分钟左右）
+</Warning>
+
+## 通用组件
+
+### ErrorObject
+
+当请求处理失败时，响应中会包含此对象：
+
+| 字段      | 类型    | 必填 | 描述           |
+| :-------- | :------ | :--- | :------------- |
+| `code`    | integer | 是   | 错误码         |
+| `message` | string  | 是   | 错误描述       |
+| `data`    | any     | 否   | 附加错误数据   |
+
+### Header
+
+可选的消息头信息：
+
+| 字段        | 类型    | 必填 | 描述                 |
+| :---------- | :------ | :--- | :------------------- |
+| `noPersist` | boolean | 否   | 消息是否不存储       |
+| `redDot`    | boolean | 否   | 是否显示红点         |
+| `syncOnce`  | boolean | 否   | 是否只被同步一次     |
+| `dup`       | boolean | 否   | 是否是重发的消息     |
+
+### SettingFlags
+
+消息设置标记位：
+
+| 字段      | 类型    | 必填 | 描述               |
+| :-------- | :------ | :--- | :----------------- |
+| `receipt` | boolean | 否   | 消息已读回执       |
+| `stream`  | boolean | 否   | 是否为流式消息     |
+| `topic`   | boolean | 否   | 是否包含 Topic     |
+
+## 核心消息类型
+
+### 1. 连接认证 (Connect)
+
+#### Connect Request
+
+客户端发起的第一个请求，用于建立连接和认证。
+
+**参数 (`params`)**
+
+| 字段              | 类型    | 必填 | 描述                       |
+| :---------------- | :------ | :--- | :------------------------- |
+| `uid`             | string  | 是   | 用户ID                     |
+| `token`           | string  | 是   | 认证Token                  |
+| `header`          | Header  | 否   | 消息头                     |
+| `version`         | integer | 否   | 客户端协议版本             |
+| `clientKey`       | string  | 否   | 客户端公钥                 |
+| `deviceId`        | string  | 否   | 设备ID                     |
+| `deviceFlag`      | integer | 否   | 设备标识 (1:APP, 2:WEB...) |
+| `clientTimestamp` | integer | 否   | 客户端13位毫秒时间戳       |
+
+**示例请求**
+
+```json
+{
+  "method": "connect",
+  "params": {
+    "uid": "testUser",
+    "token": "testToken"
+  },
+  "id": "req-conn-1"
+}
+```
+
+#### Connect Response
+
+**成功结果 (`result`)**
+
+| 字段            | 类型    | 必填 | 描述                           |
+| :-------------- | :------ | :--- | :----------------------------- |
+| `serverKey`     | string  | 是   | 服务端的DH公钥                 |
+| `salt`          | string  | 是   | 加密盐值                       |
+| `timeDiff`      | integer | 是   | 客户端与服务器时间差(毫秒)     |
+| `reasonCode`    | integer | 是   | 原因码 (成功时通常为0)         |
+| `header`        | Header  | 否   | 消息头                         |
+| `serverVersion` | integer | 否   | 服务端版本                     |
+| `nodeId`        | integer | 否   | 连接的节点ID (协议版本 >= 4)   |
+
+**成功响应示例**
+
+```json
+{
+  "result": {
+    "serverKey": "serverPublicKey",
+    "salt": "randomSalt",
+    "timeDiff": -15,
+    "reasonCode": 0
+  },
+  "id": "req-conn-1"
+}
+```
+
+**错误响应示例**
+
+```json
+{
+  "error": {
+    "code": 1001,
+    "message": "Authentication Failed"
+  },
+  "id": "req-conn-1"
+}
+```
+
+### 2. 发送消息 (Send)
+
+#### Send Request
+
+客户端发送消息到指定频道。
+
+**参数 (`params`)**
+
+| 字段          | 类型         | 必填 | 描述                             |
+| :------------ | :----------- | :--- | :------------------------------- |
+| `clientMsgNo` | string       | 是   | 客户端消息唯一编号(UUID)         |
+| `channelId`   | string       | 是   | 频道ID                           |
+| `channelType` | integer      | 是   | 频道类型 (1:个人, 2:群组)        |
+| `payload`     | object       | 是   | 消息内容 (业务自定义JSON对象)    |
+| `header`      | Header       | 否   | 消息头                           |
+| `setting`     | SettingFlags | 否   | 消息设置                         |
+| `msgKey`      | string       | 否   | 消息验证Key                      |
+| `expire`      | integer      | 否   | 消息过期时间(秒), 0表示不过期    |
+| `streamNo`    | string       | 否   | 流编号 (如果 setting.stream 为 true) |
+| `topic`       | string       | 否   | 消息 Topic (如果 setting.topic 为 true) |
+
+**示例请求**
+
+```json
+{
+  "method": "send",
+  "params": {
+    "clientMsgNo": "uuid-12345",
+    "channelId": "targetUser",
+    "channelType": 1,
+    "payload": {"content": "Hello!","type":1}
+  },
+  "id": "req-send-1"
+}
+```
+
+#### Send Response
+
+**成功结果 (`result`)**
+
+| 字段         | 类型    | 必填 | 描述                       |
+| :----------- | :------ | :--- | :------------------------- |
+| `messageId`  | string  | 是   | 服务端消息ID               |
+| `messageSeq` | integer | 是   | 服务端消息序列号           |
+| `reasonCode` | integer | 是   | 原因码 (成功时通常为0)     |
+| `header`     | Header  | 否   | 消息头                     |
+
+**成功响应示例**
+
+```json
+{
+  "result": {
+    "messageId": "serverMsgId1",
+    "messageSeq": 1001,
+    "reasonCode": 0
+  },
+  "id": "req-send-1"
+}
+```
+
+### 3. 接收消息 (Recv)
+
+#### Recv Notification
+
+服务器推送消息给客户端。
+
+**参数 (`params`)**
+
+| 字段          | 类型         | 必填 | 描述                                   |
+| :------------ | :----------- | :--- | :------------------------------------- |
+| `messageId`   | string       | 是   | 服务端消息ID                           |
+| `messageSeq`  | integer      | 是   | 服务端消息序列号                       |
+| `timestamp`   | integer      | 是   | 服务端消息时间戳(秒)                   |
+| `channelId`   | string       | 是   | 频道ID                                 |
+| `channelType` | integer      | 是   | 频道类型                               |
+| `fromUid`     | string       | 是   | 发送者UID                              |
+| `payload`     | object       | 是   | 消息内容 (业务自定义JSON对象)          |
+| `header`      | Header       | 否   | 消息头                                 |
+| `setting`     | SettingFlags | 否   | 消息设置                               |
+| `msgKey`      | string       | 否   | 消息验证Key                            |
+| `expire`      | integer      | 否   | 消息过期时间(秒) (协议版本 >= 3)       |
+| `clientMsgNo` | string       | 否   | 客户端消息唯一编号 (用于去重)          |
+| `streamNo`    | string       | 否   | 流编号 (协议版本 >= 2)                 |
+| `streamId`    | string       | 否   | 流序列号 (协议版本 >= 2)               |
+| `streamFlag`  | integer      | 否   | 流标记 (0:Start, 1:Ing, 2:End)         |
+| `topic`       | string       | 否   | 消息 Topic (如果 setting.topic 为 true) |
+
+**示例通知**
+
+```json
+{
+  "method": "recv",
+  "params": {
+    "messageId": "serverMsgId2",
+    "messageSeq": 50,
+    "timestamp": 1678886400,
+    "channelId": "senderUser",
+    "channelType": 1,
+    "fromUid": "senderUser",
+    "payload": {"content": "How are you?","type":1}
+  }
+}
+```
+
+### 4. 消息确认 (RecvAck)
+
+#### RecvAck Request
+
+客户端确认收到某条消息。
+
+**参数 (`params`)**
+
+| 字段         | 类型    | 必填 | 描述                     |
+| :----------- | :------ | :--- | :----------------------- |
+| `messageId`  | string  | 是   | 要确认的服务端消息ID     |
+| `messageSeq` | integer | 是   | 要确认的服务端消息序列号 |
+| `header`     | Header  | 否   | 消息头                   |
+
+**示例请求**
+
+```json
+{
+  "method": "recvack",
+  "params": {
+    "messageId": "serverMsgId2",
+    "messageSeq": 50
+  },
+  "id": "req-ack-1"
+}
+```
+
+<Note>
+`recvack` 通常没有特定的响应体，如果需要响应，服务器可能会返回一个空的成功 `result` 或错误。
+</Note>
+
+### 5. 心跳保活 (Ping/Pong)
+
+#### Ping Request
+
+客户端发送心跳以保持连接。
+
+**参数 (`params`)**: 通常为 `null` 或空对象 `{}`
+
+**示例请求**
+
+```json
+{
+  "method": "ping",
+  "id": "req-ping-1"
+}
+```
+
+#### Pong Response
+
+服务器对 `ping` 请求的响应。
+
+**示例响应**
+
+```json
+{
+  "method": "pong"
+}
+```
+
+## 高级功能
+
+### 订阅频道 (Subscribe) - 暂不支持
+
+用于订阅指定频道的消息推送。
+
+### 取消订阅 (Unsubscribe) - 暂不支持
+
+用于取消订阅指定频道。
+
+### 断开连接 (Disconnect) - 暂不支持
+
+用于主动断开连接或接收服务器断开通知。
+
+## 最佳实践
+
+<Tip>
+1. **及时认证**: 连接建立后立即发送 `connect` 请求进行认证
+2. **保持心跳**: 定期发送 `ping` 请求维持连接活跃状态
+3. **消息确认**: 收到消息后及时发送 `recvack` 确认
+4. **错误处理**: 妥善处理各种错误响应和异常情况
+5. **重连机制**: 实现自动重连逻辑处理网络中断
+</Tip>
+
+## 相关资源
+
+- [WuKongIM 协议详解](/zh/getting-started/learning/protocol)
+- [系统集成指南](/zh/getting-started/learning/system-integration)
+- [API 文档](/zh/api/introduction)

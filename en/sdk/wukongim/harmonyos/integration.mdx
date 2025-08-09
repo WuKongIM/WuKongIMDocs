@@ -1,0 +1,550 @@
+---
+title: "Integration Guide"
+description: "WuKongIM HarmonyOS SDK integration guide, including installation, configuration and initialization"
+icon: "rocket"
+---
+
+## Installation
+
+### Download and Install
+
+```bash
+ohpm install @wukong/wkim
+```
+
+### Import
+
+```typescript
+import { WKIM } from '@wukong/wkim';
+```
+
+## Basic Setup
+
+### 1. Initialize SDK
+
+Initialize the SDK in your app's entry point or during app startup:
+
+```typescript
+import { WKIM, WKOptions } from '@wukong/wkim';
+
+@Entry
+@Component
+struct Index {
+  aboutToAppear(): void {
+    this.initializeWuKongIM();
+  }
+  
+  private async initializeWuKongIM(): Promise<void> {
+    try {
+      // Create options
+      const options = new WKOptions();
+      options.uid = 'your_user_id';
+      options.token = 'your_auth_token';
+      
+      // Initialize SDK
+      await WKIM.shared.setup(options);
+      
+      console.log('WuKongIM SDK initialized successfully');
+    } catch (error) {
+      console.error('Failed to initialize WuKongIM SDK:', error);
+    }
+  }
+  
+  build() {
+    Column() {
+      Text('WuKongIM HarmonyOS Demo')
+        .fontSize(24)
+        .fontWeight(FontWeight.Bold)
+    }
+    .width('100%')
+    .height('100%')
+    .justifyContent(FlexAlign.Center)
+  }
+}
+```
+
+### 2. Configure Connection
+
+Set up connection parameters and server information:
+
+```typescript
+import { WKIM, WKConnectStatus, ConnectionInfo } from '@wukong/wkim';
+
+@Entry
+@Component
+struct MainPage {
+  @State private connectionStatus: string = 'Disconnected';
+  
+  aboutToAppear(): void {
+    this.setupWuKongIM();
+  }
+  
+  aboutToDisappear(): void {
+    this.cleanupListeners();
+  }
+  
+  private setupWuKongIM(): void {
+    // Configure server address
+    WKIM.shared.connectionManager().setServerAddress('your-server.com', 5100);
+    
+    // Set connection options
+    WKIM.shared.connectionManager().setOptions({
+      heartbeatInterval: 30, // Heartbeat interval in seconds
+      reconnectInterval: 5,  // Reconnect interval in seconds
+      maxReconnectAttempts: 10, // Maximum reconnect attempts
+      enableDebugLog: true   // Enable debug logging
+    });
+    
+    // Listen for connection status
+    WKIM.shared.connectionManager().addConnectStatusListener((status: number, reasonCode?: number, connInfo?: ConnectionInfo) => {
+      this.handleConnectionStatus(status, reasonCode, connInfo);
+    });
+    
+    // Connect to server
+    this.connectToServer();
+  }
+  
+  private connectToServer(): void {
+    WKIM.shared.connectionManager().connection();
+  }
+  
+  private handleConnectionStatus(status: number, reasonCode?: number, connInfo?: ConnectionInfo): void {
+    switch (status) {
+      case WKConnectStatus.success:
+        this.connectionStatus = 'Connected';
+        console.log('Connected successfully', connInfo);
+        this.onConnected();
+        break;
+      case WKConnectStatus.connecting:
+        this.connectionStatus = 'Connecting...';
+        console.log('Connecting to server...');
+        break;
+      case WKConnectStatus.disconnect:
+        this.connectionStatus = 'Disconnected';
+        console.log('Disconnected from server');
+        break;
+      case WKConnectStatus.kicked:
+        this.connectionStatus = 'Kicked Offline';
+        console.log('Kicked offline by another device');
+        this.handleKickedOffline();
+        break;
+      case WKConnectStatus.fail:
+        this.connectionStatus = 'Connection Failed';
+        console.error('Connection failed:', reasonCode);
+        this.handleConnectionFailure(reasonCode);
+        break;
+      case WKConnectStatus.syncMsg:
+        this.connectionStatus = 'Syncing Messages...';
+        console.log('Syncing messages...');
+        break;
+      case WKConnectStatus.syncCompleted:
+        this.connectionStatus = 'Sync Completed';
+        console.log('Message sync completed');
+        break;
+    }
+  }
+  
+  private onConnected(): void {
+    // Perform actions after successful connection
+    console.log('Performing post-connection setup...');
+    // You can start syncing data, updating UI, etc.
+  }
+  
+  private handleKickedOffline(): void {
+    // Handle being kicked offline
+    console.log('User was kicked offline, redirecting to login...');
+    // Clear user session and redirect to login page
+  }
+  
+  private handleConnectionFailure(reasonCode?: number): void {
+    // Handle connection failure
+    console.error('Connection failed with reason code:', reasonCode);
+    // You might want to show an error message or retry
+  }
+  
+  private cleanupListeners(): void {
+    // Remove listeners when component is destroyed
+    WKIM.shared.connectionManager().removeConnectStatusListener();
+  }
+  
+  build() {
+    Column() {
+      Text('WuKongIM HarmonyOS')
+        .fontSize(24)
+        .fontWeight(FontWeight.Bold)
+        .margin({ bottom: 20 })
+      
+      Text(`Status: ${this.connectionStatus}`)
+        .fontSize(16)
+        .fontColor(this.getStatusColor())
+        .margin({ bottom: 20 })
+      
+      Button('Connect')
+        .onClick(() => {
+          this.connectToServer();
+        })
+        .margin({ bottom: 10 })
+      
+      Button('Disconnect')
+        .onClick(() => {
+          WKIM.shared.connectionManager().disconnect(false);
+        })
+    }
+    .width('100%')
+    .height('100%')
+    .justifyContent(FlexAlign.Center)
+    .padding(20)
+  }
+  
+  private getStatusColor(): ResourceColor {
+    switch (this.connectionStatus) {
+      case 'Connected':
+      case 'Sync Completed':
+        return Color.Green;
+      case 'Connecting...':
+      case 'Syncing Messages...':
+        return Color.Orange;
+      case 'Disconnected':
+      case 'Connection Failed':
+      case 'Kicked Offline':
+        return Color.Red;
+      default:
+        return Color.Gray;
+    }
+  }
+}
+```
+
+## Advanced Configuration
+
+### 1. Custom Configuration Options
+
+```typescript
+import { WKIM, WKOptions, WKLogLevel } from '@wukong/wkim';
+
+class WuKongIMConfig {
+  static configure(): void {
+    const options = new WKOptions();
+    
+    // Basic configuration
+    options.uid = 'user123';
+    options.token = 'auth_token_here';
+    
+    // Debug settings
+    options.debugMode = true;
+    options.logLevel = WKLogLevel.DEBUG;
+    
+    // Database options
+    options.dbName = 'wukongim.db';
+    options.dbPassword = 'your_db_password'; // Optional encryption
+    
+    // File upload settings
+    options.maxFileSize = 100 * 1024 * 1024; // 100MB
+    options.allowedFileTypes = ['jpg', 'png', 'gif', 'mp4', 'mp3'];
+    options.uploadTimeout = 60; // seconds
+    
+    // Message options
+    options.maxMessageLength = 5000;
+    options.enableMessageReceipt = true;
+    options.enableTypingIndicator = true;
+    
+    // Connection options
+    options.heartbeatInterval = 30;
+    options.reconnectInterval = 5;
+    options.maxReconnectAttempts = 10;
+    
+    WKIM.shared.setup(options);
+  }
+}
+```
+
+### 2. Environment-Specific Setup
+
+```typescript
+class EnvironmentConfig {
+  static setupForEnvironment(): void {
+    if (this.isDevelopment()) {
+      this.setupDevelopment();
+    } else {
+      this.setupProduction();
+    }
+  }
+  
+  private static setupDevelopment(): void {
+    const options = new WKOptions();
+    options.uid = 'dev_user';
+    options.token = 'dev_token';
+    options.debugMode = true;
+    options.logLevel = WKLogLevel.DEBUG;
+    
+    WKIM.shared.setup(options);
+    WKIM.shared.connectionManager().setServerAddress('dev-server.com', 5100);
+  }
+  
+  private static setupProduction(): void {
+    const options = new WKOptions();
+    options.uid = await this.getUserId();
+    options.token = await this.getAuthToken();
+    options.debugMode = false;
+    options.logLevel = WKLogLevel.ERROR;
+    
+    WKIM.shared.setup(options);
+    WKIM.shared.connectionManager().setServerAddress('prod-server.com', 5100);
+  }
+  
+  private static isDevelopment(): boolean {
+    // Determine if running in development mode
+    return true; // Replace with actual logic
+  }
+  
+  private static async getUserId(): Promise<string> {
+    // Get user ID from secure storage
+    return 'user123';
+  }
+  
+  private static async getAuthToken(): Promise<string> {
+    // Get auth token from secure storage
+    return 'auth_token';
+  }
+}
+```
+
+### 3. Permission Configuration
+
+Add necessary permissions to your `module.json5` file:
+
+```json
+{
+  "module": {
+    "requestPermissions": [
+      {
+        "name": "ohos.permission.INTERNET",
+        "reason": "Access network for instant messaging"
+      },
+      {
+        "name": "ohos.permission.GET_NETWORK_INFO",
+        "reason": "Get network status for connection management"
+      },
+      {
+        "name": "ohos.permission.WRITE_USER_STORAGE",
+        "reason": "Store message data locally"
+      },
+      {
+        "name": "ohos.permission.READ_USER_STORAGE",
+        "reason": "Read local message data"
+      },
+      {
+        "name": "ohos.permission.MICROPHONE",
+        "reason": "Record voice messages"
+      },
+      {
+        "name": "ohos.permission.CAMERA",
+        "reason": "Take photos for image messages"
+      }
+    ]
+  }
+}
+```
+
+## Complete Integration Example
+
+```typescript
+import { WKIM, WKOptions, WKConnectStatus, WKMsg } from '@wukong/wkim';
+
+@Entry
+@Component
+struct WuKongIMApp {
+  @State private isInitialized: boolean = false;
+  @State private connectionStatus: string = 'Initializing...';
+  @State private messages: WKMsg[] = [];
+  
+  aboutToAppear(): void {
+    this.initializeApp();
+  }
+  
+  aboutToDisappear(): void {
+    this.cleanup();
+  }
+  
+  private async initializeApp(): Promise<void> {
+    try {
+      await this.initializeWuKongIM();
+      this.setupGlobalListeners();
+      this.connectToServer();
+      this.isInitialized = true;
+    } catch (error) {
+      console.error('Failed to initialize app:', error);
+      this.connectionStatus = 'Initialization Failed';
+    }
+  }
+  
+  private async initializeWuKongIM(): Promise<void> {
+    const options = new WKOptions();
+    options.uid = await this.getUserId();
+    options.token = await this.getAuthToken();
+    options.debugMode = true;
+    
+    await WKIM.shared.setup(options);
+    
+    // Configure server
+    WKIM.shared.connectionManager().setServerAddress(
+      this.getServerAddress(),
+      this.getServerPort()
+    );
+  }
+  
+  private setupGlobalListeners(): void {
+    // Connection status listener
+    WKIM.shared.connectionManager().addConnectStatusListener((status, reasonCode, connInfo) => {
+      this.handleConnectionStatus(status, reasonCode, connInfo);
+    });
+    
+    // Global message listener
+    WKIM.shared.messageManager().addNewMsgListener((msgs) => {
+      this.handleNewMessages(msgs);
+    });
+    
+    // Conversation update listener
+    WKIM.shared.conversationManager().addRefreshMsgListener((conversation, isEnd) => {
+      if (isEnd) {
+        this.handleConversationUpdate(conversation);
+      }
+    });
+  }
+  
+  private handleConnectionStatus(status: number, reasonCode?: number, connInfo?: any): void {
+    switch (status) {
+      case WKConnectStatus.success:
+        this.connectionStatus = 'Connected';
+        break;
+      case WKConnectStatus.connecting:
+        this.connectionStatus = 'Connecting...';
+        break;
+      case WKConnectStatus.disconnect:
+        this.connectionStatus = 'Disconnected';
+        break;
+      case WKConnectStatus.kicked:
+        this.connectionStatus = 'Kicked Offline';
+        this.handleKickedOffline();
+        break;
+      case WKConnectStatus.fail:
+        this.connectionStatus = 'Connection Failed';
+        break;
+      case WKConnectStatus.syncMsg:
+        this.connectionStatus = 'Syncing...';
+        break;
+      case WKConnectStatus.syncCompleted:
+        this.connectionStatus = 'Connected';
+        break;
+    }
+  }
+  
+  private handleNewMessages(messages: WKMsg[]): void {
+    this.messages = [...this.messages, ...messages];
+    // Show notifications, update badges, etc.
+  }
+  
+  private handleConversationUpdate(conversation: any): void {
+    // Update conversation list, unread counts, etc.
+  }
+  
+  private handleKickedOffline(): void {
+    // Handle being kicked offline
+    console.log('User kicked offline, clearing session...');
+  }
+  
+  private connectToServer(): void {
+    WKIM.shared.connectionManager().connection();
+  }
+  
+  private cleanup(): void {
+    // Remove all listeners
+    WKIM.shared.connectionManager().removeConnectStatusListener();
+    WKIM.shared.messageManager().removeNewMsgListener();
+    WKIM.shared.conversationManager().removeRefreshMsgListener();
+  }
+  
+  // Helper methods
+  private async getUserId(): Promise<string> {
+    // Get from secure storage or user preferences
+    return 'user123';
+  }
+  
+  private async getAuthToken(): Promise<string> {
+    // Get from secure storage
+    return 'auth_token_here';
+  }
+  
+  private getServerAddress(): string {
+    return 'your-server.com';
+  }
+  
+  private getServerPort(): number {
+    return 5100;
+  }
+  
+  build() {
+    Column() {
+      if (this.isInitialized) {
+        Text('WuKongIM HarmonyOS')
+          .fontSize(24)
+          .fontWeight(FontWeight.Bold)
+          .margin({ bottom: 20 })
+        
+        Text(`Status: ${this.connectionStatus}`)
+          .fontSize(16)
+          .margin({ bottom: 20 })
+        
+        Text(`Messages: ${this.messages.length}`)
+          .fontSize(14)
+          .margin({ bottom: 20 })
+        
+        Button('Go to Chat')
+          .onClick(() => {
+            // Navigate to chat page
+          })
+      } else {
+        Text('Initializing WuKongIM...')
+          .fontSize(18)
+      }
+    }
+    .width('100%')
+    .height('100%')
+    .justifyContent(FlexAlign.Center)
+    .padding(20)
+  }
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Basic Features"
+    icon="foundation"
+    href="/en/sdk/wukongim/harmonyos/base"
+  >
+    Learn connection management and basic API usage
+  </Card>
+  <Card
+    title="Message Management"
+    icon="message-circle"
+    href="/en/sdk/wukongim/harmonyos/message"
+  >
+    Explore message sending and receiving functionality
+  </Card>
+  <Card
+    title="Conversation Management"
+    icon="users"
+    href="/en/sdk/wukongim/harmonyos/conversation"
+  >
+    Handle conversation lists and unread messages
+  </Card>
+  <Card
+    title="Advanced Features"
+    icon="cog"
+    href="/en/sdk/wukongim/harmonyos/advance"
+  >
+    Discover custom messages and extension features
+  </Card>
+</CardGroup>

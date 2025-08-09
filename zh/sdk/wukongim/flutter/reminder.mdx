@@ -1,0 +1,818 @@
+---
+title: "提醒管理"
+description: "WuKongIM Flutter SDK 提醒管理功能，包括@提醒、系统提醒和自定义提醒"
+icon: "bell"
+---
+
+提醒项管理负责处理各种类型的提醒消息，如@提醒、入群申请、系统通知等。会话提醒目前只支持服务器下发指令，客户端只需监听同步会话提醒和监听刷新会话消息即可。
+
+<Note>
+提醒项只能由服务器下发，客户端主要负责接收、显示和管理提醒状态
+</Note>
+
+## 获取提醒项
+
+### 获取指定频道的提醒项
+
+```dart
+// 获取指定频道的提醒项列表 
+List<WKReminder> reminders = WKIM.shared.reminderManager.getWithChannel(channelId, channelType);
+```
+
+### 完整提醒项获取示例
+
+```dart
+class ReminderManager {
+  
+  // 获取指定频道的提醒项
+  static List<WKReminder> getChannelReminders(String channelId, int channelType) {
+    try {
+      final reminders = WKIM.shared.reminderManager.getWithChannel(channelId, channelType);
+      print('获取到 ${reminders.length} 个提醒项');
+      return reminders;
+    } catch (error) {
+      print('获取提醒项失败: $error');
+      return [];
+    }
+  }
+  
+  // 获取所有未完成的提醒项
+  static List<WKReminder> getAllPendingReminders() {
+    // 这里需要遍历所有频道获取提醒项
+    // 实际实现可能需要SDK提供相应的API
+    final List<WKReminder> allReminders = [];
+    
+    // 示例：获取所有会话的提醒项
+    final conversations = WKIM.shared.conversationManager.getAll();
+    for (final conv in conversations) {
+      final reminders = getChannelReminders(conv.channelID, conv.channelType);
+      final pendingReminders = reminders.where((r) => r.done == 0).toList();
+      allReminders.addAll(pendingReminders);
+    }
+    
+    return allReminders;
+  }
+  
+  // 按类型获取提醒项
+  static List<WKReminder> getRemindersByType(String channelId, int channelType, int type) {
+    final allReminders = getChannelReminders(channelId, channelType);
+    return allReminders.where((reminder) => reminder.type == type).toList();
+  }
+  
+  // 获取@提醒
+  static List<WKReminder> getMentionReminders(String channelId, int channelType) {
+    return getRemindersByType(channelId, channelType, ReminderType.mention);
+  }
+  
+  // 获取入群申请提醒
+  static List<WKReminder> getJoinRequestReminders(String channelId, int channelType) {
+    return getRemindersByType(channelId, channelType, ReminderType.joinRequest);
+  }
+  
+  // 获取系统通知提醒
+  static List<WKReminder> getSystemNoticeReminders(String channelId, int channelType) {
+    return getRemindersByType(channelId, channelType, ReminderType.systemNotice);
+  }
+  
+  // 获取未读语音提醒
+  static List<WKReminder> getUnreadVoiceReminders(String channelId, int channelType) {
+    return getRemindersByType(channelId, channelType, ReminderType.unreadVoice);
+  }
+  
+  // 统计提醒数量
+  static int getTotalReminderCount() {
+    final allReminders = getAllPendingReminders();
+    return allReminders.length;
+  }
+  
+  // 按类型统计提醒数量
+  static Map<int, int> getReminderCountByType() {
+    final allReminders = getAllPendingReminders();
+    final Map<int, int> countMap = {};
+    
+    for (final reminder in allReminders) {
+      countMap[reminder.type] = (countMap[reminder.type] ?? 0) + 1;
+    }
+    
+    return countMap;
+  }
+  
+  // 检查是否有未读提醒
+  static bool hasUnreadReminders(String channelId, int channelType) {
+    final reminders = getChannelReminders(channelId, channelType);
+    return reminders.any((reminder) => reminder.done == 0);
+  }
+  
+  // 获取提醒显示文本
+  static String getReminderDisplayText(WKReminder reminder) {
+    if (reminder.text.isNotEmpty) {
+      return reminder.text;
+    }
+    
+    // 根据类型返回默认文本
+    switch (reminder.type) {
+      case ReminderType.mention:
+        return '有人@我';
+      case ReminderType.joinRequest:
+        return '入群申请';
+      case ReminderType.systemNotice:
+        return '系统通知';
+      case ReminderType.unreadVoice:
+        return '语音未读';
+      default:
+        return '新提醒';
+    }
+  }
+}
+
+// 提醒类型常量
+class ReminderType {
+  static const int mention = 1;        // @提醒
+  static const int joinRequest = 2;    // 入群申请
+  static const int systemNotice = 3;   // 系统通知
+  static const int unreadVoice = 4;    // 语音未读
+  static const int custom = 99;        // 自定义提醒
+}
+```
+
+## 保存提醒项
+
+### 保存或更新提醒项
+
+```dart
+// 保存提醒项
+WKIM.shared.reminderManager.saveOrUpdateReminders(list);
+```
+
+### 完整提醒项保存示例
+
+```dart
+class ReminderOperations {
+  
+  // 保存单个提醒项
+  static void saveReminder(WKReminder reminder) {
+    try {
+      WKIM.shared.reminderManager.saveOrUpdateReminders([reminder]);
+      print('保存提醒项成功: ${reminder.reminderID}');
+    } catch (error) {
+      print('保存提醒项失败: $error');
+    }
+  }
+  
+  // 批量保存提醒项
+  static void batchSaveReminders(List<WKReminder> reminders) {
+    try {
+      WKIM.shared.reminderManager.saveOrUpdateReminders(reminders);
+      print('批量保存 ${reminders.length} 个提醒项成功');
+    } catch (error) {
+      print('批量保存提醒项失败: $error');
+    }
+  }
+  
+  // 标记提醒为已完成
+  static void markReminderAsDone(WKReminder reminder) {
+    reminder.done = 1;
+    reminder.needUpload = 1; // 标记需要上传到业务服务器
+    saveReminder(reminder);
+  }
+  
+  // 批量标记提醒为已完成
+  static void batchMarkRemindersAsDone(List<WKReminder> reminders) {
+    for (final reminder in reminders) {
+      reminder.done = 1;
+      reminder.needUpload = 1;
+    }
+    batchSaveReminders(reminders);
+  }
+  
+  // 创建@提醒
+  static WKReminder createMentionReminder({
+    required String messageId,
+    required String channelId,
+    required int channelType,
+    required int messageSeq,
+    required String mentionText,
+    String publisher = '',
+  }) {
+    final reminder = WKReminder();
+    reminder.messageID = messageId;
+    reminder.channelID = channelId;
+    reminder.channelType = channelType;
+    reminder.messageSeq = messageSeq;
+    reminder.type = ReminderType.mention;
+    reminder.text = mentionText;
+    reminder.publisher = publisher;
+    reminder.done = 0;
+    reminder.needUpload = 0;
+    reminder.version = DateTime.now().millisecondsSinceEpoch;
+    
+    return reminder;
+  }
+  
+  // 创建入群申请提醒
+  static WKReminder createJoinRequestReminder({
+    required String channelId,
+    required int channelType,
+    required String applicantName,
+    required Map<String, dynamic> requestData,
+  }) {
+    final reminder = WKReminder();
+    reminder.channelID = channelId;
+    reminder.channelType = channelType;
+    reminder.type = ReminderType.joinRequest;
+    reminder.text = '$applicantName 申请加入群聊';
+    reminder.data = requestData;
+    reminder.done = 0;
+    reminder.needUpload = 0;
+    reminder.version = DateTime.now().millisecondsSinceEpoch;
+    
+    return reminder;
+  }
+  
+  // 创建系统通知提醒
+  static WKReminder createSystemNoticeReminder({
+    required String channelId,
+    required int channelType,
+    required String noticeText,
+    Map<String, dynamic>? noticeData,
+  }) {
+    final reminder = WKReminder();
+    reminder.channelID = channelId;
+    reminder.channelType = channelType;
+    reminder.type = ReminderType.systemNotice;
+    reminder.text = noticeText;
+    reminder.data = noticeData;
+    reminder.done = 0;
+    reminder.needUpload = 0;
+    reminder.version = DateTime.now().millisecondsSinceEpoch;
+    
+    return reminder;
+  }
+  
+  // 创建语音未读提醒
+  static WKReminder createUnreadVoiceReminder({
+    required String messageId,
+    required String channelId,
+    required int channelType,
+    required int messageSeq,
+    required int voiceDuration,
+  }) {
+    final reminder = WKReminder();
+    reminder.messageID = messageId;
+    reminder.channelID = channelId;
+    reminder.channelType = channelType;
+    reminder.messageSeq = messageSeq;
+    reminder.type = ReminderType.unreadVoice;
+    reminder.text = '语音消息未读';
+    reminder.data = {'duration': voiceDuration};
+    reminder.done = 0;
+    reminder.needUpload = 0;
+    reminder.version = DateTime.now().millisecondsSinceEpoch;
+    
+    return reminder;
+  }
+}
+```
+
+## 事件监听
+
+### 新增提醒项监听
+
+```dart
+// 监听新增提醒项
+WKIM.shared.reminderManager.addOnNewReminderListener('key', (reminder) {
+    // 处理新增提醒项
+});
+
+// 移除监听
+WKIM.shared.reminderManager.removeOnNewReminderListener('key');
+```
+
+<Note>
+key为监听的唯一标识，可以为任意字符串，添加监听和移出监听时需要传入相同的key
+</Note>
+
+### 完整事件监听管理
+
+```dart
+class ReminderListener {
+  static final Map<String, Function> _newReminderListeners = {};
+  static StreamController<ReminderEvent>? _reminderController;
+  
+  // 获取提醒事件流
+  static Stream<ReminderEvent> get reminderEventStream {
+    _reminderController ??= StreamController<ReminderEvent>.broadcast();
+    return _reminderController!.stream;
+  }
+  
+  // 添加新提醒监听
+  static void addNewReminderListener(String key, Function(WKReminder) callback) {
+    _newReminderListeners[key] = callback;
+    
+    WKIM.shared.reminderManager.addOnNewReminderListener(key, (WKReminder reminder) {
+      // 调用回调
+      callback(reminder);
+      
+      // 发送到流
+      _reminderController?.add(ReminderEvent(
+        type: ReminderEventType.newReminder,
+        reminder: reminder,
+        timestamp: DateTime.now(),
+      ));
+      
+      // 处理特定类型的提醒
+      _handleSpecificReminder(reminder);
+      
+      print('收到新提醒: ${reminder.text}');
+    });
+  }
+  
+  // 移除新提醒监听
+  static void removeNewReminderListener(String key) {
+    _newReminderListeners.remove(key);
+    WKIM.shared.reminderManager.removeOnNewReminderListener(key);
+  }
+  
+  // 移除所有监听
+  static void removeAllListeners() {
+    for (final key in _newReminderListeners.keys) {
+      WKIM.shared.reminderManager.removeOnNewReminderListener(key);
+    }
+    _newReminderListeners.clear();
+  }
+  
+  // 处理特定类型的提醒
+  static void _handleSpecificReminder(WKReminder reminder) {
+    switch (reminder.type) {
+      case ReminderType.mention:
+        _handleMentionReminder(reminder);
+        break;
+      case ReminderType.joinRequest:
+        _handleJoinRequestReminder(reminder);
+        break;
+      case ReminderType.systemNotice:
+        _handleSystemNoticeReminder(reminder);
+        break;
+      case ReminderType.unreadVoice:
+        _handleUnreadVoiceReminder(reminder);
+        break;
+      default:
+        _handleCustomReminder(reminder);
+        break;
+    }
+  }
+  
+  // 处理@提醒
+  static void _handleMentionReminder(WKReminder reminder) {
+    print('处理@提醒: ${reminder.text}');
+    // 可以在这里触发通知、声音等
+    _showNotification('有人@我', reminder.text);
+  }
+  
+  // 处理入群申请提醒
+  static void _handleJoinRequestReminder(WKReminder reminder) {
+    print('处理入群申请提醒: ${reminder.text}');
+    _showNotification('入群申请', reminder.text);
+  }
+  
+  // 处理系统通知提醒
+  static void _handleSystemNoticeReminder(WKReminder reminder) {
+    print('处理系统通知提醒: ${reminder.text}');
+    _showNotification('系统通知', reminder.text);
+  }
+  
+  // 处理语音未读提醒
+  static void _handleUnreadVoiceReminder(WKReminder reminder) {
+    print('处理语音未读提醒: ${reminder.text}');
+    _showNotification('语音消息', reminder.text);
+  }
+  
+  // 处理自定义提醒
+  static void _handleCustomReminder(WKReminder reminder) {
+    print('处理自定义提醒: ${reminder.text}');
+    _showNotification('提醒', reminder.text);
+  }
+  
+  // 显示通知
+  static void _showNotification(String title, String content) {
+    // 实现通知显示逻辑
+    // 可以使用本地通知插件
+  }
+  
+  // 为特定频道添加监听
+  static void addChannelReminderListener(String channelId, int channelType, Function(WKReminder) callback) {
+    final key = 'channel_${channelId}_$channelType';
+    
+    addNewReminderListener(key, (WKReminder reminder) {
+      if (reminder.channelID == channelId && reminder.channelType == channelType) {
+        callback(reminder);
+      }
+    });
+  }
+  
+  // 移除特定频道的监听
+  static void removeChannelReminderListener(String channelId, int channelType) {
+    final key = 'channel_${channelId}_$channelType';
+    removeNewReminderListener(key);
+  }
+  
+  // 销毁
+  static void dispose() {
+    removeAllListeners();
+    _reminderController?.close();
+    _reminderController = null;
+  }
+}
+
+// 提醒事件
+class ReminderEvent {
+  final ReminderEventType type;
+  final WKReminder reminder;
+  final DateTime timestamp;
+  
+  ReminderEvent({
+    required this.type,
+    required this.reminder,
+    required this.timestamp,
+  });
+  
+  @override
+  String toString() {
+    return 'ReminderEvent{type: $type, reminder: ${reminder.text}, timestamp: $timestamp}';
+  }
+}
+
+// 提醒事件类型
+enum ReminderEventType {
+  newReminder,    // 新提醒
+  updateReminder, // 更新提醒
+  deleteReminder, // 删除提醒
+}
+```
+
+## 数据结构说明
+
+### WKReminder 提醒对象
+
+```dart
+class WKReminder {
+  int reminderID = 0;               // 提醒项ID
+  String messageID = '';            // 消息ID
+  String channelID = '';            // 频道ID
+  int channelType = 0;              // 频道类型
+  int messageSeq = 0;               // 消息序列号
+  int type = 0;                     // 提醒类型
+  String text = '';                 // 提醒内容
+  dynamic data;                     // 附加数据
+  int version = 0;                  // 版本号
+  int done = 0;                     // 完成状态
+  int needUpload = 0;               // 是否需要上传（这里是指上传到业务服务器）
+  String publisher = '';            // 发布者
+}
+```
+
+### 字段说明
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `reminderID` | int | 提醒项唯一标识 |
+| `messageID` | String | 关联的消息ID |
+| `channelID` | String | 所属频道ID |
+| `channelType` | int | 频道类型 |
+| `messageSeq` | int | 消息序列号 |
+| `type` | int | 提醒类型（1=@提醒，2=入群申请，3=系统通知，4=语音未读） |
+| `text` | String | 提醒显示文本 |
+| `data` | dynamic | 附加数据，可以是任意类型 |
+| `version` | int | 版本号，用于同步 |
+| `done` | int | 完成状态（0=未完成，1=已完成） |
+| `needUpload` | int | 是否需要上传到业务服务器（0=否，1=是） |
+| `publisher` | String | 发布者ID |
+
+### 提醒类型说明
+
+| 类型值 | 说明 |
+|--------|------|
+| `1` | @提醒 |
+| `2` | 入群申请 |
+| `3` | 系统通知 |
+| `4` | 语音未读 |
+| `99` | 自定义提醒 |
+
+## Flutter Widget 集成示例
+
+### 提醒列表组件
+
+```dart
+class ReminderListWidget extends StatefulWidget {
+  final String? channelId;
+  final int? channelType;
+  
+  const ReminderListWidget({Key? key, this.channelId, this.channelType}) : super(key: key);
+  
+  @override
+  _ReminderListWidgetState createState() => _ReminderListWidgetState();
+}
+
+class _ReminderListWidgetState extends State<ReminderListWidget> {
+  List<WKReminder> _reminders = [];
+  bool _loading = true;
+  StreamSubscription<ReminderEvent>? _subscription;
+  
+  @override
+  void initState() {
+    super.initState();
+    _loadReminders();
+    _setupListener();
+  }
+  
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    if (widget.channelId != null && widget.channelType != null) {
+      ReminderListener.removeChannelReminderListener(widget.channelId!, widget.channelType!);
+    } else {
+      ReminderListener.removeNewReminderListener('reminder_list');
+    }
+    super.dispose();
+  }
+  
+  void _loadReminders() {
+    setState(() {
+      _loading = true;
+    });
+    
+    List<WKReminder> reminders;
+    if (widget.channelId != null && widget.channelType != null) {
+      // 获取特定频道的提醒
+      reminders = ReminderManager.getChannelReminders(widget.channelId!, widget.channelType!);
+    } else {
+      // 获取所有提醒
+      reminders = ReminderManager.getAllPendingReminders();
+    }
+    
+    setState(() {
+      _reminders = reminders;
+      _loading = false;
+    });
+  }
+  
+  void _setupListener() {
+    if (widget.channelId != null && widget.channelType != null) {
+      // 监听特定频道的提醒
+      ReminderListener.addChannelReminderListener(widget.channelId!, widget.channelType!, (reminder) {
+        _loadReminders();
+      });
+    } else {
+      // 监听所有提醒
+      ReminderListener.addNewReminderListener('reminder_list', (reminder) {
+        _loadReminders();
+      });
+    }
+    
+    // 监听提醒事件流
+    _subscription = ReminderListener.reminderEventStream.listen((event) {
+      if (event.type == ReminderEventType.newReminder) {
+        _loadReminders();
+      }
+    });
+  }
+  
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        // 标题栏
+        Container(
+          padding: EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Text(
+                '提醒消息',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              Spacer(),
+              if (_reminders.isNotEmpty)
+                TextButton(
+                  onPressed: _markAllAsDone,
+                  child: Text('全部已读'),
+                ),
+            ],
+          ),
+        ),
+        
+        // 提醒列表
+        Expanded(
+          child: _loading
+            ? Center(child: CircularProgressIndicator())
+            : _reminders.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.notifications_none, size: 64, color: Colors.grey),
+                      SizedBox(height: 16),
+                      Text('暂无提醒', style: TextStyle(color: Colors.grey)),
+                    ],
+                  ),
+                )
+              : ListView.builder(
+                  itemCount: _reminders.length,
+                  itemBuilder: (context, index) {
+                    final reminder = _reminders[index];
+                    return _buildReminderItem(reminder);
+                  },
+                ),
+        ),
+      ],
+    );
+  }
+  
+  Widget _buildReminderItem(WKReminder reminder) {
+    return Dismissible(
+      key: Key('reminder_${reminder.reminderID}'),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        color: Colors.green,
+        alignment: Alignment.centerRight,
+        padding: EdgeInsets.only(right: 20),
+        child: Icon(Icons.done, color: Colors.white),
+      ),
+      onDismissed: (direction) {
+        _markReminderAsDone(reminder);
+      },
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: _getReminderColor(reminder.type),
+          child: Icon(
+            _getReminderIcon(reminder.type),
+            color: Colors.white,
+            size: 20,
+          ),
+        ),
+        title: Text(
+          ReminderManager.getReminderDisplayText(reminder),
+          style: TextStyle(fontWeight: FontWeight.w500),
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (reminder.text.isNotEmpty && reminder.text != ReminderManager.getReminderDisplayText(reminder))
+              Text(reminder.text, maxLines: 2, overflow: TextOverflow.ellipsis),
+            Text(
+              '频道: ${reminder.channelID}',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+          ],
+        ),
+        trailing: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              _getReminderTypeText(reminder.type),
+              style: TextStyle(fontSize: 10, color: Colors.grey),
+            ),
+            if (reminder.done == 0)
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: Colors.red,
+                  shape: BoxShape.circle,
+                ),
+              ),
+          ],
+        ),
+        onTap: () {
+          _handleReminderTap(reminder);
+        },
+      ),
+    );
+  }
+  
+  Color _getReminderColor(int type) {
+    switch (type) {
+      case ReminderType.mention:
+        return Colors.orange;
+      case ReminderType.joinRequest:
+        return Colors.blue;
+      case ReminderType.systemNotice:
+        return Colors.green;
+      case ReminderType.unreadVoice:
+        return Colors.purple;
+      default:
+        return Colors.grey;
+    }
+  }
+  
+  IconData _getReminderIcon(int type) {
+    switch (type) {
+      case ReminderType.mention:
+        return Icons.alternate_email;
+      case ReminderType.joinRequest:
+        return Icons.person_add;
+      case ReminderType.systemNotice:
+        return Icons.info;
+      case ReminderType.unreadVoice:
+        return Icons.mic;
+      default:
+        return Icons.notifications;
+    }
+  }
+  
+  String _getReminderTypeText(int type) {
+    switch (type) {
+      case ReminderType.mention:
+        return '@提醒';
+      case ReminderType.joinRequest:
+        return '入群申请';
+      case ReminderType.systemNotice:
+        return '系统通知';
+      case ReminderType.unreadVoice:
+        return '语音未读';
+      default:
+        return '提醒';
+    }
+  }
+  
+  void _handleReminderTap(WKReminder reminder) {
+    // 处理提醒点击事件
+    if (reminder.messageID.isNotEmpty) {
+      // 跳转到对应的消息
+      _navigateToMessage(reminder);
+    } else {
+      // 处理其他类型的提醒
+      _handleSpecialReminder(reminder);
+    }
+    
+    // 标记为已读
+    _markReminderAsDone(reminder);
+  }
+  
+  void _navigateToMessage(WKReminder reminder) {
+    // 跳转到消息页面
+    print('跳转到消息: ${reminder.messageID}');
+  }
+  
+  void _handleSpecialReminder(WKReminder reminder) {
+    // 处理特殊提醒
+    print('处理特殊提醒: ${reminder.type}');
+  }
+  
+  void _markReminderAsDone(WKReminder reminder) {
+    ReminderOperations.markReminderAsDone(reminder);
+    
+    setState(() {
+      _reminders.remove(reminder);
+    });
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('提醒已标记为已读')),
+    );
+  }
+  
+  void _markAllAsDone() {
+    ReminderOperations.batchMarkRemindersAsDone(_reminders);
+    
+    setState(() {
+      _reminders.clear();
+    });
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('所有提醒已标记为已读')),
+    );
+  }
+}
+```
+
+## 下一步
+
+<CardGroup cols={2}>
+  <Card
+    title="高级功能"
+    icon="cog"
+    href="/zh/sdk/wukongim/flutter/advance"
+  >
+    探索自定义消息和扩展特性
+  </Card>
+  <Card
+    title="命令管理"
+    icon="terminal"
+    href="/zh/sdk/wukongim/flutter/cmd"
+  >
+    回到命令消息处理功能
+  </Card>
+  <Card
+    title="频道成员管理"
+    icon="users"
+    href="/zh/sdk/wukongim/flutter/channel_member"
+  >
+    回到频道成员管理功能
+  </Card>
+  <Card
+    title="数据源配置"
+    icon="database"
+    href="/zh/sdk/wukongim/flutter/datasource"
+  >
+    配置数据源和同步逻辑
+  </Card>
+</CardGroup>

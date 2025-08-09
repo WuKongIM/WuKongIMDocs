@@ -1,0 +1,358 @@
+---
+title: "Message"
+description: "Core structure and usage methods of WuKongIM messages"
+icon: "message-circle-more"
+---
+
+## Concept Explanation
+
+### What is a Message?
+
+A Message is the basic unit of information transmission in WuKongIM, serving as the carrier for real-time communication between users. Each message contains information about the sender, receiver, content, and metadata.
+
+### Why are Messages Important?
+
+- **Communication Foundation**: Messages are the core of instant messaging systems; all chat functionality is based on message transmission
+- **Data Carrier**: Messages can transmit not only text but also various types of data like images, files, and locations
+- **Status Tracking**: Each message has a unique identifier and status, making it easy to track message sending, receiving, and read status
+
+### Relationship with Other Concepts
+
+- **Channel**: Messages are transmitted through channels, which define the message destination
+- **User**: Messages have clear senders and receivers, all of whom are users in the system
+- **Conversation**: Messages update corresponding conversation records, affecting conversation list display
+
+## Core Structure
+
+Messages contain the following core attributes:
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `message_id` | integer | Message unique identifier |
+| `message_seq` | integer | Message sequence number within channel |
+| `client_msg_no` | string | Client message identifier |
+| `from_uid` | string | Sender user ID |
+| `channel_id` | string | Target channel ID |
+| `channel_type` | integer | Channel type (1=personal, 2=group) |
+| `timestamp` | integer | Message timestamp |
+| `payload` | string | Base64 encoded message content |
+
+### Message Example
+
+```json
+{
+  "message_id": 123456789,
+  "message_seq": 1001,
+  "client_msg_no": "client_msg_123",
+  "from_uid": "user123",
+  "channel_id": "group123",
+  "channel_type": 2,
+  "timestamp": 1640995200,
+  "payload": "SGVsbG8gV29ybGQ="
+}
+```
+
+## Related API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/message/send` | POST | Send single message |
+| `/message/sendbatch` | POST | Send batch messages |
+| `/message/search` | POST | Search historical messages |
+| `/channel/messagesync` | POST | Sync channel messages |
+
+## EasySDK Code Examples
+
+### Send Messages
+
+<CodeGroup>
+```javascript Web
+import { WKIM, WKIMChannelType } from 'easyjssdk';
+
+// Initialize SDK
+const im = WKIM.init("ws://your-server.com:5200", {
+  uid: "your_user_id",
+  token: "your_token"
+});
+
+// Send text message
+const textPayload = {
+  type: 1,
+  content: "Hello, World!"
+};
+const result = await im.send("friend_user_id", WKIMChannelType.Person, textPayload);
+
+// Send image message
+const imagePayload = {
+  type: 2,
+  url: "https://example.com/image.jpg",
+  width: 800,
+  height: 600
+};
+const imageResult = await im.send("group_id", WKIMChannelType.Group, imagePayload);
+```
+
+```swift iOS
+import WuKongEasySDK
+
+// Initialize SDK
+let config = WuKongConfig(
+    serverUrl: "ws://your-server.com:5200",
+    uid: "your_user_id",
+    token: "your_token"
+)
+let easySDK = WuKongEasySDK(config: config)
+
+// Send text message
+let textPayload = MessagePayload(
+    type: 1,
+    content: "Hello, World!"
+)
+try await easySDK.send(
+    channelId: "friend_user_id",
+    channelType: .person,
+    payload: textPayload
+)
+
+// Send image message
+let imagePayload = MessagePayload(
+    type: 2,
+    url: "https://example.com/image.jpg",
+    width: 800,
+    height: 600
+)
+try await easySDK.send(
+    channelId: "group_id",
+    channelType: .group,
+    payload: imagePayload
+)
+```
+
+```kotlin Android
+import com.githubim.easysdk.WuKongEasySDK
+import com.githubim.easysdk.WuKongConfig
+import com.githubim.easysdk.WuKongChannelType
+
+// Initialize SDK
+val config = WuKongConfig.Builder()
+    .serverUrl("ws://your-server.com:5200")
+    .uid("your_user_id")
+    .token("your_token")
+    .build()
+val easySDK = WuKongEasySDK.getInstance()
+easySDK.init(this, config)
+
+// Send text message
+val textPayload = MessagePayload(
+    type = 1,
+    content = "Hello, World!"
+)
+easySDK.send(
+    channelId = "friend_user_id",
+    channelType = WuKongChannelType.PERSON,
+    payload = textPayload
+)
+
+// Send image message
+val imagePayload = MessagePayload(
+    type = 2,
+    url = "https://example.com/image.jpg",
+    width = 800,
+    height = 600
+)
+easySDK.send(
+    channelId = "group_id",
+    channelType = WuKongChannelType.GROUP,
+    payload = imagePayload
+)
+```
+
+```dart Flutter
+import 'package:wukong_easy_sdk/wukong_easy_sdk.dart';
+
+// Initialize SDK
+final config = WuKongConfig(
+  serverUrl: "ws://your-server.com:5200",
+  uid: "your_user_id",
+  token: "your_token",
+);
+final easySDK = WuKongEasySDK.getInstance();
+await easySDK.init(config);
+
+// Send text message
+final textPayload = MessagePayload(
+  type: 1,
+  content: "Hello, World!",
+);
+await easySDK.send(
+  channelId: "friend_user_id",
+  channelType: WuKongChannelType.person,
+  payload: textPayload,
+);
+
+// Send image message
+final imagePayload = MessagePayload(
+  type: 2,
+  url: "https://example.com/image.jpg",
+  width: 800,
+  height: 600,
+);
+await easySDK.send(
+  channelId: "group_id",
+  channelType: WuKongChannelType.group,
+  payload: imagePayload,
+);
+```
+</CodeGroup>
+
+### Listen for Messages
+
+<CodeGroup>
+```javascript Web
+import { WKIMEvent } from 'easyjssdk';
+
+// Listen for new messages
+im.on(WKIMEvent.Message, (message) => {
+  console.log("Received new message:", message);
+  console.log("Message content:", message.payload);
+  console.log("Sender:", message.fromUid);
+});
+```
+
+```swift iOS
+// Listen for new messages
+easySDK.onMessage { message in
+    print("Received new message:", message)
+    print("Message content:", message.payload)
+    print("Sender:", message.fromUid)
+}
+```
+
+```kotlin Android
+import com.githubim.easysdk.WuKongEvent
+import com.githubim.easysdk.listener.WuKongEventListener
+
+// Listen for new messages
+easySDK.addEventListener(WuKongEvent.MESSAGE, object : WuKongEventListener<Message> {
+    override fun onEvent(message: Message) {
+        Log.d("WuKong", "Received new message: $message")
+        Log.d("WuKong", "Message content: ${message.payload}")
+        Log.d("WuKong", "Sender: ${message.fromUid}")
+    }
+})
+```
+
+```dart Flutter
+// Listen for new messages
+easySDK.addEventListener(WuKongEvent.message, (Message message) {
+  print("Received new message: $message");
+  print("Message content: ${message.payload}");
+  print("Sender: ${message.fromUid}");
+});
+```
+</CodeGroup>
+
+### Message Type Handling
+
+<CodeGroup>
+```javascript Web
+// Handle different content based on message type
+im.on(WKIMEvent.Message, (message) => {
+  const payload = JSON.parse(message.payload);
+
+  switch (payload.type) {
+    case 1: // Text message
+      console.log("Text message:", payload.content);
+      break;
+    case 2: // Image message
+      console.log("Image message:", payload.url);
+      break;
+    case 100: // Custom message
+      console.log("Custom message:", payload);
+      break;
+  }
+});
+```
+
+```swift iOS
+// Handle different content based on message type
+easySDK.onMessage { message in
+    if let payloadData = Data(base64Encoded: message.payload),
+       let payload = try? JSONSerialization.jsonObject(with: payloadData) as? [String: Any],
+       let type = payload["type"] as? Int {
+
+        switch type {
+        case 1: // Text message
+            if let content = payload["content"] as? String {
+                print("Text message:", content)
+            }
+        case 2: // Image message
+            if let url = payload["url"] as? String {
+                print("Image message:", url)
+            }
+        case 100: // Custom message
+            print("Custom message:", payload)
+        default:
+            print("Unknown message type:", type)
+        }
+    }
+}
+```
+
+```kotlin Android
+// Handle different content based on message type
+easySDK.addEventListener(WuKongEvent.MESSAGE, object : WuKongEventListener<Message> {
+    override fun onEvent(message: Message) {
+        try {
+            val payloadJson = JSONObject(String(Base64.decode(message.payload, Base64.DEFAULT)))
+            val type = payloadJson.getInt("type")
+
+            when (type) {
+                1 -> { // Text message
+                    val content = payloadJson.getString("content")
+                    Log.d("WuKong", "Text message: $content")
+                }
+                2 -> { // Image message
+                    val url = payloadJson.getString("url")
+                    Log.d("WuKong", "Image message: $url")
+                }
+                100 -> { // Custom message
+                    Log.d("WuKong", "Custom message: $payloadJson")
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("WuKong", "Failed to parse message", e)
+        }
+    }
+})
+```
+
+```dart Flutter
+// Handle different content based on message type
+easySDK.addEventListener(WuKongEvent.message, (Message message) {
+  try {
+    final payloadString = utf8.decode(base64.decode(message.payload));
+    final payload = json.decode(payloadString);
+    final type = payload['type'];
+
+    switch (type) {
+      case 1: // Text message
+        print("Text message: ${payload['content']}");
+        break;
+      case 2: // Image message
+        print("Image message: ${payload['url']}");
+        break;
+      case 100: // Custom message
+        print("Custom message: $payload");
+        break;
+    }
+  } catch (e) {
+    print("Failed to parse message: $e");
+  }
+});
+```
+</CodeGroup>
+
+<Note>
+  The message content `payload` field uses Base64 encoding, with the specific format defined by the application layer.
+</Note>

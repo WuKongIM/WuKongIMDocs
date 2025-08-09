@@ -1,0 +1,530 @@
+---
+title: "Batch Message Search"
+description: "Batch search multiple messages by message ID list"
+api: "POST /messages"
+---
+
+## Overview
+
+Batch search multiple messages by message ID list, suitable for scenarios where you need to retrieve details of multiple messages simultaneously.
+
+## Request Body
+
+### Required Parameters
+
+<ParamField body="message_ids" type="array" required>
+List of message IDs
+<ParamField body="message_ids[]" type="integer">
+Message ID
+</ParamField>
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "http://localhost:5001/messages" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "message_ids": [123456789, 123456790, 123456791]
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5001/messages', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    message_ids: [123456789, 123456790, 123456791]
+  })
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+
+data = {
+    "message_ids": [123456789, 123456790, 123456791]
+}
+
+response = requests.post('http://localhost:5001/messages', json=data)
+result = response.json()
+print(result)
+```
+
+```go Go
+package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    data := map[string]interface{}{
+        "message_ids": []int64{123456789, 123456790, 123456791},
+    }
+    
+    jsonData, _ := json.Marshal(data)
+    
+    resp, err := http.Post(
+        "http://localhost:5001/messages",
+        "application/json",
+        bytes.NewBuffer(jsonData),
+    )
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    var result []map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Printf("%+v\n", result)
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json Success Response
+[
+  {
+    "message_id": 123456789,
+    "message_seq": 1001,
+    "client_msg_no": "msg_123",
+    "from_uid": "user123",
+    "channel_id": "group123",
+    "channel_type": 2,
+    "timestamp": 1640995200,
+    "payload": "SGVsbG8gV29ybGQ="
+  },
+  {
+    "message_id": 123456790,
+    "message_seq": 1002,
+    "client_msg_no": "msg_124",
+    "from_uid": "user456",
+    "channel_id": "group123",
+    "channel_type": 2,
+    "timestamp": 1640995260,
+    "payload": "SGkgdGhlcmU="
+  }
+]
+```
+</ResponseExample>
+
+## Response Fields
+
+The response is an array of message objects, each containing the following fields:
+
+<ResponseField name="message_id" type="integer" required>
+Server-generated message ID
+</ResponseField>
+
+<ResponseField name="message_seq" type="integer" required>
+Message sequence number
+</ResponseField>
+
+<ResponseField name="client_msg_no" type="string" required>
+Client message number
+</ResponseField>
+
+<ResponseField name="from_uid" type="string" required>
+Sender user ID
+</ResponseField>
+
+<ResponseField name="channel_id" type="string" required>
+Channel ID
+</ResponseField>
+
+<ResponseField name="channel_type" type="integer" required>
+Channel type
+- `1` - Personal channel
+- `2` - Group channel
+</ResponseField>
+
+<ResponseField name="timestamp" type="integer" required>
+Message timestamp (Unix timestamp)
+</ResponseField>
+
+<ResponseField name="payload" type="string" required>
+Base64 encoded message content
+</ResponseField>
+
+## Status Codes
+
+| Status Code | Description |
+|-------------|-------------|
+| 200 | Message search successful |
+| 400 | Request parameter error |
+| 404 | Some or all messages not found |
+| 500 | Internal server error |
+
+## Use Cases
+
+### Message Details Retrieval
+
+**Get Multiple Message Details**:
+```javascript
+// Retrieve details for multiple messages
+async function getMessageDetails(messageIds) {
+    try {
+        const response = await fetch('/messages', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message_ids: messageIds })
+        });
+        
+        const messages = await response.json();
+        
+        // Process and decode messages
+        const processedMessages = messages.map(msg => ({
+            ...msg,
+            content: atob(msg.payload), // Decode base64 content
+            formatted_time: new Date(msg.timestamp * 1000).toLocaleString()
+        }));
+        
+        return processedMessages;
+    } catch (error) {
+        console.error('Failed to get message details:', error);
+        return [];
+    }
+}
+
+// Usage
+const messageIds = [123456789, 123456790, 123456791];
+const messageDetails = await getMessageDetails(messageIds);
+console.log('Message details:', messageDetails);
+```
+
+### Message Thread Reconstruction
+
+**Reconstruct Message Threads**:
+```javascript
+// Reconstruct conversation threads from message IDs
+async function reconstructMessageThread(messageIds) {
+    try {
+        const messages = await getMessageDetails(messageIds);
+        
+        // Sort messages by timestamp
+        messages.sort((a, b) => a.timestamp - b.timestamp);
+        
+        // Group by channel
+        const threadsByChannel = messages.reduce((acc, msg) => {
+            const channelKey = `${msg.channel_id}:${msg.channel_type}`;
+            if (!acc[channelKey]) {
+                acc[channelKey] = [];
+            }
+            acc[channelKey].push(msg);
+            return acc;
+        }, {});
+        
+        return threadsByChannel;
+    } catch (error) {
+        console.error('Failed to reconstruct message thread:', error);
+        return {};
+    }
+}
+
+// Usage
+const threadMessageIds = [123456789, 123456790, 123456791, 123456792];
+const threads = await reconstructMessageThread(threadMessageIds);
+
+for (const [channelKey, messages] of Object.entries(threads)) {
+    console.log(`Thread for ${channelKey}:`, messages);
+}
+```
+
+### Message Validation and Verification
+
+**Validate Message Existence**:
+```javascript
+// Validate that messages exist and are accessible
+async function validateMessages(messageIds) {
+    try {
+        const response = await fetch('/messages', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message_ids: messageIds })
+        });
+        
+        const foundMessages = await response.json();
+        const foundIds = foundMessages.map(msg => msg.message_id);
+        const missingIds = messageIds.filter(id => !foundIds.includes(id));
+        
+        return {
+            found: foundMessages,
+            missing: missingIds,
+            foundCount: foundMessages.length,
+            missingCount: missingIds.length,
+            totalRequested: messageIds.length
+        };
+    } catch (error) {
+        console.error('Message validation failed:', error);
+        return {
+            found: [],
+            missing: messageIds,
+            foundCount: 0,
+            missingCount: messageIds.length,
+            totalRequested: messageIds.length
+        };
+    }
+}
+
+// Usage
+const idsToValidate = [123456789, 123456790, 999999999]; // Last ID doesn't exist
+const validation = await validateMessages(idsToValidate);
+
+console.log(`Found ${validation.foundCount}/${validation.totalRequested} messages`);
+if (validation.missingCount > 0) {
+    console.log('Missing message IDs:', validation.missing);
+}
+```
+
+### Message Export and Backup
+
+**Export Messages for Backup**:
+```javascript
+// Export messages with full details for backup
+class MessageExporter {
+    constructor() {
+        this.batchSize = 100; // Process in batches
+    }
+    
+    async exportMessages(messageIds) {
+        const batches = this.chunkArray(messageIds, this.batchSize);
+        const allMessages = [];
+        
+        for (let i = 0; i < batches.length; i++) {
+            const batch = batches[i];
+            console.log(`Processing batch ${i + 1}/${batches.length} (${batch.length} messages)`);
+            
+            try {
+                const batchMessages = await this.getBatchMessages(batch);
+                allMessages.push(...batchMessages);
+                
+                // Small delay between batches to avoid overwhelming the server
+                await this.delay(100);
+            } catch (error) {
+                console.error(`Failed to process batch ${i + 1}:`, error);
+            }
+        }
+        
+        return this.formatExportData(allMessages);
+    }
+    
+    async getBatchMessages(messageIds) {
+        const response = await fetch('/messages', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message_ids: messageIds })
+        });
+        
+        return await response.json();
+    }
+    
+    formatExportData(messages) {
+        return {
+            export_timestamp: new Date().toISOString(),
+            message_count: messages.length,
+            messages: messages.map(msg => ({
+                ...msg,
+                content: atob(msg.payload),
+                formatted_timestamp: new Date(msg.timestamp * 1000).toISOString()
+            }))
+        };
+    }
+    
+    chunkArray(array, size) {
+        const chunks = [];
+        for (let i = 0; i < array.length; i += size) {
+            chunks.push(array.slice(i, i + size));
+        }
+        return chunks;
+    }
+    
+    delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+}
+
+// Usage
+const exporter = new MessageExporter();
+const messageIds = Array.from({length: 500}, (_, i) => 123456789 + i);
+
+const exportData = await exporter.exportMessages(messageIds);
+console.log(`Exported ${exportData.message_count} messages`);
+
+// Save to file or send to backup service
+const exportJson = JSON.stringify(exportData, null, 2);
+// saveToFile('message_export.json', exportJson);
+```
+
+### Message Analytics
+
+**Analyze Message Patterns**:
+```javascript
+// Analyze patterns in batch of messages
+async function analyzeMessageBatch(messageIds) {
+    try {
+        const messages = await getMessageDetails(messageIds);
+        
+        const analysis = {
+            total_messages: messages.length,
+            unique_senders: new Set(messages.map(m => m.from_uid)).size,
+            unique_channels: new Set(messages.map(m => `${m.channel_id}:${m.channel_type}`)).size,
+            time_range: {
+                earliest: Math.min(...messages.map(m => m.timestamp)),
+                latest: Math.max(...messages.map(m => m.timestamp))
+            },
+            channel_distribution: {},
+            sender_distribution: {},
+            message_types: {}
+        };
+        
+        // Analyze channel distribution
+        messages.forEach(msg => {
+            const channelKey = `${msg.channel_id}:${msg.channel_type}`;
+            analysis.channel_distribution[channelKey] = 
+                (analysis.channel_distribution[channelKey] || 0) + 1;
+        });
+        
+        // Analyze sender distribution
+        messages.forEach(msg => {
+            analysis.sender_distribution[msg.from_uid] = 
+                (analysis.sender_distribution[msg.from_uid] || 0) + 1;
+        });
+        
+        // Calculate time span
+        analysis.time_span_hours = 
+            (analysis.time_range.latest - analysis.time_range.earliest) / 3600;
+        
+        return analysis;
+    } catch (error) {
+        console.error('Message analysis failed:', error);
+        return null;
+    }
+}
+
+// Usage
+const analysisMessageIds = [123456789, 123456790, 123456791, 123456792, 123456793];
+const analysis = await analyzeMessageBatch(analysisMessageIds);
+
+if (analysis) {
+    console.log('Message Analysis:');
+    console.log(`- Total messages: ${analysis.total_messages}`);
+    console.log(`- Unique senders: ${analysis.unique_senders}`);
+    console.log(`- Unique channels: ${analysis.unique_channels}`);
+    console.log(`- Time span: ${analysis.time_span_hours.toFixed(2)} hours`);
+    console.log('- Channel distribution:', analysis.channel_distribution);
+}
+```
+
+### Message Cache Management
+
+**Efficient Message Caching**:
+```javascript
+// Cache management for frequently accessed messages
+class MessageCache {
+    constructor(maxSize = 1000) {
+        this.cache = new Map();
+        this.maxSize = maxSize;
+        this.accessOrder = [];
+    }
+    
+    async getMessages(messageIds) {
+        const cached = [];
+        const uncached = [];
+        
+        // Check cache first
+        messageIds.forEach(id => {
+            if (this.cache.has(id)) {
+                cached.push(this.cache.get(id));
+                this.updateAccessOrder(id);
+            } else {
+                uncached.push(id);
+            }
+        });
+        
+        // Fetch uncached messages
+        let fetchedMessages = [];
+        if (uncached.length > 0) {
+            fetchedMessages = await this.fetchMessages(uncached);
+            
+            // Add to cache
+            fetchedMessages.forEach(msg => {
+                this.addToCache(msg.message_id, msg);
+            });
+        }
+        
+        // Combine and sort by original order
+        const allMessages = [...cached, ...fetchedMessages];
+        return messageIds.map(id => 
+            allMessages.find(msg => msg.message_id === id)
+        ).filter(Boolean);
+    }
+    
+    async fetchMessages(messageIds) {
+        const response = await fetch('/messages', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message_ids: messageIds })
+        });
+        
+        return await response.json();
+    }
+    
+    addToCache(messageId, message) {
+        // Remove oldest if cache is full
+        if (this.cache.size >= this.maxSize) {
+            const oldestId = this.accessOrder.shift();
+            this.cache.delete(oldestId);
+        }
+        
+        this.cache.set(messageId, message);
+        this.accessOrder.push(messageId);
+    }
+    
+    updateAccessOrder(messageId) {
+        const index = this.accessOrder.indexOf(messageId);
+        if (index > -1) {
+            this.accessOrder.splice(index, 1);
+            this.accessOrder.push(messageId);
+        }
+    }
+    
+    getCacheStats() {
+        return {
+            size: this.cache.size,
+            maxSize: this.maxSize,
+            utilization: (this.cache.size / this.maxSize * 100).toFixed(2) + '%'
+        };
+    }
+}
+
+// Usage
+const messageCache = new MessageCache(500);
+
+// First request - will fetch from server
+const messages1 = await messageCache.getMessages([123456789, 123456790]);
+console.log('First request:', messages1.length, 'messages');
+
+// Second request - will use cache
+const messages2 = await messageCache.getMessages([123456789, 123456791]);
+console.log('Second request:', messages2.length, 'messages');
+
+console.log('Cache stats:', messageCache.getCacheStats());
+```
+
+## Best Practices
+
+1. **Batch Size**: Use reasonable batch sizes (50-100 messages) to balance performance and memory usage
+2. **Error Handling**: Handle partial failures gracefully when some messages are not found
+3. **Caching**: Implement caching for frequently accessed messages
+4. **Rate Limiting**: Respect rate limits when making multiple batch requests
+5. **Memory Management**: Process large batches in chunks to avoid memory issues
+6. **Validation**: Validate message IDs before making requests
+7. **Performance**: Use batch search instead of individual requests for better performance

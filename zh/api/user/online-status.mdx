@@ -1,0 +1,128 @@
+---
+title: "获取用户在线状态"
+description: "获取多个用户的在线状态信息"
+api: "POST /user/onlinestatus"
+---
+
+## 概述
+
+获取多个用户的在线状态信息，包括是否在线和设备类型。
+
+## 请求体
+
+请求体是一个用户 ID 字符串数组：
+
+```json
+["user1", "user2", "user3"]
+```
+
+<RequestExample>
+```bash cURL
+curl -X POST "http://localhost:5001/user/onlinestatus" \
+  -H "Content-Type: application/json" \
+  -d '["user1", "user2", "user3"]'
+```
+
+```javascript JavaScript
+const userIds = ["user1", "user2", "user3"];
+
+const response = await fetch('http://localhost:5001/user/onlinestatus', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify(userIds)
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+
+user_ids = ["user1", "user2", "user3"]
+
+response = requests.post('http://localhost:5001/user/onlinestatus', json=user_ids)
+data = response.json()
+print(data)
+```
+
+```go Go
+package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    userIds := []string{"user1", "user2", "user3"}
+    jsonData, _ := json.Marshal(userIds)
+    
+    resp, err := http.Post(
+        "http://localhost:5001/user/onlinestatus",
+        "application/json",
+        bytes.NewBuffer(jsonData),
+    )
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    var result []map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Printf("%+v\n", result)
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json 成功响应
+[
+  {
+    "uid": "user1",
+    "online": 1,
+    "device_flag": 1
+  },
+  {
+    "uid": "user2",
+    "online": 0,
+    "device_flag": 0
+  },
+  {
+    "uid": "user3",
+    "online": 1,
+    "device_flag": 2
+  }
+]
+```
+</ResponseExample>
+
+## 响应字段
+
+响应是一个数组，每个元素包含以下字段：
+
+<ResponseField name="uid" type="string" required>
+用户 ID
+</ResponseField>
+
+<ResponseField name="online" type="integer" required>
+在线状态
+- `0` - 离线
+- `1` - 在线
+</ResponseField>
+
+<ResponseField name="device_flag" type="integer" required>
+设备标识
+</ResponseField>
+
+## 状态码
+
+| 状态码 | 说明 |
+|--------|------|
+| 200 | 成功获取用户在线状态 |
+| 400 | 请求参数错误 |
+| 500 | 服务器内部错误 |

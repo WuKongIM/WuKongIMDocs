@@ -1,0 +1,462 @@
+---
+title: "Advanced Features"
+description: "WuKongIM Flutter SDK advanced features, including custom message types and extension functionality"
+icon: "settings"
+---
+
+## Custom Message Types
+
+In WuKongIM, all message types are custom messages. Below we use a `gif` message as an example.
+
+### Step 1: Define Message
+
+Define a message object that inherits from `WKMessageContent` and specify the message type in the constructor.
+
+<Note>
+Built-in message types in SDK can be viewed through `WkMessageContentType`
+</Note>
+
+**Inherit `WKMessageContent` and define gif message structure**
+
+```dart
+class GifContent extends WKMessageContent {
+    int width = 0; // Width
+    int height = 0; // Height
+    String url; // Remote URL
+    
+    GifContent(this.url) {
+        // Specify message type
+        contentType = WkMessageContentType.gif;
+    }
+}
+```
+
+### Step 2: Encoding and Decoding
+
+```dart
+@override
+WKMessageContent decodeJson(Map<String, dynamic> json) {
+    url = readString(json, 'url');
+    width = readInt(json, 'width');
+    height = readInt(json, 'height');
+    return this;
+}
+
+@override
+Map<String, dynamic> encodeJson() {
+    return {'url': url, 'width': width, 'height': height};
+}
+```
+
+<Note>
+When encoding and decoding messages, there's no need to consider the `type` field, as the SDK handles it internally
+</Note>
+
+### Step 3: Register Message
+
+```dart
+WKIM.shared.messageManager.registerMsgContent(WkMessageContentType.gif,
+        (dynamic data) {
+      return GifContent('').decodeJson(data);
+    });
+```
+
+Through these three steps, the custom regular message is complete. When receiving a message, if the type in `WKMsg` is 3, it indicates that the message is a business card message, where `messageContent` is the custom `GifContent`. At this time, you can cast `messageContent` to `GifContent` and render it on the UI.
+
+Complete code as follows:
+
+```dart
+class GifContent extends WKMessageContent {
+    int width = 0; // Width
+    int height = 0; // Height
+    String url; // Remote URL
+    
+    GifContent(this.url) {
+        // Specify message type
+        contentType = WkMessageContentType.gif;
+    }
+
+    @override
+    WKMessageContent decodeJson(Map<String, dynamic> json) {
+        url = readString(json, 'url');
+        width = readInt(json, 'width');
+        height = readInt(json, 'height');
+        return this;
+    }
+
+    @override
+    Map<String, dynamic> encodeJson() {
+        return {'url': url, 'width': width, 'height': height};
+    }
+    
+    // Override if you need to get displayable content
+    @override
+    String displayText() {
+        return "[Animated Image]";
+    }
+}
+```
+
+## Custom Attachment Messages
+
+Sometimes we need to send messages with attachments when sending messages. WuKongIM also provides custom attachment messages, which are not much different from regular messages. Below we use location messages as an example.
+
+### Step 1: Define Message
+
+Note that custom attachment messages need to inherit from `WKMediaMessageContent` instead of `WKMessageContent`.
+
+```dart
+class WKLocationContent extends WKMediaMessageContent {
+  var longitude = 0.0;
+  var latitude = 0.0;
+  var address = "";
+  
+  WKLocationContent() {
+    contentType = 10;
+  }
+}
+```
+
+### Step 2: Encoding and Decoding
+
+```dart
+@override
+Map<String, dynamic> encodeJson() {
+    return {
+        'longitude': longitude, 
+        'latitude': latitude, 
+        'url': url,
+        'address': address, 
+        'localPath': localPath
+    };
+}
+
+@override
+WKMessageContent decodeJson(Map<String, dynamic> json) {
+    address = readString(json, 'address');
+    longitude = readDouble(json, 'longitude');
+    url = readString(json, 'url');
+    latitude = readDouble(json, 'latitude');
+    localPath = readString(json, 'localPath');
+    return this;
+}
+```
+
+### Step 3: Register Message
+
+```dart
+WKIM.shared.messageManager.registerMsgContent(10,
+        (dynamic data) {
+      return WKLocationContent().decodeJson(data);
+    });
+```
+
+## Complete Custom Message Example
+
+```dart
+// Business Card Message Example
+class BusinessCardContent extends WKMessageContent {
+  String uid = '';
+  String name = '';
+  String avatar = '';
+  String phone = '';
+  String email = '';
+  
+  BusinessCardContent({
+    this.uid = '',
+    this.name = '',
+    this.avatar = '',
+    this.phone = '',
+    this.email = '',
+  }) {
+    contentType = WkMessageContentType.businessCard;
+  }
+  
+  @override
+  WKMessageContent decodeJson(Map<String, dynamic> json) {
+    uid = readString(json, 'uid');
+    name = readString(json, 'name');
+    avatar = readString(json, 'avatar');
+    phone = readString(json, 'phone');
+    email = readString(json, 'email');
+    return this;
+  }
+  
+  @override
+  Map<String, dynamic> encodeJson() {
+    return {
+      'uid': uid,
+      'name': name,
+      'avatar': avatar,
+      'phone': phone,
+      'email': email,
+    };
+  }
+  
+  @override
+  String displayText() {
+    return "[Business Card] $name";
+  }
+  
+  @override
+  String searchableText() {
+    return "[Business Card] $name $phone $email";
+  }
+  
+  bool isValid() {
+    return uid.isNotEmpty && name.isNotEmpty;
+  }
+}
+
+// Register business card message
+WKIM.shared.messageManager.registerMsgContent(
+  WkMessageContentType.businessCard,
+  (dynamic data) => BusinessCardContent().decodeJson(data),
+);
+
+// Send business card message
+void sendBusinessCard(String channelID, int channelType, BusinessCardContent card) {
+  if (card.isValid()) {
+    WKIM.shared.messageManager.sendMessage(
+      card,
+      WKChannel(channelID, channelType),
+    );
+  }
+}
+```
+
+## Message Extensions
+
+As business develops, applications have increasingly more features in chat. To meet most requirements, WuKongIM has added message extension functionality. Message extensions are divided into `local extensions` and `remote extensions`. Local extensions are only for local app use and will be lost after uninstalling the app. Remote extensions are saved on the server and data will be restored after uninstalling and reinstalling.
+
+### Local Extensions
+
+Local extensions are the `localExtraMap` field in the message object `WKMsg`.
+
+```dart
+// Modify message local extensions
+WKIM.shared.messageManager.updateLocalExtraWithClientMsgNo(String clientMsgNo, dynamic data);
+```
+
+<Note>
+After successful update, the SDK will trigger a refresh message callback
+</Note>
+
+### Remote Extensions
+
+Remote extensions are the `wkMsgExtra` field in the message object `WKMsg`.
+
+```dart
+// Modify message remote extensions
+WKIM.shared.messageManager.saveRemoteExtraMsg(List<WKSyncExtraMsg> list);
+```
+
+## Message Read/Unread
+
+Message read/unread is also called message receipts. Message receipt functionality can be set through settings.
+
+### Send Receipt Message
+
+```dart
+Setting setting = Setting();
+setting.receipt = 1; // Enable receipts
+var option = WKSendOptions();
+option.setting = setting;
+// Send message
+WKIM.shared.messageManager.sendWithOption(
+    text, WKChannel(channelID, channelType), option);
+```
+
+When a logged-in user views messages sent by others, if the sender has enabled message receipts, the viewed messages need to be uploaded to the server to mark them as read. When the sender or yourself uploads read messages, the server will send a sync message extension cmd (command) message. At this time, you need to sync the latest message extensions through `WKIM.shared.messageManager.saveRemoteExtraMsg(List<WKSyncExtraMsg> list)` method and save them to the SDK.
+
+## Message Reply
+
+In chat, if there are too many messages, sending message replies will make the messages very messy and hard to follow. At this time, you need to make specific replies to certain messages, which is message reply.
+
+When sending a message, you just need to assign the `WKReply` object in the message content `WKMessageContent` to achieve the message reply effect.
+
+### Send Reply Message
+
+```dart
+// Reply
+WKTextContent text = WKTextContent(content);
+WKReply reply = WKReply();
+reply.messageId = "11";
+reply.rootMid = "111";
+reply.fromUID = "11";
+reply.fromName = "12";
+WKTextContent payloadText = WKTextContent("dds");
+reply.payload = payloadText;
+text.reply = reply;
+// Send message
+WKIM.shared.messageManager.sendMessage(text, WKChannel(channelID, channelType));
+```
+
+## Message Reactions (Likes)
+
+When you or others react to messages (like), it will trigger cmd (command) message notifications to the application. When the app receives a sync message reaction cmd, it can call the server sync interface to update the obtained reaction data to the SDK.
+
+```dart
+// Save message reactions
+WKIM.shared.messageManager.saveMessageReactions(List<WKSyncMsgReaction> list);
+```
+
+<Note>
+The same user can only make one reaction to the same message. Repeated reactions with different emojis to the same message will be treated as modifying the reaction, while repeated reactions with the same emoji will be treated as deleting the reaction. After the SDK updates message reactions, it will trigger a message refresh event. The app needs to listen for this event and refresh the UI.
+</Note>
+
+## Message Editing
+
+When we send a message to someone and find that the content is wrong, we don't need to recall and resend it. We just need to edit the message.
+
+### Set Edit Content
+
+```dart
+WKIM.shared.messageManager.updateMsgEdit(String messageID, String channelID, int channelType, String content);
+```
+
+After changing the SDK message edit content, you need to upload the edited content to the server, which requires listening for upload message extensions.
+
+### Listen for Upload Message Extensions
+
+```dart
+WKIM.shared.messageManager.addOnUploadMsgExtra((wkMsgExtra) => {
+        // Upload to your own server
+    });
+```
+
+If you or others edit messages, it will trigger cmd (command) messages. The app can determine based on the cmd type and then sync message extensions. The app needs to listen for message update events to complete UI refresh.
+
+## Advanced Message Management Example
+
+```dart
+class AdvancedMessageManager {
+  static final AdvancedMessageManager _instance = AdvancedMessageManager._internal();
+  factory AdvancedMessageManager() => _instance;
+  AdvancedMessageManager._internal();
+  
+  void initialize() {
+    _registerCustomMessages();
+    _setupAdvancedListeners();
+  }
+  
+  void _registerCustomMessages() {
+    // Register GIF message
+    WKIM.shared.messageManager.registerMsgContent(
+      WkMessageContentType.gif,
+      (dynamic data) => GifContent('').decodeJson(data),
+    );
+    
+    // Register business card message
+    WKIM.shared.messageManager.registerMsgContent(
+      WkMessageContentType.businessCard,
+      (dynamic data) => BusinessCardContent().decodeJson(data),
+    );
+    
+    // Register location message
+    WKIM.shared.messageManager.registerMsgContent(
+      10,
+      (dynamic data) => WKLocationContent().decodeJson(data),
+    );
+  }
+  
+  void _setupAdvancedListeners() {
+    // Listen for message extension uploads
+    WKIM.shared.messageManager.addOnUploadMsgExtra((wkMsgExtra) {
+      _uploadMessageExtension(wkMsgExtra);
+    });
+  }
+  
+  Future<void> _uploadMessageExtension(WKMsgExtra msgExtra) async {
+    try {
+      // Upload to your server
+      await _callServerAPI('/api/message/extension', msgExtra.toJson());
+    } catch (e) {
+      print('Failed to upload message extension: $e');
+    }
+  }
+  
+  // Send message with receipt
+  Future<void> sendMessageWithReceipt(WKMessageContent content, WKChannel channel) async {
+    final setting = Setting();
+    setting.receipt = 1; // Enable receipts
+    
+    final option = WKSendOptions();
+    option.setting = setting;
+    
+    await WKIM.shared.messageManager.sendWithOption(content, channel, option);
+  }
+  
+  // Send reply message
+  Future<void> sendReplyMessage(
+    String replyText,
+    WKChannel channel,
+    WKMsg originalMessage,
+  ) async {
+    final textContent = WKTextContent(replyText);
+    
+    final reply = WKReply();
+    reply.messageId = originalMessage.messageID;
+    reply.rootMid = originalMessage.messageID; // For single-level reply
+    reply.fromUID = originalMessage.fromUID;
+    reply.fromName = originalMessage.fromUID; // You might want to get actual name
+    reply.payload = originalMessage.messageContent;
+    
+    textContent.reply = reply;
+    
+    await WKIM.shared.messageManager.sendMessage(textContent, channel);
+  }
+  
+  // Update message local extension
+  Future<void> updateMessageLocalExtension(String clientMsgNo, Map<String, dynamic> data) async {
+    await WKIM.shared.messageManager.updateLocalExtraWithClientMsgNo(clientMsgNo, data);
+  }
+  
+  // Save message reactions
+  Future<void> saveMessageReactions(List<WKSyncMsgReaction> reactions) async {
+    await WKIM.shared.messageManager.saveMessageReactions(reactions);
+  }
+  
+  // Edit message
+  Future<void> editMessage(String messageID, String channelID, int channelType, String newContent) async {
+    await WKIM.shared.messageManager.updateMsgEdit(messageID, channelID, channelType, newContent);
+  }
+  
+  Future<void> _callServerAPI(String endpoint, Map<String, dynamic> data) async {
+    // Implement your server API call
+  }
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Data Source Configuration"
+    icon="database"
+    href="/en/sdk/wukongim/flutter/datasource"
+  >
+    Learn how to configure data sources for custom messages
+  </Card>
+  <Card
+    title="Message Management"
+    icon="message-circle"
+    href="/en/sdk/wukongim/flutter/message"
+  >
+    Return to message management functionality
+  </Card>
+  <Card
+    title="Basic Features"
+    icon="foundation"
+    href="/en/sdk/wukongim/flutter/base"
+  >
+    Return to basic features
+  </Card>
+  <Card
+    title="Integration Guide"
+    icon="rocket"
+    href="/en/sdk/wukongim/flutter/integration"
+  >
+    Return to integration guide
+  </Card>
+</CardGroup>

@@ -1,0 +1,637 @@
+---
+title: "Data Source Configuration"
+description: "WuKongIM JavaScript SDK data source configuration, including file upload, conversation sync, channel information and message sync"
+icon: "database"
+---
+
+## File Management
+
+### File Upload Data Source
+
+Reference code:
+
+```typescript
+export class MediaMessageUploadTask extends MessageTask {
+    private _progress?: number
+    private canceler: Canceler | undefined
+    
+    getUUID() {
+        var len = 32; // 32 length
+        var radix = 16; // 16 base
+        var chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'.split('');
+        var uuid = [], i;
+        radix = radix || chars.length;
+        if (len) {
+            for (i = 0; i < len; i++) uuid[i] = chars[0 | Math.random() * radix];
+        } else {
+            var r;
+            uuid[8] = uuid[13] = uuid[18] = uuid[23] = '-';
+            uuid[14] = '4';
+            for (i = 0; i < 36; i++) {
+                if (!uuid[i]) {
+                    r = 0 | Math.random() * 16;
+                    uuid[i] = chars[(i === 19) ? (r & 0x3) | 0x8 : r];
+                }
+            }
+        }
+        return uuid.join('');
+    }
+
+    async start(): Promise<void> {
+        const mediaContent = this.message.content as MediaMessageContent
+        if (mediaContent.file) {
+            const param = new FormData();
+            param.append("file", mediaContent.file);
+            const fileName = this.getUUID();
+            const path = `/${this.message.channel.channelType}/${this.message.channel.channelID}/${fileName}${mediaContent.extension ?? ""}`
+            const uploadURL = this.getUploadURL(path)
+            this.uploadFile(mediaContent.file, uploadURL)
+        } else {
+            console.log('Media message has no attachment!');
+            if (mediaContent.remoteUrl && mediaContent.remoteUrl !== "") {
+                this.status = TaskStatus.success
+                this.update()
+            } else {
+                this.status = TaskStatus.fail
+                this.update()
+            }
+        }
+    }
+
+    async uploadFile(file: File, uploadURL: string) {
+        const param = new FormData();
+        param.append("file", file);
+        const resp = await axios.post(uploadURL, param, {
+            headers: { "Content-Type": "multipart/form-data" },
+            cancelToken: new axios.CancelToken((c: Canceler) => {
+                this.canceler = c
+            }),
+            onUploadProgress: e => {
+                var completeProgress = ((e.loaded / e.total) | 0);
+                this._progress = completeProgress
+                this.update()
+            }
+        }).catch(error => {
+            console.log('File upload failed!->', error);
+            this.status = TaskStatus.fail
+            this.update()
+        })
+        if (resp) {
+            if (resp.data.path) {
+                const mediaContent = this.message.content as MediaMessageContent
+                mediaContent.remoteUrl = resp.data.path
+                this.status = TaskStatus.success
+                this.update()
+            }
+        }
+    }
+
+    // Get upload path
+    getUploadURL(path: string): string {
+        return 'http://xxxx/xxxx'
+    }
+
+    // Request suspend
+    suspend(): void {
+
+    }
+    // Request resume
+    resume(): void {
+    }
+    // Request cancel
+    cancel(): void {
+        this.status = TaskStatus.cancel
+        if (this.canceler) {
+            this.canceler()
+        }
+        this.update()
+    }
+    progress(): number {
+        return this._progress ?? 0
+    }
+}
+```
+
+Register upload task:
+
+```typescript
+WKSDK.shared().config.provider.messageUploadTaskCallback = (message: Message): MessageTask => {
+    return new MediaMessageUploadTask(message)
+}
+```
+
+Complete code reference: [TangSengDaoDaoWeb](https://github.com/TangSengDaoDao/TangSengDaoDaoWeb/blob/main/packages/tsdaodaodatasource/src/task.ts)
+
+### Advanced File Upload Example
+
+```typescript
+class AdvancedFileUploadManager {
+    private uploadTasks = new Map<string, MediaMessageUploadTask>();
+    
+    constructor() {
+        this.setupUploadProvider();
+    }
+    
+    setupUploadProvider() {
+        WKSDK.shared().config.provider.messageUploadTaskCallback = (message: Message): MessageTask => {
+            const task = new MediaMessageUploadTask(message);
+            this.uploadTasks.set(message.clientMsgNO, task);
+            
+            // Listen for task completion
+            task.addListener((status) => {
+                if (status === TaskStatus.success || status === TaskStatus.fail || status === TaskStatus.cancel) {
+                    this.uploadTasks.delete(message.clientMsgNO);
+                }
+            });
+            
+            return task;
+        };
+    }
+    
+    // Cancel upload by message ID
+    cancelUpload(clientMsgNO: string) {
+        const task = this.uploadTasks.get(clientMsgNO);
+        if (task) {
+            task.cancel();
+        }
+    }
+    
+    // Get upload progress
+    getUploadProgress(clientMsgNO: string): number {
+        const task = this.uploadTasks.get(clientMsgNO);
+        return task ? task.progress() : 0;
+    }
+    
+    // Retry failed upload
+    retryUpload(message: Message) {
+        const existingTask = this.uploadTasks.get(message.clientMsgNO);
+        if (existingTask) {
+            existingTask.cancel();
+        }
+        
+        const newTask = new MediaMessageUploadTask(message);
+        this.uploadTasks.set(message.clientMsgNO, newTask);
+        newTask.start();
+    }
+}
+```
+
+## Recent Conversations
+
+### Recent Conversation Data Source
+
+```typescript
+// Provide data source for recent conversation sync
+WKSDK.shared().config.provider.syncConversationsCallback = async (): Promise<Array<Conversation>> => {
+    // Backend interface data for getting recent conversation list, then build and return Conversation object array
+    let conversations = new Array<Conversation>();
+    conversations = await request(...)
+    return conversations
+}
+```
+
+### Complete Conversation Sync Example
+
+```typescript
+class ConversationDataSource {
+    
+    constructor() {
+        this.setupConversationProvider();
+    }
+    
+    setupConversationProvider() {
+        WKSDK.shared().config.provider.syncConversationsCallback = async (): Promise<Array<Conversation>> => {
+            try {
+                const response = await this.fetchConversationsFromServer();
+                return this.convertToConversations(response.data);
+            } catch (error) {
+                console.error('Failed to sync conversations:', error);
+                return [];
+            }
+        };
+    }
+    
+    async fetchConversationsFromServer() {
+        const response = await fetch('/api/conversations/sync', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${this.getAuthToken()}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        return await response.json();
+    }
+    
+    convertToConversations(serverData: any[]): Conversation[] {
+        return serverData.map(data => {
+            const conversation = new Conversation();
+            conversation.channel = new Channel(data.channel_id, data.channel_type);
+            conversation.unreadCount = data.unread_count;
+            conversation.timestamp = data.timestamp;
+            
+            // Set last message if exists
+            if (data.last_message) {
+                conversation.lastMessage = this.convertToMessage(data.last_message);
+            }
+            
+            // Set extra data
+            conversation.extra = data.extra || {};
+            
+            return conversation;
+        });
+    }
+    
+    convertToMessage(messageData: any): Message {
+        const message = new Message();
+        message.messageID = messageData.message_id;
+        message.clientMsgNO = messageData.client_msg_no;
+        message.fromUID = messageData.from_uid;
+        message.timestamp = messageData.timestamp;
+        message.content = this.parseMessageContent(messageData.content, messageData.type);
+        
+        return message;
+    }
+    
+    parseMessageContent(content: any, type: number): MessageContent {
+        switch (type) {
+            case 1: // Text message
+                const textContent = new MessageText();
+                textContent.text = content.text;
+                return textContent;
+            case 2: // Image message
+                const imageContent = new MessageImage();
+                imageContent.url = content.url;
+                imageContent.width = content.width;
+                imageContent.height = content.height;
+                return imageContent;
+            default:
+                return new MessageText(content.text || '');
+        }
+    }
+    
+    getAuthToken(): string {
+        return localStorage.getItem('auth_token') || '';
+    }
+}
+```
+
+## Channel Management
+
+### Channel Information Data Source
+
+```typescript
+WKSDK.shared().config.provider.channelInfoCallback = async function (channel: Channel): Promise<ChannelInfo> {
+    // Backend interface data for getting channel info, then build and return ChannelInfo object
+    let channelInfo = new ChannelInfo();
+    channelInfo = await request(...)
+    // channelInfo.orgData = ...  // Third-party data can be placed in channelInfo.orgData
+    return channelInfo
+}
+```
+
+### Sync Channel Subscriber Data Source
+
+```typescript
+WKSDK.shared().config.provider.syncSubscribersCallback = async function (channel: Channel, version: number): Promise<Array<Subscriber>> {
+    // Backend interface data for getting channel subscriber list, then build and return Subscriber object array
+    let subscribers = new Array<Subscriber>();
+    subscribers = await request(...)
+    // subscriber.orgData = ...  // Third-party data can be placed in subscriber.orgData
+    return subscribers
+}
+```
+
+### Complete Channel Data Source Example
+
+```typescript
+class ChannelDataSource {
+    
+    constructor() {
+        this.setupChannelProviders();
+    }
+    
+    setupChannelProviders() {
+        // Channel info provider
+        WKSDK.shared().config.provider.channelInfoCallback = async (channel: Channel): Promise<ChannelInfo> => {
+            try {
+                const response = await this.fetchChannelInfo(channel);
+                return this.convertToChannelInfo(response.data, channel);
+            } catch (error) {
+                console.error('Failed to fetch channel info:', error);
+                throw error;
+            }
+        };
+        
+        // Subscriber sync provider
+        WKSDK.shared().config.provider.syncSubscribersCallback = async (channel: Channel, version: number): Promise<Array<Subscriber>> => {
+            try {
+                const response = await this.fetchSubscribers(channel, version);
+                return this.convertToSubscribers(response.data, channel);
+            } catch (error) {
+                console.error('Failed to sync subscribers:', error);
+                return [];
+            }
+        };
+    }
+    
+    async fetchChannelInfo(channel: Channel) {
+        const endpoint = channel.channelType === 1 ? '/api/users' : '/api/groups';
+        const response = await fetch(`${endpoint}/${channel.channelID}`, {
+            headers: {
+                'Authorization': `Bearer ${this.getAuthToken()}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Failed to fetch channel info: ${response.status}`);
+        }
+        
+        return await response.json();
+    }
+    
+    async fetchSubscribers(channel: Channel, version: number) {
+        const response = await fetch(`/api/channels/${channel.channelID}/subscribers`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${this.getAuthToken()}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                channel_type: channel.channelType,
+                version: version
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Failed to fetch subscribers: ${response.status}`);
+        }
+        
+        return await response.json();
+    }
+    
+    convertToChannelInfo(data: any, channel: Channel): ChannelInfo {
+        const channelInfo = new ChannelInfo();
+        channelInfo.channel = channel;
+        channelInfo.title = data.name || data.nickname;
+        channelInfo.logo = data.avatar;
+        channelInfo.mute = data.mute || false;
+        channelInfo.top = data.top || false;
+        channelInfo.online = data.online || false;
+        channelInfo.lastOffline = data.last_offline || 0;
+        channelInfo.orgData = data; // Store original data
+        
+        return channelInfo;
+    }
+    
+    convertToSubscribers(data: any[], channel: Channel): Subscriber[] {
+        return data.map(item => {
+            const subscriber = new Subscriber();
+            subscriber.uid = item.uid;
+            subscriber.name = item.name;
+            subscriber.remark = item.remark;
+            subscriber.avatar = item.avatar;
+            subscriber.role = item.role;
+            subscriber.channel = channel;
+            subscriber.version = item.version;
+            subscriber.isDeleted = item.is_deleted || false;
+            subscriber.status = item.status;
+            subscriber.orgData = item; // Store original data
+            
+            return subscriber;
+        });
+    }
+    
+    getAuthToken(): string {
+        return localStorage.getItem('auth_token') || '';
+    }
+}
+```
+
+## Message Management
+
+### Sync Channel Message Data Source
+
+```typescript
+WKSDK.shared().config.provider.syncMessagesCallback = async function(channel: Channel, opts: SyncOptions): Promise<Message[]> {
+    // Backend interface data for getting channel message list, then build and return Message object array
+    let messages = new Array<Message>();
+    messages = await request(...)
+    // message.remoteExtra.extra = ...  // Third-party data can be placed here
+    return messages
+}
+```
+
+### Complete Message Sync Example
+
+```typescript
+class MessageDataSource {
+    
+    constructor() {
+        this.setupMessageProvider();
+    }
+    
+    setupMessageProvider() {
+        WKSDK.shared().config.provider.syncMessagesCallback = async (channel: Channel, opts: SyncOptions): Promise<Message[]> => {
+            try {
+                const response = await this.fetchMessages(channel, opts);
+                return this.convertToMessages(response.data);
+            } catch (error) {
+                console.error('Failed to sync messages:', error);
+                return [];
+            }
+        };
+    }
+    
+    async fetchMessages(channel: Channel, opts: SyncOptions) {
+        const response = await fetch('/api/messages/sync', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${this.getAuthToken()}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                channel_id: channel.channelID,
+                channel_type: channel.channelType,
+                start_message_seq: opts.startMessageSeq,
+                end_message_seq: opts.endMessageSeq,
+                limit: opts.limit,
+                pull_mode: opts.pullMode
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Failed to sync messages: ${response.status}`);
+        }
+        
+        return await response.json();
+    }
+    
+    convertToMessages(data: any[]): Message[] {
+        return data.map(item => {
+            const message = new Message();
+            message.messageID = item.message_id;
+            message.clientMsgNO = item.client_msg_no;
+            message.messageSeq = item.message_seq;
+            message.fromUID = item.from_uid;
+            message.timestamp = item.timestamp;
+            message.channel = new Channel(item.channel_id, item.channel_type);
+            
+            // Parse message content
+            message.content = this.parseMessageContent(item.payload, item.type);
+            
+            // Set extra data
+            if (item.extra) {
+                message.remoteExtra = {
+                    extra: item.extra
+                };
+            }
+            
+            return message;
+        });
+    }
+    
+    parseMessageContent(payload: any, type: number): MessageContent {
+        try {
+            const content = typeof payload === 'string' ? JSON.parse(payload) : payload;
+            
+            switch (type) {
+                case 1: // Text message
+                    const textContent = new MessageText();
+                    textContent.text = content.text;
+                    return textContent;
+                    
+                case 2: // Image message
+                    const imageContent = new MessageImage();
+                    imageContent.url = content.url;
+                    imageContent.width = content.width;
+                    imageContent.height = content.height;
+                    return imageContent;
+                    
+                case 3: // Voice message
+                    const voiceContent = new MessageVoice();
+                    voiceContent.url = content.url;
+                    voiceContent.second = content.second;
+                    return voiceContent;
+                    
+                case 4: // Video message
+                    const videoContent = new MessageVideo();
+                    videoContent.url = content.url;
+                    videoContent.cover = content.cover;
+                    videoContent.width = content.width;
+                    videoContent.height = content.height;
+                    videoContent.second = content.second;
+                    return videoContent;
+                    
+                default:
+                    return new MessageText(content.text || '');
+            }
+        } catch (error) {
+            console.error('Failed to parse message content:', error);
+            return new MessageText('');
+        }
+    }
+    
+    getAuthToken(): string {
+        return localStorage.getItem('auth_token') || '';
+    }
+}
+```
+
+## Best Practices
+
+### Error Handling and Retry Logic
+
+```typescript
+class DataSourceManager {
+    private retryCount = 3;
+    private retryDelay = 1000;
+    
+    async withRetry<T>(operation: () => Promise<T>): Promise<T> {
+        let lastError: Error;
+        
+        for (let i = 0; i < this.retryCount; i++) {
+            try {
+                return await operation();
+            } catch (error) {
+                lastError = error as Error;
+                console.warn(`Operation failed, attempt ${i + 1}/${this.retryCount}:`, error);
+                
+                if (i < this.retryCount - 1) {
+                    await this.delay(this.retryDelay * Math.pow(2, i)); // Exponential backoff
+                }
+            }
+        }
+        
+        throw lastError!;
+    }
+    
+    private delay(ms: number): Promise<void> {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+}
+```
+
+### Caching Strategy
+
+```typescript
+class CacheManager {
+    private cache = new Map<string, { data: any, timestamp: number }>();
+    private cacheTimeout = 5 * 60 * 1000; // 5 minutes
+    
+    get<T>(key: string): T | null {
+        const cached = this.cache.get(key);
+        if (cached && Date.now() - cached.timestamp < this.cacheTimeout) {
+            return cached.data;
+        }
+        this.cache.delete(key);
+        return null;
+    }
+    
+    set(key: string, data: any): void {
+        this.cache.set(key, { data, timestamp: Date.now() });
+    }
+    
+    clear(): void {
+        this.cache.clear();
+    }
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Advanced Features"
+    icon="cog"
+    href="/en/sdk/wukongim/javascript/advance"
+  >
+    Explore advanced features and custom messages
+  </Card>
+  <Card
+    title="Chat Management"
+    icon="message-circle"
+    href="/en/sdk/wukongim/javascript/chat"
+  >
+    Return to chat message management
+  </Card>
+  <Card
+    title="Channel Management"
+    icon="hash"
+    href="/en/sdk/wukongim/javascript/channel"
+  >
+    Return to channel management
+  </Card>
+  <Card
+    title="Conversation Management"
+    icon="users"
+    href="/en/sdk/wukongim/javascript/conversation"
+  >
+    Return to conversation management
+  </Card>
+</CardGroup>

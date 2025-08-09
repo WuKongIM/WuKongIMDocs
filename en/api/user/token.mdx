@@ -1,0 +1,143 @@
+---
+title: "Update User Token"
+description: "Update user authentication token"
+api: "POST /user/token"
+---
+
+## Overview
+
+Update user authentication token, used for user re-login or token refresh scenarios.
+
+## Request Body
+
+### Required Parameters
+
+<ParamField body="uid" type="string" required>
+Unique user ID for communication, can be random uuid (recommended to use your server's unique user uid) (required by WuKongIMSDK)
+</ParamField>
+
+<ParamField body="token" type="string" required>
+Verification token, random uuid (recommended to use your server's user token) (required by WuKongIMSDK)
+</ParamField>
+
+<ParamField body="device_flag" type="integer" required>
+Device identifier: 0=app, 1=web, 2=desktop (main devices with same user and same device flag will kick each other, secondary devices will coexist)
+</ParamField>
+
+### Optional Parameters
+
+<ParamField body="device_level" type="integer">
+Device level: 0=secondary device, 1=main device
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "http://localhost:5001/user/token" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "uid": "user123",
+    "token": "new_auth_token_here",
+    "device_flag": 1,
+    "device_level": 1
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5001/user/token', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    uid: 'user123',
+    token: 'new_auth_token_here',
+    device_flag: 1,
+    device_level: 1
+  })
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+
+data = {
+    "uid": "user123",
+    "token": "new_auth_token_here",
+    "device_flag": 1,
+    "device_level": 1
+}
+
+response = requests.post('http://localhost:5001/user/token', json=data)
+result = response.json()
+print(result)
+```
+
+```go Go
+package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    data := map[string]interface{}{
+        "uid":          "user123",
+        "token":        "new_auth_token_here",
+        "device_flag":  1,
+        "device_level": 1,
+    }
+    
+    jsonData, _ := json.Marshal(data)
+    
+    resp, err := http.Post(
+        "http://localhost:5001/user/token",
+        "application/json",
+        bytes.NewBuffer(jsonData),
+    )
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    var result map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Printf("%+v\n", result)
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json Success Response
+{
+  "status": "ok"
+}
+```
+</ResponseExample>
+
+## Response Fields
+
+<ResponseField name="status" type="string" required>
+Operation status, returns `"ok"` on success
+</ResponseField>
+
+## Status Codes
+
+| Status Code | Description |
+|-------------|-------------|
+| 200 | Token updated successfully |
+| 400 | Request parameter error |
+| 500 | Internal server error |
+
+## Best Practices
+
+1. **Token Security**: Ensure tokens have sufficient complexity and uniqueness
+2. **Device Identification**: Properly set device_flag to distinguish different device types
+3. **Permission Control**: Use device_level to implement permission control for different devices
+4. **Regular Refresh**: Implement regular token refresh mechanism
+5. **Multi-device Management**: Generate different tokens for different devices for easier management and revocation

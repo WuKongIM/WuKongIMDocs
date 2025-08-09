@@ -1,0 +1,415 @@
+---
+title: "Set Conversation Unread Count"
+description: "Set the unread message count for a specified conversation"
+api: "POST /conversations/setUnread"
+---
+
+## Overview
+
+Set the unread message count for a specified conversation, used for manually adjusting the unread status of conversations.
+
+## Request Body
+
+### Required Parameters
+
+<ParamField body="uid" type="string" required>
+User ID
+</ParamField>
+
+<ParamField body="channel_id" type="string" required>
+Channel ID
+</ParamField>
+
+<ParamField body="channel_type" type="integer" required>
+Channel type (1=personal channel, 2=group channel)
+</ParamField>
+
+<ParamField body="unread" type="integer" required>
+Unread count to set
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "http://localhost:5001/conversations/setUnread" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "uid": "user123",
+    "channel_id": "group123",
+    "channel_type": 2,
+    "unread": 5
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5001/conversations/setUnread', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    uid: 'user123',
+    channel_id: 'group123',
+    channel_type: 2,
+    unread: 5
+  })
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+
+data = {
+    "uid": "user123",
+    "channel_id": "group123",
+    "channel_type": 2,
+    "unread": 5
+}
+
+response = requests.post('http://localhost:5001/conversations/setUnread', json=data)
+result = response.json()
+print(result)
+```
+
+```go Go
+package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    data := map[string]interface{}{
+        "uid":          "user123",
+        "channel_id":   "group123",
+        "channel_type": 2,
+        "unread":       5,
+    }
+    
+    jsonData, _ := json.Marshal(data)
+    
+    resp, err := http.Post(
+        "http://localhost:5001/conversations/setUnread",
+        "application/json",
+        bytes.NewBuffer(jsonData),
+    )
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    var result map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Printf("%+v\n", result)
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json Success Response
+{
+  "status": "success"
+}
+```
+</ResponseExample>
+
+## Response Fields
+
+<ResponseField name="status" type="string" required>
+Operation status, returns `"success"` on success
+</ResponseField>
+
+## Status Codes
+
+| Status Code | Description |
+|-------------|-------------|
+| 200 | Unread count set successfully |
+| 400 | Request parameter error |
+| 403 | No operation permission |
+| 500 | Internal server error |
+
+## Use Cases
+
+### Manual Unread Management
+
+**Mark Conversation as Important**:
+```javascript
+// Mark conversation as having unread messages to draw attention
+async function markAsImportant(userId, channelId, channelType) {
+    try {
+        await setUnreadCount({
+            uid: userId,
+            channel_id: channelId,
+            channel_type: channelType,
+            unread: 1
+        });
+        
+        console.log('Conversation marked as important');
+        updateUIBadge(channelId, 1);
+    } catch (error) {
+        console.error('Failed to mark conversation as important:', error);
+    }
+}
+```
+
+**Reset Unread Count**:
+```javascript
+// Reset unread count to zero
+async function resetUnreadCount(userId, channelId, channelType) {
+    try {
+        await setUnreadCount({
+            uid: userId,
+            channel_id: channelId,
+            channel_type: channelType,
+            unread: 0
+        });
+        
+        console.log('Unread count reset to zero');
+        updateUIBadge(channelId, 0);
+    } catch (error) {
+        console.error('Failed to reset unread count:', error);
+    }
+}
+```
+
+### Notification Management
+
+**Custom Notification Badges**:
+```javascript
+// Set custom unread count for special notifications
+async function setCustomNotification(userId, channelId, channelType, count) {
+    try {
+        await setUnreadCount({
+            uid: userId,
+            channel_id: channelId,
+            channel_type: channelType,
+            unread: count
+        });
+        
+        // Update UI with custom badge
+        updateNotificationBadge(channelId, count);
+        
+        // Show system notification if count > 0
+        if (count > 0) {
+            showSystemNotification(`${count} new items in ${channelId}`);
+        }
+    } catch (error) {
+        console.error('Failed to set custom notification:', error);
+    }
+}
+```
+
+### Batch Unread Operations
+
+**Batch Set Unread Counts**:
+```javascript
+// Set unread counts for multiple conversations
+async function batchSetUnreadCounts(userId, conversationUpdates) {
+    const results = [];
+    
+    for (const update of conversationUpdates) {
+        try {
+            await setUnreadCount({
+                uid: userId,
+                channel_id: update.channelId,
+                channel_type: update.channelType,
+                unread: update.unreadCount
+            });
+            
+            results.push({
+                channelId: update.channelId,
+                success: true,
+                unreadCount: update.unreadCount
+            });
+        } catch (error) {
+            results.push({
+                channelId: update.channelId,
+                success: false,
+                error: error.message
+            });
+        }
+    }
+    
+    return results;
+}
+
+// Usage
+const updates = [
+    { channelId: 'group123', channelType: 2, unreadCount: 5 },
+    { channelId: 'user456', channelType: 1, unreadCount: 2 },
+    { channelId: 'group789', channelType: 2, unreadCount: 0 }
+];
+
+const results = await batchSetUnreadCounts('user123', updates);
+console.log('Batch update results:', results);
+```
+
+### Priority Management
+
+**Set Priority-based Unread Counts**:
+```javascript
+class ConversationPriorityManager {
+    constructor(userId) {
+        this.userId = userId;
+        this.priorityLevels = {
+            urgent: 99,
+            high: 10,
+            normal: 1,
+            low: 0
+        };
+    }
+    
+    async setPriority(channelId, channelType, priority) {
+        const unreadCount = this.priorityLevels[priority] || 1;
+        
+        try {
+            await setUnreadCount({
+                uid: this.userId,
+                channel_id: channelId,
+                channel_type: channelType,
+                unread: unreadCount
+            });
+            
+            // Update UI with priority styling
+            this.updatePriorityUI(channelId, priority, unreadCount);
+            
+            console.log(`Set ${channelId} priority to ${priority} (unread: ${unreadCount})`);
+        } catch (error) {
+            console.error(`Failed to set priority for ${channelId}:`, error);
+        }
+    }
+    
+    updatePriorityUI(channelId, priority, unreadCount) {
+        const element = document.querySelector(`[data-channel="${channelId}"]`);
+        if (element) {
+            element.className = `conversation-item priority-${priority}`;
+            
+            const badge = element.querySelector('.unread-badge');
+            if (badge) {
+                badge.textContent = unreadCount > 0 ? unreadCount : '';
+                badge.style.display = unreadCount > 0 ? 'block' : 'none';
+            }
+        }
+    }
+    
+    async markAsUrgent(channelId, channelType) {
+        await this.setPriority(channelId, channelType, 'urgent');
+    }
+    
+    async markAsNormal(channelId, channelType) {
+        await this.setPriority(channelId, channelType, 'normal');
+    }
+    
+    async clearPriority(channelId, channelType) {
+        await this.setPriority(channelId, channelType, 'low');
+    }
+}
+
+// Usage
+const priorityManager = new ConversationPriorityManager('user123');
+
+// Mark conversation as urgent
+await priorityManager.markAsUrgent('group123', 2);
+
+// Set normal priority
+await priorityManager.markAsNormal('user456', 1);
+
+// Clear priority
+await priorityManager.clearPriority('group789', 2);
+```
+
+### Sync and Recovery
+
+**Sync Unread Counts from External Source**:
+```javascript
+// Sync unread counts from external system
+async function syncUnreadFromExternal(userId, externalUnreadData) {
+    const syncResults = [];
+    
+    for (const item of externalUnreadData) {
+        try {
+            await setUnreadCount({
+                uid: userId,
+                channel_id: item.channelId,
+                channel_type: item.channelType,
+                unread: item.unreadCount
+            });
+            
+            syncResults.push({
+                channelId: item.channelId,
+                synced: true,
+                unreadCount: item.unreadCount
+            });
+        } catch (error) {
+            syncResults.push({
+                channelId: item.channelId,
+                synced: false,
+                error: error.message
+            });
+        }
+    }
+    
+    // Log sync results
+    const successful = syncResults.filter(r => r.synced).length;
+    const failed = syncResults.filter(r => !r.synced).length;
+    
+    console.log(`Sync completed: ${successful} successful, ${failed} failed`);
+    
+    return syncResults;
+}
+```
+
+### Testing and Development
+
+**Test Unread Scenarios**:
+```javascript
+// Helper function for testing different unread scenarios
+async function testUnreadScenarios(userId, channelId, channelType) {
+    const scenarios = [
+        { name: 'No unread', count: 0 },
+        { name: 'Single unread', count: 1 },
+        { name: 'Multiple unread', count: 5 },
+        { name: 'High unread', count: 99 },
+        { name: 'Max unread', count: 999 }
+    ];
+    
+    for (const scenario of scenarios) {
+        console.log(`Testing scenario: ${scenario.name}`);
+        
+        try {
+            await setUnreadCount({
+                uid: userId,
+                channel_id: channelId,
+                channel_type: channelType,
+                unread: scenario.count
+            });
+            
+            // Wait for UI update
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            // Verify UI state
+            const badge = document.querySelector(`[data-channel="${channelId}"] .unread-badge`);
+            const displayedCount = badge ? badge.textContent : '0';
+            
+            console.log(`✓ ${scenario.name}: Set ${scenario.count}, displayed ${displayedCount}`);
+        } catch (error) {
+            console.error(`✗ ${scenario.name}: Failed -`, error.message);
+        }
+    }
+}
+```
+
+## Best Practices
+
+1. **Validation**: Validate unread count values (non-negative integers)
+2. **UI Consistency**: Ensure UI updates match the set unread count
+3. **Error Handling**: Handle API errors gracefully without breaking UI
+4. **Performance**: Batch operations when setting multiple unread counts
+5. **User Experience**: Use meaningful unread counts that help users prioritize
+6. **Sync Strategy**: Implement proper sync mechanisms for unread counts
+7. **Testing**: Test various unread count scenarios during development

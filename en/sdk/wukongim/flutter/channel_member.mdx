@@ -1,0 +1,563 @@
+---
+title: "Channel Member Management"
+description: "WuKongIM Flutter SDK channel member management functionality, including member retrieval, listening and operations"
+icon: "users"
+---
+
+Channel member management provides complete group member management functionality, including member information retrieval, member status listening, permission management and other core capabilities.
+
+## Get Channel Members
+
+### Get All Members in Channel
+
+```dart
+// Get all members in channel
+List<WKChannelMember> members = WKIM.shared.channelMemberManager.getMembers(channelId: channelId);
+```
+
+### Get Specific User's Member Information in Channel
+
+```dart
+// Get specific user's member information in channel
+WKChannelMember? member = WKIM.shared.channelMemberManager.getMember(channelId: channelId, uid: uid);
+```
+
+### Complete Member Retrieval Example
+
+```dart
+class ChannelMemberManager {
+  
+  // Get all members
+  static List<WKChannelMember> getAllMembers(String channelId) {
+    try {
+      final members = WKIM.shared.channelMemberManager.getMembers(channelId: channelId);
+      print('Retrieved ${members.length} members');
+      return members;
+    } catch (error) {
+      print('Failed to get member list: $error');
+      return [];
+    }
+  }
+  
+  // Get specific member information
+  static WKChannelMember? getMemberInfo(String channelId, String uid) {
+    try {
+      final member = WKIM.shared.channelMemberManager.getMember(channelId: channelId, uid: uid);
+      if (member != null) {
+        print('Successfully retrieved member info: ${member.memberName}');
+      }
+      return member;
+    } catch (error) {
+      print('Failed to get member info: $error');
+      return null;
+    }
+  }
+  
+  // Filter members by role
+  static List<WKChannelMember> getMembersByRole(String channelId, int role) {
+    final allMembers = getAllMembers(channelId);
+    return allMembers.where((member) => member.role == role).toList();
+  }
+  
+  // Get admin list
+  static List<WKChannelMember> getAdminMembers(String channelId) {
+    return getMembersByRole(channelId, 1); // Assume 1 is admin role
+  }
+  
+  // Get normal member list
+  static List<WKChannelMember> getNormalMembers(String channelId) {
+    return getMembersByRole(channelId, 0); // Assume 0 is normal member role
+  }
+  
+  // Search members
+  static List<WKChannelMember> searchMembers(String channelId, String keyword) {
+    if (keyword.trim().isEmpty) {
+      return [];
+    }
+    
+    final allMembers = getAllMembers(channelId);
+    return allMembers.where((member) {
+      final name = member.memberName.toLowerCase();
+      final remark = member.memberRemark.toLowerCase();
+      final uid = member.memberUID.toLowerCase();
+      final searchKey = keyword.toLowerCase();
+      
+      return name.contains(searchKey) || 
+             remark.contains(searchKey) || 
+             uid.contains(searchKey);
+    }).toList();
+  }
+  
+  // Get online members (needs to combine with channel info)
+  static List<WKChannelMember> getOnlineMembers(String channelId) {
+    final allMembers = getAllMembers(channelId);
+    // Here needs to combine with channel manager to get online status
+    return allMembers.where((member) {
+      final channel = WKIM.shared.channelManager.getChannel(member.memberUID, WKChannelType.personal);
+      return channel?.online == 1;
+    }).toList();
+  }
+  
+  // Get member display name
+  static String getMemberDisplayName(WKChannelMember member) {
+    if (member.memberRemark.isNotEmpty) {
+      return member.memberRemark;
+    }
+    if (member.memberName.isNotEmpty) {
+      return member.memberName;
+    }
+    return member.memberUID;
+  }
+  
+  // Check if member is admin
+  static bool isAdmin(WKChannelMember member) {
+    return member.role == 1; // Assume 1 is admin role
+  }
+  
+  // Check if member is muted
+  static bool isMuted(WKChannelMember member) {
+    if (member.forbiddenExpirationTime == 0) {
+      return false;
+    }
+    final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    return member.forbiddenExpirationTime > now;
+  }
+  
+  // Check if member is blacklisted
+  static bool isBlacklisted(WKChannelMember member) {
+    return member.status == 2; // 2 means blacklist status
+  }
+}
+```
+
+## Event Listening
+
+### Refresh Channel Member Listening
+
+```dart
+// Refresh channel member
+WKIM.shared.channelMemberManager.addOnRefreshMemberListener('key', (WKChannelMember member, bool isEnd) {
+    // TODO refresh conversation list
+});
+
+// Remove refresh channel member listener
+WKIM.shared.channelMemberManager.removeRefreshMemberListener('key');
+```
+
+<Note>
+The key is a unique identifier for the listener, can be any string. The same key must be used when adding and removing listeners.
+</Note>
+
+### Complete Event Listening Management
+
+```dart
+class ChannelMemberListener {
+  static final Map<String, Function> _refreshListeners = {};
+  static StreamController<ChannelMemberUpdateEvent>? _updateController;
+  
+  // Get member update stream
+  static Stream<ChannelMemberUpdateEvent> get memberUpdateStream {
+    _updateController ??= StreamController<ChannelMemberUpdateEvent>.broadcast();
+    return _updateController!.stream;
+  }
+  
+  // Add member refresh listener
+  static void addRefreshMemberListener(String key, Function(WKChannelMember, bool) callback) {
+    _refreshListeners[key] = callback;
+    
+    WKIM.shared.channelMemberManager.addOnRefreshMemberListener(key, (WKChannelMember member, bool isEnd) {
+      // Call callback
+      callback(member, isEnd);
+      
+      // Send to stream
+      _updateController?.add(ChannelMemberUpdateEvent(
+        member: member,
+        isEnd: isEnd,
+        timestamp: DateTime.now(),
+      ));
+      
+      print('Channel member updated: ${member.memberUID}, isEnd: $isEnd');
+    });
+  }
+  
+  // Remove member refresh listener
+  static void removeRefreshMemberListener(String key) {
+    _refreshListeners.remove(key);
+    WKIM.shared.channelMemberManager.removeRefreshMemberListener(key);
+  }
+  
+  // Remove all listeners
+  static void removeAllListeners() {
+    for (final key in _refreshListeners.keys) {
+      WKIM.shared.channelMemberManager.removeRefreshMemberListener(key);
+    }
+    _refreshListeners.clear();
+  }
+  
+  // Add listener for specific channel
+  static void addChannelMemberListener(String channelId, Function(WKChannelMember, bool) callback) {
+    final key = 'channel_$channelId';
+    
+    addRefreshMemberListener(key, (WKChannelMember member, bool isEnd) {
+      if (member.channelID == channelId) {
+        callback(member, isEnd);
+      }
+    });
+  }
+  
+  // Remove listener for specific channel
+  static void removeChannelMemberListener(String channelId) {
+    final key = 'channel_$channelId';
+    removeRefreshMemberListener(key);
+  }
+  
+  // Dispose
+  static void dispose() {
+    removeAllListeners();
+    _updateController?.close();
+    _updateController = null;
+  }
+}
+
+// Channel member update event
+class ChannelMemberUpdateEvent {
+  final WKChannelMember member;
+  final bool isEnd;
+  final DateTime timestamp;
+  
+  ChannelMemberUpdateEvent({
+    required this.member,
+    required this.isEnd,
+    required this.timestamp,
+  });
+  
+  @override
+  String toString() {
+    return 'ChannelMemberUpdateEvent{memberUID: ${member.memberUID}, isEnd: $isEnd, timestamp: $timestamp}';
+  }
+}
+```
+
+## Data Structure Description
+
+### WKChannelMember Channel Member Object
+
+```dart
+class WKChannelMember {
+  String channelID = "";           // Channel ID
+  int channelType = 0;             // Channel type
+  String memberUID = "";           // Member ID
+  String memberName = "";          // Member name
+  String memberRemark = "";        // Member remark
+  String memberAvatar = "";        // Member avatar
+  int role = 0;                    // Member role
+  int status = 0;                  // Member status (1: normal, 2: blacklist)
+  int isDeleted = 0;               // Whether deleted
+  String createdAt = "";           // Creation time
+  String updatedAt = "";           // Update time
+  int version = 0;                 // Version
+  int robot = 0;                   // Robot (0: no, 1: yes)
+  dynamic extraMap;                // Extension fields
+  String remark = "";              // User remark
+  String memberInviteUID = "";     // Inviter UID
+  int forbiddenExpirationTime = 0; // Mute expiration time
+  String memberAvatarCacheKey = "";// Member avatar cache key
+}
+```
+
+### Field Description
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `channelID` | String | Channel ID |
+| `channelType` | int | Channel type |
+| `memberUID` | String | Member ID |
+| `memberName` | String | Member name |
+| `memberRemark` | String | Member remark |
+| `memberAvatar` | String | Member avatar URL |
+| `role` | int | Member role (0=normal member, 1=admin, 2=owner) |
+| `status` | int | Member status (1=normal, 2=blacklist) |
+| `isDeleted` | int | Whether deleted (0=no, 1=yes) |
+| `version` | int | Version number |
+| `robot` | int | Whether robot (0=no, 1=yes) |
+| `forbiddenExpirationTime` | int | Mute expiration timestamp |
+
+### Member Role Description
+
+| Role Value | Description |
+|------------|-------------|
+| `0` | Normal member |
+| `1` | Admin |
+| `2` | Owner |
+
+### Member Status Description
+
+| Status Value | Description |
+|--------------|-------------|
+| `1` | Normal |
+| `2` | Blacklist |
+
+## Flutter Widget Integration Example
+
+```dart
+class ChannelMemberListWidget extends StatefulWidget {
+  final String channelId;
+  
+  const ChannelMemberListWidget({Key? key, required this.channelId}) : super(key: key);
+  
+  @override
+  _ChannelMemberListWidgetState createState() => _ChannelMemberListWidgetState();
+}
+
+class _ChannelMemberListWidgetState extends State<ChannelMemberListWidget> {
+  List<WKChannelMember> _members = [];
+  List<WKChannelMember> _filteredMembers = [];
+  bool _loading = true;
+  String _searchKeyword = '';
+  StreamSubscription<ChannelMemberUpdateEvent>? _subscription;
+  
+  @override
+  void initState() {
+    super.initState();
+    _loadMembers();
+    _setupListener();
+  }
+  
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    ChannelMemberListener.removeChannelMemberListener(widget.channelId);
+    super.dispose();
+  }
+  
+  void _loadMembers() {
+    setState(() {
+      _loading = true;
+    });
+    
+    final members = ChannelMemberManager.getAllMembers(widget.channelId);
+    
+    setState(() {
+      _members = members;
+      _filteredMembers = members;
+      _loading = false;
+    });
+  }
+  
+  void _setupListener() {
+    // Add member update listener
+    ChannelMemberListener.addChannelMemberListener(widget.channelId, (member, isEnd) {
+      if (isEnd) {
+        _loadMembers();
+      }
+    });
+    
+    // Listen to member update stream
+    _subscription = ChannelMemberListener.memberUpdateStream.listen((event) {
+      if (event.member.channelID == widget.channelId && event.isEnd) {
+        _loadMembers();
+      }
+    });
+  }
+  
+  void _searchMembers(String keyword) {
+    setState(() {
+      _searchKeyword = keyword;
+      if (keyword.isEmpty) {
+        _filteredMembers = _members;
+      } else {
+        _filteredMembers = ChannelMemberManager.searchMembers(widget.channelId, keyword);
+      }
+    });
+  }
+  
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        // Search box
+        Padding(
+          padding: EdgeInsets.all(16),
+          child: TextField(
+            decoration: InputDecoration(
+              hintText: 'Search members',
+              prefixIcon: Icon(Icons.search),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            onChanged: _searchMembers,
+          ),
+        ),
+        
+        // Member list
+        Expanded(
+          child: _loading
+            ? Center(child: CircularProgressIndicator())
+            : _filteredMembers.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.people_outline, size: 64, color: Colors.grey),
+                      SizedBox(height: 16),
+                      Text('No members', style: TextStyle(color: Colors.grey)),
+                    ],
+                  ),
+                )
+              : ListView.builder(
+                  itemCount: _filteredMembers.length,
+                  itemBuilder: (context, index) {
+                    final member = _filteredMembers[index];
+                    return _buildMemberItem(member);
+                  },
+                ),
+        ),
+      ],
+    );
+  }
+  
+  Widget _buildMemberItem(WKChannelMember member) {
+    return ListTile(
+      leading: CircleAvatar(
+        backgroundImage: member.memberAvatar.isNotEmpty 
+          ? NetworkImage(member.memberAvatar)
+          : null,
+        child: member.memberAvatar.isEmpty 
+          ? Text(member.memberUID.substring(0, 1).toUpperCase())
+          : null,
+      ),
+      title: Text(
+        ChannelMemberManager.getMemberDisplayName(member),
+        style: TextStyle(fontWeight: FontWeight.w500),
+      ),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('ID: ${member.memberUID}'),
+          if (ChannelMemberManager.isMuted(member))
+            Text('Muted', style: TextStyle(color: Colors.red, fontSize: 12)),
+        ],
+      ),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (ChannelMemberManager.isAdmin(member))
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.orange,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                'Admin',
+                style: TextStyle(color: Colors.white, fontSize: 10),
+              ),
+            ),
+          if (member.robot == 1)
+            Container(
+              margin: EdgeInsets.only(left: 4),
+              padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.blue,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                'Bot',
+                style: TextStyle(color: Colors.white, fontSize: 10),
+              ),
+            ),
+        ],
+      ),
+      onTap: () {
+        _showMemberDetails(member);
+      },
+    );
+  }
+  
+  void _showMemberDetails(WKChannelMember member) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Member Details'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Name: ${member.memberName}'),
+            Text('ID: ${member.memberUID}'),
+            Text('Role: ${_getRoleText(member.role)}'),
+            Text('Status: ${_getStatusText(member.status)}'),
+            if (member.memberRemark.isNotEmpty)
+              Text('Remark: ${member.memberRemark}'),
+            if (ChannelMemberManager.isMuted(member))
+              Text('Mute expires: ${_formatTime(member.forbiddenExpirationTime)}'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  String _getRoleText(int role) {
+    switch (role) {
+      case 0: return 'Member';
+      case 1: return 'Admin';
+      case 2: return 'Owner';
+      default: return 'Unknown';
+    }
+  }
+  
+  String _getStatusText(int status) {
+    switch (status) {
+      case 1: return 'Normal';
+      case 2: return 'Blacklist';
+      default: return 'Unknown';
+    }
+  }
+  
+  String _formatTime(int timestamp) {
+    if (timestamp == 0) return 'Permanent';
+    final date = DateTime.fromMillisecondsSinceEpoch(timestamp * 1000);
+    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+  }
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Command Management"
+    icon="terminal"
+    href="/en/sdk/wukongim/flutter/cmd"
+  >
+    Learn command message processing and listening
+  </Card>
+  <Card
+    title="Reminder Management"
+    icon="bell"
+    href="/en/sdk/wukongim/flutter/reminder"
+  >
+    Understand @mentions and custom reminder functionality
+  </Card>
+  <Card
+    title="Channel Management"
+    icon="hash"
+    href="/en/sdk/wukongim/flutter/channel"
+  >
+    Return to channel management functionality
+  </Card>
+  <Card
+    title="Advanced Features"
+    icon="cog"
+    href="/en/sdk/wukongim/flutter/advance"
+  >
+    Explore custom messages and extension features
+  </Card>
+</CardGroup>

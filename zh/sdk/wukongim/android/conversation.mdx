@@ -1,0 +1,612 @@
+---
+title: "会话管理"
+description: "WuKongIM Android SDK 会话管理功能，包括会话列表、未读消息和会话监听"
+icon: "messages-square"
+---
+
+最近会话管理器负责管理用户的最近会话列表，包括获取会话、监听会话变化、删除会话等功能。
+
+<Note>
+需要实现最近会话数据源: [最近会话数据源](/zh/sdk/wukongim/android/datasource#最近会话数据源)
+</Note>
+
+## 获取最近会话列表
+
+### 获取所有最近会话
+
+<CodeGroup>
+```java Java
+// 查询所有最近会话
+WKIM.getInstance().getConversationManager().getAll();
+```
+
+```kotlin Kotlin
+// 查询所有最近会话
+WKIM.getInstance().conversationManager.getAll()
+```
+</CodeGroup>
+
+### 完整使用示例
+
+```java
+public class ConversationListActivity extends AppCompatActivity {
+    
+    private List<WKUIConversationMsg> conversationList = new ArrayList<>();
+    private ConversationAdapter conversationAdapter;
+    private RecyclerView recyclerView;
+    
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_conversation_list);
+        
+        setupRecyclerView();
+        setupConversationListeners();
+        loadConversations();
+    }
+    
+    private void setupConversationListeners() {
+        // 监听会话刷新
+        WKIM.getInstance().getConversationManager().addOnRefreshMsgListener("ConversationList", 
+            new IRefreshConversationMsg() {
+                @Override
+                public void onRefreshConversationMsg(WKUIConversationMsg wkUIConversationMsg, boolean isEnd) {
+                    // wkUIConversationMsg 最近会话消息内容 UI上已有该会话需进行更新，反之添加到UI上
+                    // isEnd 为了防止频繁刷新UI，当isEnd为true可刷新UI
+                    if (isEnd) {
+                        runOnUiThread(() -> {
+                            updateConversationInList(wkUIConversationMsg);
+                        });
+                    }
+                }
+            });
+        
+        // 监听会话删除
+        WKIM.getInstance().getConversationManager().addOnDeleteMsgListener("ConversationList", 
+            new IDeleteConversationMsg() {
+                @Override
+                public void onDelete(String channelID, byte channelType) {
+                    runOnUiThread(() -> {
+                        removeConversationFromList(channelID, channelType);
+                    });
+                }
+            });
+    }
+    
+    private void loadConversations() {
+        // 获取所有最近会话
+        List<WKUIConversationMsg> conversations = WKIM.getInstance().getConversationManager().getAll();
+        
+        if (conversations != null) {
+            conversationList.clear();
+            conversationList.addAll(conversations);
+            
+            // 按时间排序
+            Collections.sort(conversationList, (o1, o2) -> 
+                Long.compare(o2.lastMsgTimestamp, o1.lastMsgTimestamp));
+            
+            conversationAdapter.notifyDataSetChanged();
+            updateTotalUnreadCount();
+        }
+    }
+    
+    private void updateConversationInList(WKUIConversationMsg newConversation) {
+        // 查找是否已存在该会话
+        int existingIndex = -1;
+        for (int i = 0; i < conversationList.size(); i++) {
+            WKUIConversationMsg existing = conversationList.get(i);
+            if (existing.getWkChannel().channelID.equals(newConversation.getWkChannel().channelID) &&
+                existing.getWkChannel().channelType == newConversation.getWkChannel().channelType) {
+                existingIndex = i;
+                break;
+            }
+        }
+        
+        if (existingIndex >= 0) {
+            // 更新现有会话
+            conversationList.set(existingIndex, newConversation);
+            conversationAdapter.notifyItemChanged(existingIndex);
+        } else {
+            // 添加新会话
+            conversationList.add(0, newConversation);
+            conversationAdapter.notifyItemInserted(0);
+        }
+        
+        // 重新排序
+        Collections.sort(conversationList, (o1, o2) -> 
+            Long.compare(o2.lastMsgTimestamp, o1.lastMsgTimestamp));
+        conversationAdapter.notifyDataSetChanged();
+        
+        updateTotalUnreadCount();
+    }
+    
+    private void removeConversationFromList(String channelID, byte channelType) {
+        for (int i = 0; i < conversationList.size(); i++) {
+            WKUIConversationMsg conversation = conversationList.get(i);
+            if (conversation.getWkChannel().channelID.equals(channelID) &&
+                conversation.getWkChannel().channelType == channelType) {
+                conversationList.remove(i);
+                conversationAdapter.notifyItemRemoved(i);
+                break;
+            }
+        }
+        updateTotalUnreadCount();
+    }
+    
+    private void updateTotalUnreadCount() {
+        int totalUnread = 0;
+        for (WKUIConversationMsg conversation : conversationList) {
+            totalUnread += conversation.unreadCount;
+        }
+        
+        // 更新应用角标
+        updateAppBadge(totalUnread);
+        
+        // 更新TabBar角标
+        updateTabBadge(totalUnread);
+    }
+    
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        // 移除监听器
+        WKIM.getInstance().getConversationManager().removeOnRefreshMsgListener("ConversationList");
+        WKIM.getInstance().getConversationManager().removeOnDeleteMsgListener("ConversationList");
+    }
+}
+```
+
+## 新消息监听
+
+只有第一次打开应用时，需要同步最近会话列表，后续最近会话列表的变化，通过监听来获取。
+
+<CodeGroup>
+```java Java
+// 监听刷新最近会话消息
+WKIM.getInstance().getConversationManager().addOnRefreshMsgListener("key", new IRefreshConversationMsg() {
+    @Override
+    public void onRefreshConversationMsg(WKUIConversationMsg wkUIConversationMsg, boolean isEnd) {
+        // wkUIConversationMsg 最近会话消息内容 UI上已有该会话需进行更新，反之添加到UI上
+        // isEnd 为了防止频繁刷新UI，当isEnd为true可刷新UI
+        if (isEnd) {
+            runOnUiThread(() -> {
+                handleConversationUpdate(wkUIConversationMsg);
+            });
+        }
+    }
+});
+
+// 退出页面时移除监听
+WKIM.getInstance().getConversationManager().removeOnRefreshMsgListener("key");
+```
+
+```kotlin Kotlin
+// 监听刷新最近会话消息
+WKIM.getInstance().conversationManager.addOnRefreshMsgListener("key") { wkUIConversationMsg, isEnd ->
+    // wkUIConversationMsg 最近会话消息内容 UI上已有该会话需进行更新，反之添加到UI上
+    // isEnd 为了防止频繁刷新UI，当isEnd为true可刷新UI
+    if (isEnd) {
+        runOnUiThread {
+            handleConversationUpdate(wkUIConversationMsg)
+        }
+    }
+}
+
+// 退出页面时移除监听
+WKIM.getInstance().conversationManager.removeOnRefreshMsgListener("key")
+```
+</CodeGroup>
+
+## 移除最近会话
+
+### 删除会话
+
+<CodeGroup>
+```java Java
+// 删除某个最近会话
+WKIM.getInstance().getConversationManager().deleteWitchChannel(String channelId, byte channelType);
+```
+
+```kotlin Kotlin
+// 删除某个最近会话
+WKIM.getInstance().conversationManager.deleteWitchChannel(channelId, channelType)
+```
+</CodeGroup>
+
+### 监听删除
+
+在删除某个最近会话时会回调此方法：
+
+<CodeGroup>
+```java Java
+// 监听删除最近会话消息
+WKIM.getInstance().getConversationManager().addOnDeleteMsgListener("key", new IDeleteConversationMsg() {
+    @Override
+    public void onDelete(String channelID, byte channelType) {
+        // channelID 聊天频道ID
+        // channelType 聊天频道类型
+        runOnUiThread(() -> {
+            handleConversationDeleted(channelID, channelType);
+        });
+    }
+});
+
+// 退出页面时移除监听
+WKIM.getInstance().getConversationManager().removeOnDeleteMsgListener("key");
+```
+
+```kotlin Kotlin
+// 监听删除最近会话消息
+WKIM.getInstance().conversationManager.addOnDeleteMsgListener("key") { channelID, channelType ->
+    // channelID 聊天频道ID
+    // channelType 聊天频道类型
+    runOnUiThread {
+        handleConversationDeleted(channelID, channelType)
+    }
+}
+
+// 退出页面时移除监听
+WKIM.getInstance().conversationManager.removeOnDeleteMsgListener("key")
+```
+</CodeGroup>
+
+### 删除操作示例
+
+```java
+public class ConversationOperationHelper {
+    
+    // 删除会话
+    public void deleteConversation(String channelId, byte channelType) {
+        // 显示确认对话框
+        new AlertDialog.Builder(context)
+                .setTitle("删除会话")
+                .setMessage("确定要删除这个会话吗？")
+                .setPositiveButton("删除", (dialog, which) -> {
+                    // 执行删除操作
+                    WKIM.getInstance().getConversationManager().deleteWitchChannel(channelId, channelType);
+                    
+                    // 同时调用服务器API
+                    ApiManager.deleteConversation(channelId, channelType, new ApiCallback<Void>() {
+                        @Override
+                        public void onSuccess(Void result) {
+                            // 删除成功
+                            showToast("会话已删除");
+                        }
+                        
+                        @Override
+                        public void onError(int code, String message) {
+                            // 删除失败，可能需要恢复会话
+                            showToast("删除失败: " + message);
+                        }
+                    });
+                })
+                .setNegativeButton("取消", null)
+                .show();
+    }
+    
+    // 批量删除会话
+    public void deleteMultipleConversations(List<WKUIConversationMsg> conversations) {
+        for (WKUIConversationMsg conversation : conversations) {
+            WKIM.getInstance().getConversationManager().deleteWitchChannel(
+                conversation.getWkChannel().channelID,
+                conversation.getWkChannel().channelType
+            );
+        }
+        
+        showToast("已删除 " + conversations.size() + " 个会话");
+    }
+}
+```
+
+## 常用方法
+
+<CodeGroup>
+```java Java
+// 查询所有最近会话
+WKIM.getInstance().getConversationManager().getAll();
+
+// 修改消息红点
+WKIM.getInstance().getConversationManager().updateRedDot(String channelID, byte channelType, int redDot);
+
+// 删除某个会话
+WKIM.getInstance().getConversationManager().deleteMsg(String channelId, byte channelType);
+```
+
+```kotlin Kotlin
+// 查询所有最近会话
+WKIM.getInstance().conversationManager.getAll()
+
+// 修改消息红点
+WKIM.getInstance().conversationManager.updateRedDot(channelID, channelType, redDot)
+
+// 删除某个会话
+WKIM.getInstance().conversationManager.deleteMsg(channelId, channelType)
+```
+</CodeGroup>
+
+### 常用操作示例
+
+```java
+public class ConversationManager {
+    
+    // 更新红点状态
+    public void updateRedDotStatus(String channelID, byte channelType, boolean hasRedDot) {
+        int redDot = hasRedDot ? 1 : 0;
+        WKIM.getInstance().getConversationManager().updateRedDot(channelID, channelType, redDot);
+    }
+    
+    // 清除未读数
+    public void clearUnreadCount(String channelID, byte channelType) {
+        // 通过更新红点状态来清除未读数
+        updateRedDotStatus(channelID, channelType, false);
+        
+        // 同时调用服务器API
+        ApiManager.clearUnreadCount(channelID, channelType, new ApiCallback<Void>() {
+            @Override
+            public void onSuccess(Void result) {
+                // 清除成功
+            }
+            
+            @Override
+            public void onError(int code, String message) {
+                // 清除失败
+            }
+        });
+    }
+    
+    // 获取总未读数
+    public int getTotalUnreadCount() {
+        List<WKUIConversationMsg> conversations = WKIM.getInstance().getConversationManager().getAll();
+        int totalUnread = 0;
+        
+        if (conversations != null) {
+            for (WKUIConversationMsg conversation : conversations) {
+                totalUnread += conversation.unreadCount;
+            }
+        }
+        
+        return totalUnread;
+    }
+    
+    // 获取指定类型的会话
+    public List<WKUIConversationMsg> getConversationsByType(byte channelType) {
+        List<WKUIConversationMsg> allConversations = WKIM.getInstance().getConversationManager().getAll();
+        List<WKUIConversationMsg> filteredConversations = new ArrayList<>();
+        
+        if (allConversations != null) {
+            for (WKUIConversationMsg conversation : allConversations) {
+                if (conversation.getWkChannel().channelType == channelType) {
+                    filteredConversations.add(conversation);
+                }
+            }
+        }
+        
+        return filteredConversations;
+    }
+}
+```
+
+## WKUIConversationMsg 数据结构
+
+### 会话消息属性
+
+```java
+public class WKUIConversationMsg {
+    // 最后一条消息时间
+    public long lastMsgTimestamp;
+    
+    // 消息频道 频道资料，可能为空，如果为空可以调用 WKChannelManager 的 fetchChannelInfo(channelID, channelType); 触发频道信息变更
+    private WKChannel wkChannel;
+    
+    // 消息正文
+    private WKMsg wkMsg;
+    
+    // 未读消息数量
+    public int unreadCount;
+    
+    // 远程扩展
+    private WKConversationMsgExtra remoteMsgExtra;
+    
+    // 本地扩展字段
+    public HashMap<String, Object> localExtraMap;
+    
+    // 最近会话提醒项 如[有人@你][群内审核]等
+    public List<WKReminder> getReminderList() {
+        // ...
+    }
+    
+    // 获取远程扩展
+    public WKConversationMsgExtra getRemoteMsgExtra() {
+        // ...
+    }
+    
+    // 会话channel信息
+    public WKChannel getWkChannel() {
+        // ...
+    }
+}
+```
+
+### 属性说明
+
+| 属性 | 类型 | 说明 |
+|------|------|------|
+| `lastMsgTimestamp` | long | 最后一条消息时间戳 |
+| `wkChannel` | WKChannel | 消息频道信息 |
+| `wkMsg` | WKMsg | 最后一条消息内容 |
+| `unreadCount` | int | 未读消息数量 |
+| `remoteMsgExtra` | WKConversationMsgExtra | 远程扩展信息 |
+| `localExtraMap` | HashMap | 本地扩展字段 |
+
+## 最佳实践
+
+### 1. 会话列表性能优化
+
+```java
+public class ConversationListOptimizer {
+    
+    private static final int MAX_DISPLAY_COUNT = 100; // 最大显示数量
+    
+    // 分页加载会话
+    public List<WKUIConversationMsg> getConversationsWithPagination(int page, int pageSize) {
+        List<WKUIConversationMsg> allConversations = WKIM.getInstance().getConversationManager().getAll();
+        
+        if (allConversations == null || allConversations.isEmpty()) {
+            return new ArrayList<>();
+        }
+        
+        // 按时间排序
+        Collections.sort(allConversations, (o1, o2) -> 
+            Long.compare(o2.lastMsgTimestamp, o1.lastMsgTimestamp));
+        
+        // 分页处理
+        int startIndex = (page - 1) * pageSize;
+        int endIndex = Math.min(startIndex + pageSize, allConversations.size());
+        
+        if (startIndex >= allConversations.size()) {
+            return new ArrayList<>();
+        }
+        
+        return allConversations.subList(startIndex, endIndex);
+    }
+    
+    // 搜索会话
+    public List<WKUIConversationMsg> searchConversations(String keyword) {
+        List<WKUIConversationMsg> allConversations = WKIM.getInstance().getConversationManager().getAll();
+        List<WKUIConversationMsg> results = new ArrayList<>();
+        
+        if (allConversations != null && !TextUtils.isEmpty(keyword)) {
+            String lowerKeyword = keyword.toLowerCase();
+            
+            for (WKUIConversationMsg conversation : allConversations) {
+                if (matchesKeyword(conversation, lowerKeyword)) {
+                    results.add(conversation);
+                }
+            }
+        }
+        
+        return results;
+    }
+    
+    private boolean matchesKeyword(WKUIConversationMsg conversation, String keyword) {
+        WKChannel channel = conversation.getWkChannel();
+        if (channel != null) {
+            // 搜索频道名称
+            if (channel.channelName != null && channel.channelName.toLowerCase().contains(keyword)) {
+                return true;
+            }
+            
+            // 搜索频道备注
+            if (channel.channelRemark != null && channel.channelRemark.toLowerCase().contains(keyword)) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+}
+```
+
+### 2. 未读消息管理
+
+```java
+public class UnreadMessageManager {
+    
+    // 获取未读消息统计
+    public UnreadStats getUnreadStats() {
+        List<WKUIConversationMsg> conversations = WKIM.getInstance().getConversationManager().getAll();
+        
+        int totalUnread = 0;
+        int unreadConversationCount = 0;
+        
+        if (conversations != null) {
+            for (WKUIConversationMsg conversation : conversations) {
+                if (conversation.unreadCount > 0) {
+                    totalUnread += conversation.unreadCount;
+                    unreadConversationCount++;
+                }
+            }
+        }
+        
+        return new UnreadStats(totalUnread, unreadConversationCount);
+    }
+    
+    // 清除所有未读数
+    public void clearAllUnreadCount() {
+        List<WKUIConversationMsg> conversations = WKIM.getInstance().getConversationManager().getAll();
+        
+        if (conversations != null) {
+            for (WKUIConversationMsg conversation : conversations) {
+                if (conversation.unreadCount > 0) {
+                    WKIM.getInstance().getConversationManager().updateRedDot(
+                        conversation.getWkChannel().channelID,
+                        conversation.getWkChannel().channelType,
+                        0
+                    );
+                }
+            }
+        }
+    }
+    
+    public static class UnreadStats {
+        public final int totalUnread;
+        public final int unreadConversationCount;
+        
+        public UnreadStats(int totalUnread, int unreadConversationCount) {
+            this.totalUnread = totalUnread;
+            this.unreadConversationCount = unreadConversationCount;
+        }
+    }
+}
+```
+
+### 3. 内存管理
+
+```java
+@Override
+protected void onDestroy() {
+    super.onDestroy();
+    
+    // 移除所有会话相关监听器
+    WKIM.getInstance().getConversationManager().removeOnRefreshMsgListener("ActivityKey");
+    WKIM.getInstance().getConversationManager().removeOnDeleteMsgListener("ActivityKey");
+    
+    // 清理会话列表
+    if (conversationList != null) {
+        conversationList.clear();
+    }
+}
+```
+
+## 下一步
+
+<CardGroup cols={2}>
+  <Card
+    title="数据源配置"
+    icon="database"
+    href="/zh/sdk/wukongim/android/datasource"
+  >
+    学习如何配置会话数据源
+  </Card>
+  <Card
+    title="命令管理"
+    icon="terminal"
+    href="/zh/sdk/wukongim/android/cmd"
+  >
+    处理命令消息
+  </Card>
+  <Card
+    title="提醒管理"
+    icon="bell"
+    href="/zh/sdk/wukongim/android/reminder"
+  >
+    管理消息提醒功能
+  </Card>
+  <Card
+    title="消息管理"
+    icon="message-circle"
+    href="/zh/sdk/wukongim/android/message"
+  >
+    回到消息处理功能
+  </Card>
+</CardGroup>

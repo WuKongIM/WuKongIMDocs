@@ -1,0 +1,29 @@
+---
+title: "版本升级"
+description: "WuKongIM Kubernetes 部署的版本升级指南"
+icon: "arrow-up"
+---
+
+WuKongIM 支持在 Kubernetes 环境中进行版本升级。
+
+## 升级步骤
+
+### 1. 更新 Helm 仓库
+
+```bash
+helm repo update
+```
+
+### 2. 搜索新的版本 Chart
+
+```bash
+helm search repo wukongim
+```
+
+### 3. 更新
+
+```bash
+helm upgrade wkim wukongim/wukongim -n wukongim --create-namespace --version 版本号
+```
+
+

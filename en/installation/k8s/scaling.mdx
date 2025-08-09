@@ -1,0 +1,324 @@
+---
+title: "Cluster Scaling"
+description: "WuKongIM Kubernetes cluster scaling operations guide"
+icon: "expand"
+---
+
+WuKongIM supports dynamic scaling in Kubernetes environments, allowing flexible adjustment of cluster size based on business requirements.
+
+## Description
+
+**Applicable scenarios**: Applications with high data security requirements, large applications.
+
+**Advantages**: High availability, strong disaster recovery, supports online scaling, real-time automatic backup between multiple replicas, load balancing, no manual configuration required, fast scaling.
+
+<Warning>
+  **Note**: WuKongIM currently supports hot scaling but does not support hot shrinking! Does not support hot shrinking! Does not support hot shrinking!
+</Warning>
+
+## Scaling Operations
+
+### Scale Up Cluster
+
+```bash
+# Scale to 3 replicas
+helm upgrade wkim wukongim/wukongim \
+  -n wukongim \
+  --create-namespace \
+  --version 0.1.0 \
+  --set replicaCount=3
+```
+
+**Optional parameters**:
+- `replicaCount=3`: Number of replicas (default is 2)
+- `externalIP=<IP_ADDRESS>`: External IP address
+
+### Scale to Different Sizes
+
+```bash
+# Scale to 5 replicas for high load
+helm upgrade wkim wukongim/wukongim \
+  -n wukongim \
+  --version 0.1.0 \
+  --set replicaCount=5
+
+# Scale to 7 replicas for very high load
+helm upgrade wkim wukongim/wukongim \
+  -n wukongim \
+  --version 0.1.0 \
+  --set replicaCount=7
+```
+
+### Verify Scaling
+
+```bash
+# Check Pod status
+kubectl get pods -n wukongim
+
+# Check cluster nodes
+kubectl port-forward svc/wkim-wukongim 5001:5001 -n wukongim &
+curl http://localhost:5001/cluster/nodes
+
+# View detailed cluster information
+curl http://localhost:5001/cluster/nodes | jq '.'
+```
+
+## Scaling Best Practices
+
+### Pre-Scaling Checklist
+
+1. **Resource Planning**: Ensure Kubernetes cluster has sufficient resources
+2. **Monitoring**: Check current resource usage and performance metrics
+3. **Backup**: Create backup before scaling operations
+4. **Load Testing**: Verify current performance baseline
+
+### Recommended Scaling Patterns
+
+**For Growing Load**:
+```bash
+# Start with 3 replicas (minimum for HA)
+helm upgrade wkim wukongim/wukongim -n wukongim --set replicaCount=3
+
+# Scale to 5 for moderate load increase
+helm upgrade wkim wukongim/wukongim -n wukongim --set replicaCount=5
+
+# Scale to 7 for high load
+helm upgrade wkim wukongim/wukongim -n wukongim --set replicaCount=7
+```
+
+**Resource Allocation per Replica**:
+```bash
+# Scale with resource adjustments
+helm upgrade wkim wukongim/wukongim \
+  -n wukongim \
+  --set replicaCount=5 \
+  --set resources.requests.memory=4Gi \
+  --set resources.requests.cpu=2000m \
+  --set resources.limits.memory=8Gi \
+  --set resources.limits.cpu=4000m
+```
+
+### Post-Scaling Verification
+
+```bash
+# Check all pods are running
+kubectl get pods -n wukongim -o wide
+
+# Verify cluster health
+kubectl exec -n wukongim deployment/wkim-wukongim -- \
+  curl -f http://localhost:5001/health
+
+# Check cluster status
+kubectl port-forward svc/wkim-wukongim 5001:5001 -n wukongim &
+curl http://localhost:5001/cluster/nodes
+
+# Monitor resource usage
+kubectl top pods -n wukongim
+kubectl top nodes
+```
+
+## Monitoring During Scaling
+
+### Watch Scaling Progress
+
+```bash
+# Watch pods being created
+kubectl get pods -n wukongim -w
+
+# Monitor events
+kubectl get events -n wukongim --sort-by='.lastTimestamp'
+
+# Check deployment status
+kubectl rollout status deployment/wkim-wukongim -n wukongim
+```
+
+### Performance Monitoring
+
+```bash
+# Check resource usage
+kubectl top pods -n wukongim
+
+# View logs during scaling
+kubectl logs -f deployment/wkim-wukongim -n wukongim
+
+# Monitor cluster metrics
+kubectl port-forward svc/wkim-wukongim 5300:5300 -n wukongim &
+curl http://localhost:5300/metrics
+```
+
+## Troubleshooting Scaling Issues
+
+### Common Scaling Problems
+
+**Insufficient Resources**:
+```bash
+# Check node resources
+kubectl describe nodes
+
+# Check resource requests vs limits
+kubectl describe deployment wkim-wukongim -n wukongim
+
+# View pod events
+kubectl describe pods -n wukongim
+```
+
+**Pod Startup Issues**:
+```bash
+# Check pod status
+kubectl get pods -n wukongim
+
+# View pod logs
+kubectl logs <pod-name> -n wukongim
+
+# Check pod events
+kubectl describe pod <pod-name> -n wukongim
+```
+
+**Cluster Communication Issues**:
+```bash
+# Test inter-pod communication
+kubectl exec -it <pod-name> -n wukongim -- ping <other-pod-ip>
+
+# Check cluster ports
+kubectl exec -it <pod-name> -n wukongim -- netstat -tulpn | grep 11110
+
+# View cluster logs
+kubectl logs <pod-name> -n wukongim | grep cluster
+```
+
+### Recovery Procedures
+
+```bash
+# Rollback to previous replica count if issues occur
+helm rollback wkim -n wukongim
+
+# Force restart problematic pods
+kubectl delete pod <pod-name> -n wukongim
+
+# Check and fix resource constraints
+kubectl patch deployment wkim-wukongim -n wukongim -p '{"spec":{"template":{"spec":{"containers":[{"name":"wukongim","resources":{"requests":{"memory":"4Gi","cpu":"2000m"}}}]}}}}'
+```
+
+## Automated Scaling
+
+### Horizontal Pod Autoscaler (HPA)
+
+```yaml
+# hpa.yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: wkim-hpa
+  namespace: wukongim
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: wkim-wukongim
+  minReplicas: 3
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+```
+
+Apply HPA:
+```bash
+kubectl apply -f hpa.yaml
+kubectl get hpa -n wukongim
+```
+
+### Vertical Pod Autoscaler (VPA)
+
+```yaml
+# vpa.yaml
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: wkim-vpa
+  namespace: wukongim
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: wkim-wukongim
+  updatePolicy:
+    updateMode: "Auto"
+  resourcePolicy:
+    containerPolicies:
+    - containerName: wukongim
+      maxAllowed:
+        cpu: 4
+        memory: 8Gi
+      minAllowed:
+        cpu: 500m
+        memory: 1Gi
+```
+
+## Performance Considerations
+
+### Optimal Replica Counts
+
+| Load Level | Recommended Replicas | Use Case |
+|------------|---------------------|----------|
+| Light | 3 | Development, small teams |
+| Medium | 5 | Growing applications |
+| High | 7 | Large applications |
+| Very High | 9+ | Enterprise scale |
+
+### Resource Planning
+
+```bash
+# Calculate total resources needed
+# For 5 replicas with 4Gi memory each = 20Gi total memory required
+# For 5 replicas with 2 CPU each = 10 CPU cores total required
+
+helm upgrade wkim wukongim/wukongim \
+  -n wukongim \
+  --set replicaCount=5 \
+  --set resources.requests.memory=4Gi \
+  --set resources.requests.cpu=2000m
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Multi-Node Deployment"
+    icon="network"
+    href="/en/installation/k8s/multi-node"
+  >
+    Learn about multi-node cluster deployment
+  </Card>
+  <Card
+    title="Upgrade Guide"
+    icon="arrow-up"
+    href="/en/installation/k8s/upgrade"
+  >
+    Upgrade WuKongIM in Kubernetes
+  </Card>
+  <Card
+    title="Monitoring Setup"
+    icon="chart-line"
+    href="/en/installation/linux/monitoring"
+  >
+    Set up monitoring for scaled cluster
+  </Card>
+  <Card
+    title="Performance Tuning"
+    icon="gauge"
+    href="/en/server/configuration"
+  >
+    Optimize performance for scaled deployment
+  </Card>
+</CardGroup>

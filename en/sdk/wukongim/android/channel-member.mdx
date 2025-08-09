@@ -1,0 +1,471 @@
+---
+title: "Channel Member Management"
+description: "WuKongIM Android SDK channel member management functionality, including member retrieval, search and management"
+icon: "users"
+---
+
+The channel member manager is responsible for managing member information within channels, including getting member lists, searching members, modifying member remarks, and other functions.
+
+<Note>
+Need to implement channel member data source: [Channel Member Data Source](/en/sdk/wukongim/android/datasource#channel-member-data-source)
+</Note>
+
+## Get Channel Members
+
+### Get All Members
+
+<CodeGroup>
+```java Java
+// Get all members in a channel
+WKIM.getInstance().getChannelMembersManager().getMembers(channelId, channelType);
+```
+
+```kotlin Kotlin
+// Get all members in a channel
+WKIM.getInstance().channelMembersManager.getMembers(channelId, channelType)
+```
+</CodeGroup>
+
+### Get Single Member
+
+<CodeGroup>
+```java Java
+// Get single channel member
+WKIM.getInstance().getChannelMembersManager().getMember(channelId, channelType, uid);
+```
+
+```kotlin Kotlin
+// Get single channel member
+WKIM.getInstance().channelMembersManager.getMember(channelId, channelType, uid)
+```
+</CodeGroup>
+
+### Complete Usage Example
+
+```java
+public class GroupMembersActivity extends AppCompatActivity {
+    
+    private String channelId;
+    private byte channelType;
+    private List<WKChannelMember> memberList = new ArrayList<>();
+    private MemberAdapter memberAdapter;
+    
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_group_members);
+        
+        setupRecyclerView();
+        loadMembers();
+    }
+    
+    private void loadMembers() {
+        // Get all channel members
+        List<WKChannelMember> members = WKIM.getInstance().getChannelMembersManager()
+                .getMembers(channelId, channelType);
+        
+        if (members != null && !members.isEmpty()) {
+            memberList.clear();
+            memberList.addAll(members);
+            memberAdapter.notifyDataSetChanged();
+            
+            updateMemberCount(members.size());
+        } else {
+            // No local data, may need to sync from server
+            showEmptyState();
+        }
+    }
+    
+    private void getMemberInfo(String uid) {
+        WKChannelMember member = WKIM.getInstance().getChannelMembersManager()
+                .getMember(channelId, channelType, uid);
+        
+        if (member != null) {
+            showMemberProfile(member);
+        } else {
+            showToast("Member information not found");
+        }
+    }
+    
+    private void updateMemberCount(int count) {
+        setTitle("Group Members (" + count + ")");
+    }
+}
+```
+
+## Search Members
+
+### Paginated Member Search
+
+<CodeGroup>
+```java Java
+// Search channel member list
+WKIM.getInstance().getChannelMembersManager().getWithPageOrSearch(
+    channelId, 
+    channelType, 
+    "keyword", 
+    1,  // Page number
+    20, // Items per page
+    (list, isRemote) -> {
+        // list: member list    
+        // isRemote: whether data is from remote
+        runOnUiThread(() -> {
+            handleSearchResult(list, isRemote);
+        });
+    }
+);
+```
+
+```kotlin Kotlin
+// Search channel member list
+WKIM.getInstance().channelMembersManager.getWithPageOrSearch(
+    channelId, 
+    channelType, 
+    "keyword", 
+    1,  // Page number
+    20  // Items per page
+) { list, isRemote ->
+    // list: member list    
+    // isRemote: whether data is from remote
+    runOnUiThread {
+        handleSearchResult(list, isRemote)
+    }
+}
+```
+</CodeGroup>
+
+### Search Functionality Example
+
+```java
+public class MemberSearchActivity extends AppCompatActivity {
+    
+    private EditText searchEditText;
+    private RecyclerView searchResultRecyclerView;
+    private List<WKChannelMember> searchResults = new ArrayList<>();
+    private MemberAdapter searchAdapter;
+    
+    private String channelId;
+    private byte channelType;
+    private int currentPage = 1;
+    private boolean isLoading = false;
+    
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_member_search);
+        
+        setupViews();
+        setupSearch();
+    }
+    
+    private void setupSearch() {
+        searchEditText.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void afterTextChanged(Editable s) {
+                String keyword = s.toString().trim();
+                if (!TextUtils.isEmpty(keyword)) {
+                    searchMembers(keyword);
+                } else {
+                    clearSearchResults();
+                }
+            }
+            
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {}
+        });
+    }
+    
+    private void searchMembers(String keyword) {
+        if (isLoading) return;
+        
+        isLoading = true;
+        showLoadingIndicator();
+        
+        WKIM.getInstance().getChannelMembersManager().getWithPageOrSearch(
+            channelId,
+            channelType,
+            keyword,
+            1, // Start from first page for new search
+            20,
+            (list, isRemote) -> {
+                runOnUiThread(() -> {
+                    isLoading = false;
+                    hideLoadingIndicator();
+                    
+                    if (list != null && !list.isEmpty()) {
+                        searchResults.clear();
+                        searchResults.addAll(list);
+                        searchAdapter.notifyDataSetChanged();
+                        showSearchResults();
+                    } else {
+                        showNoResultsState();
+                    }
+                });
+            }
+        );
+    }
+    
+    private void loadMoreMembers(String keyword) {
+        if (isLoading) return;
+        
+        isLoading = true;
+        currentPage++;
+        
+        WKIM.getInstance().getChannelMembersManager().getWithPageOrSearch(
+            channelId,
+            channelType,
+            keyword,
+            currentPage,
+            20,
+            (list, isRemote) -> {
+                runOnUiThread(() -> {
+                    isLoading = false;
+                    
+                    if (list != null && !list.isEmpty()) {
+                        int oldSize = searchResults.size();
+                        searchResults.addAll(list);
+                        searchAdapter.notifyItemRangeInserted(oldSize, list.size());
+                    }
+                });
+            }
+        );
+    }
+}
+```
+
+## Common Operations
+
+### Save Channel Members
+
+<CodeGroup>
+```java Java
+// Batch save members
+WKIM.getInstance().getChannelMembersManager().save(List<WKChannelMember> list);
+```
+
+```kotlin Kotlin
+// Batch save members
+WKIM.getInstance().channelMembersManager.save(list)
+```
+</CodeGroup>
+
+### Update Member Remark
+
+<CodeGroup>
+```java Java
+// Update remark
+WKIM.getInstance().getChannelMembersManager().updateRemarkName(channelId, channelType, uid, remark);
+```
+
+```kotlin Kotlin
+// Update remark
+WKIM.getInstance().channelMembersManager.updateRemarkName(channelId, channelType, uid, remark)
+```
+</CodeGroup>
+
+### Operations Example
+
+```java
+public class MemberManagementHelper {
+    
+    // Batch add members
+    public void addMembers(String channelId, byte channelType, List<WKChannelMember> newMembers) {
+        // Save to local database
+        WKIM.getInstance().getChannelMembersManager().save(newMembers);
+        
+        // Also call server API
+        ApiManager.addChannelMembers(channelId, channelType, newMembers, 
+            new ApiCallback<Void>() {
+                @Override
+                public void onSuccess(Void result) {
+                    // Add successful, local data already saved
+                    notifyMembersChanged();
+                }
+                
+                @Override
+                public void onError(int code, String message) {
+                    // Add failed, may need to rollback local data
+                    handleAddMembersError(code, message);
+                }
+            });
+    }
+    
+    // Update member remark
+    public void updateMemberRemark(String channelId, byte channelType, String uid, String newRemark) {
+        // Update local remark
+        WKIM.getInstance().getChannelMembersManager().updateRemarkName(channelId, channelType, uid, newRemark);
+        
+        // Sync to server
+        ApiManager.updateMemberRemark(channelId, channelType, uid, newRemark,
+            new ApiCallback<Void>() {
+                @Override
+                public void onSuccess(Void result) {
+                    // Remark update successful
+                    notifyMemberRemarkChanged(uid, newRemark);
+                }
+                
+                @Override
+                public void onError(int code, String message) {
+                    // Update failed, restore original remark
+                    WKChannelMember member = WKIM.getInstance().getChannelMembersManager()
+                            .getMember(channelId, channelType, uid);
+                    if (member != null) {
+                        WKIM.getInstance().getChannelMembersManager()
+                                .updateRemarkName(channelId, channelType, uid, member.memberRemark);
+                    }
+                }
+            });
+    }
+    
+    // Get online members
+    public List<WKChannelMember> getOnlineMembers(String channelId, byte channelType) {
+        List<WKChannelMember> allMembers = WKIM.getInstance().getChannelMembersManager()
+                .getMembers(channelId, channelType);
+        
+        List<WKChannelMember> onlineMembers = new ArrayList<>();
+        if (allMembers != null) {
+            for (WKChannelMember member : allMembers) {
+                if (member.status == 1) { // 1 means normal status
+                    onlineMembers.add(member);
+                }
+            }
+        }
+        return onlineMembers;
+    }
+    
+    // Get admin members
+    public List<WKChannelMember> getAdminMembers(String channelId, byte channelType) {
+        List<WKChannelMember> allMembers = WKIM.getInstance().getChannelMembersManager()
+                .getMembers(channelId, channelType);
+        
+        List<WKChannelMember> adminMembers = new ArrayList<>();
+        if (allMembers != null) {
+            for (WKChannelMember member : allMembers) {
+                if (member.role > 0) { // role > 0 means has admin privileges
+                    adminMembers.add(member);
+                }
+            }
+        }
+        return adminMembers;
+    }
+}
+```
+
+## WKChannelMember Data Structure
+
+### Member Properties
+
+```java
+public class WKChannelMember {
+    // Auto-increment ID
+    public long id;
+    
+    // Channel ID
+    public String channelID;
+    
+    // Channel type
+    public byte channelType;
+    
+    // Member ID
+    public String memberUID;
+    
+    // Member name
+    public String memberName;
+    
+    // Member remark
+    public String memberRemark;
+    
+    // Member avatar
+    public String memberAvatar;
+    
+    // Member role
+    public int role;
+    
+    // Member status (blacklist etc.) 1: normal 2: blacklist
+    public int status;
+    
+    // Is deleted
+    public int isDeleted;
+    
+    // Creation time
+    public String createdAt;
+    
+    // Update time
+    public String updatedAt;
+    
+    // Version
+    public long version;
+    
+    // Robot 0: no 1: yes
+    public int robot;
+    
+    // Extension fields
+    public HashMap extraMap;
+    
+    // User remark
+    public String remark;
+    
+    // Inviter UID
+    public String memberInviteUID;
+    
+    // Forbidden expiration time
+    public long forbiddenExpirationTime;
+    
+    public String memberAvatarCacheKey;
+}
+```
+
+### Property Description
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `id` | long | Auto-increment ID |
+| `channelID` | String | Channel ID |
+| `channelType` | byte | Channel type |
+| `memberUID` | String | Member user ID |
+| `memberName` | String | Member name |
+| `memberRemark` | String | Member remark |
+| `memberAvatar` | String | Member avatar URL |
+| `role` | int | Member role (0=regular member, >0=admin) |
+| `status` | int | Member status (1=normal, 2=blacklist) |
+| `isDeleted` | int | Is deleted (0=normal, 1=deleted) |
+| `robot` | int | Is robot (0=no, 1=yes) |
+| `remark` | String | User remark |
+| `memberInviteUID` | String | Inviter UID |
+| `forbiddenExpirationTime` | long | Forbidden expiration timestamp |
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Conversation Management"
+    icon="users"
+    href="/en/sdk/wukongim/android/conversation"
+  >
+    Learn how to manage conversation lists
+  </Card>
+  <Card
+    title="Data Source Configuration"
+    icon="database"
+    href="/en/sdk/wukongim/android/datasource"
+  >
+    Configure channel member data sources
+  </Card>
+  <Card
+    title="Channel Management"
+    icon="hash"
+    href="/en/sdk/wukongim/android/channel"
+  >
+    Return to channel management functionality
+  </Card>
+  <Card
+    title="Advanced Features"
+    icon="cog"
+    href="/en/sdk/wukongim/android/advance"
+  >
+    Explore advanced features and configuration
+  </Card>
+</CardGroup>

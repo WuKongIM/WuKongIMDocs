@@ -1,0 +1,580 @@
+---
+title: "频道成员管理"
+description: "WuKongIM HarmonyOS SDK 频道成员管理功能，包括成员获取、监听和操作"
+icon: "users"
+---
+
+频道成员管理提供了完整的群组成员管理功能，包括成员信息获取、成员状态监听、权限管理等核心能力。
+
+<Note>
+需要实现分页获取频道成员资料的数据源: [获取分页频道成员资料数据源](/zh/sdk/wukongim/harmonyos/datasource#频道成员分页数据源)
+</Note>
+
+## 获取频道成员
+
+### 获取某个频道下的所有成员
+
+```typescript
+// 获取某个channel下的所有成员
+let members = WKIM.shared.channelMemberManager().getMembers(channelId, channelType);
+```
+
+### 分页查询频道成员
+
+```typescript
+// 分页获取频道成员
+WKIM.shared.channelMemberManager().getWithPageOrSearch(channelId, channelType, option);
+```
+
+`option` 说明：
+
+```typescript
+export class SyncChannelMemberOptions {
+  searchKey: string = '';  // 搜索关键字
+  page: number = 0;        // 页码
+  limit: number = 20;      // 每页数量
+}
+```
+
+### 完整成员获取示例
+
+```typescript
+import { WKIM, WKChannelMember, WKChannelType, SyncChannelMemberOptions } from '@wukong/wkim';
+
+class ChannelMemberManager {
+  
+  // 获取所有成员
+  static getAllMembers(channelId: string, channelType: number): WKChannelMember[] {
+    try {
+      const members = WKIM.shared.channelMemberManager().getMembers(channelId, channelType);
+      console.log(`获取到 ${members.length} 个成员`);
+      return members;
+    } catch (error) {
+      console.error('获取成员列表失败:', error);
+      return [];
+    }
+  }
+  
+  // 分页获取成员
+  static async getPagedMembers(
+    channelId: string, 
+    channelType: number, 
+    page: number = 0, 
+    limit: number = 20,
+    searchKey: string = ''
+  ): Promise<WKChannelMember[]> {
+    try {
+      const option = new SyncChannelMemberOptions();
+      option.page = page;
+      option.limit = limit;
+      option.searchKey = searchKey;
+      
+      const members = await WKIM.shared.channelMemberManager().getWithPageOrSearch(channelId, channelType, option);
+      console.log(`分页获取成员成功，第 ${page} 页，共 ${members.length} 个成员`);
+      return members;
+    } catch (error) {
+      console.error('分页获取成员失败:', error);
+      return [];
+    }
+  }
+  
+  // 搜索成员
+  static async searchMembers(channelId: string, channelType: number, keyword: string): Promise<WKChannelMember[]> {
+    if (!keyword.trim()) {
+      return [];
+    }
+    
+    return await this.getPagedMembers(channelId, channelType, 0, 50, keyword);
+  }
+  
+  // 按角色筛选成员
+  static getMembersByRole(channelId: string, channelType: number, role: number): WKChannelMember[] {
+    const allMembers = this.getAllMembers(channelId, channelType);
+    return allMembers.filter(member => member.role === role);
+  }
+  
+  // 获取管理员列表
+  static getAdminMembers(channelId: string, channelType: number): WKChannelMember[] {
+    return this.getMembersByRole(channelId, channelType, 1); // 假设1为管理员角色
+  }
+  
+  // 获取普通成员列表
+  static getNormalMembers(channelId: string, channelType: number): WKChannelMember[] {
+    return this.getMembersByRole(channelId, channelType, 0); // 假设0为普通成员角色
+  }
+  
+  // 获取在线成员（需要结合频道信息）
+  static getOnlineMembers(channelId: string, channelType: number): WKChannelMember[] {
+    const allMembers = this.getAllMembers(channelId, channelType);
+    // 这里需要结合频道管理器获取在线状态
+    return allMembers.filter(member => {
+      const channel = WKIM.shared.channelManager().getChannel(member.memberUID, WKChannelType.personal);
+      return channel?.online === 1;
+    });
+  }
+  
+  // 获取成员显示名称
+  static getMemberDisplayName(member: WKChannelMember): string {
+    if (member.memberRemark) {
+      return member.memberRemark;
+    }
+    if (member.memberName) {
+      return member.memberName;
+    }
+    return member.memberUID;
+  }
+  
+  // 检查成员是否为管理员
+  static isAdmin(member: WKChannelMember): boolean {
+    return member.role === 1; // 假设1为管理员角色
+  }
+  
+  // 检查成员是否被禁言
+  static isMuted(member: WKChannelMember): boolean {
+    if (member.forbiddenExpirationTime === 0) {
+      return false;
+    }
+    const now = Math.floor(Date.now() / 1000);
+    return member.forbiddenExpirationTime > now;
+  }
+  
+  // 检查成员是否在黑名单
+  static isBlacklisted(member: WKChannelMember): boolean {
+    return member.status === 2; // 2表示黑名单状态
+  }
+  
+  // 获取成员统计信息
+  static getMemberStats(channelId: string, channelType: number): {
+    total: number;
+    admins: number;
+    normal: number;
+    muted: number;
+    online: number;
+  } {
+    const allMembers = this.getAllMembers(channelId, channelType);
+    
+    return {
+      total: allMembers.length,
+      admins: allMembers.filter(m => this.isAdmin(m)).length,
+      normal: allMembers.filter(m => !this.isAdmin(m)).length,
+      muted: allMembers.filter(m => this.isMuted(m)).length,
+      online: this.getOnlineMembers(channelId, channelType).length,
+    };
+  }
+}
+```
+
+## 事件监听
+
+### 监听刷新频道成员
+
+```typescript
+refreshChannelMemberListener = (members: WKChannelMember[]) => {
+  // 刷新
+};
+
+// 添加刷新频道成员监听
+WKIM.shared.channelMemberManager().addRefreshListener(this.refreshChannelMemberListener);
+
+// 在退出页面时移除监听
+WKIM.shared.channelMemberManager().removeRefreshListener(this.refreshChannelMemberListener);
+```
+
+### 完整事件监听管理
+
+```typescript
+interface ChannelMemberUpdateEvent {
+  members: WKChannelMember[];
+  channelId: string;
+  channelType: number;
+  timestamp: number;
+}
+
+class ChannelMemberListener {
+  private static refreshListeners: Set<(members: WKChannelMember[]) => void> = new Set();
+  private static updateCallbacks: Array<(event: ChannelMemberUpdateEvent) => void> = [];
+  
+  // 添加成员刷新监听
+  static addRefreshMemberListener(callback: (members: WKChannelMember[]) => void): void {
+    this.refreshListeners.add(callback);
+    
+    WKIM.shared.channelMemberManager().addRefreshListener((members: WKChannelMember[]) => {
+      // 调用回调
+      callback(members);
+      
+      // 发送到更新回调
+      if (members.length > 0) {
+        const event: ChannelMemberUpdateEvent = {
+          members,
+          channelId: members[0].channelId,
+          channelType: members[0].channelType,
+          timestamp: Date.now()
+        };
+        
+        this.updateCallbacks.forEach(cb => cb(event));
+      }
+      
+      console.log('频道成员更新:', members.length);
+    });
+  }
+  
+  // 移除成员刷新监听
+  static removeRefreshMemberListener(callback: (members: WKChannelMember[]) => void): void {
+    this.refreshListeners.delete(callback);
+    WKIM.shared.channelMemberManager().removeRefreshListener(callback);
+  }
+  
+  // 添加成员更新回调
+  static addMemberUpdateCallback(callback: (event: ChannelMemberUpdateEvent) => void): void {
+    this.updateCallbacks.push(callback);
+  }
+  
+  // 移除成员更新回调
+  static removeMemberUpdateCallback(callback: (event: ChannelMemberUpdateEvent) => void): void {
+    const index = this.updateCallbacks.indexOf(callback);
+    if (index > -1) {
+      this.updateCallbacks.splice(index, 1);
+    }
+  }
+  
+  // 移除所有监听
+  static removeAllListeners(): void {
+    this.refreshListeners.forEach(callback => {
+      WKIM.shared.channelMemberManager().removeRefreshListener(callback);
+    });
+    this.refreshListeners.clear();
+    this.updateCallbacks = [];
+  }
+  
+  // 为特定频道添加监听
+  static addChannelMemberListener(channelId: string, channelType: number, callback: (members: WKChannelMember[]) => void): void {
+    const wrappedCallback = (members: WKChannelMember[]) => {
+      // 过滤当前频道的成员
+      const channelMembers = members.filter(member => 
+        member.channelId === channelId && member.channelType === channelType
+      );
+      
+      if (channelMembers.length > 0) {
+        callback(channelMembers);
+      }
+    };
+    
+    this.addRefreshMemberListener(wrappedCallback);
+  }
+  
+  // 销毁
+  static dispose(): void {
+    this.removeAllListeners();
+  }
+}
+```
+
+## 数据结构说明
+
+### WKChannelMember 频道成员对象
+
+```typescript
+export class WKChannelMember {
+  channelId: string = '';                            // 频道ID
+  channelType: number = WKChannelType.personal;      // 频道类型
+  memberUID: string = '';                            // 成员UID  
+  memberName: string = '';                           // 成员名称
+  memberRemark: string = '';                         // 成员备注
+  memberAvatar: string = '';                         // 成员头像
+  role = 0;                                          // 成员角色
+  status = 0;                                        // 成员状态
+  isDeleted = 0;                                     // 是否被删除
+  createdAt: string = '';                            // 创建时间
+  updatedAt: string = '';                            // 更新时间
+  version = 0;                                       // 版本号
+  robot = 0;                                         // 是否为机器人
+  extra?: Record<string, object>;                    // 扩展字段
+  memberInviteUID: string = '';                      // 邀请人UID
+  forbiddenExpirationTime = 0;                       // 禁言截止时间
+  memberAvatarCacheKey: string = '';                 // 头像缓存key
+}
+```
+
+### 字段说明
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `channelId` | string | 频道ID |
+| `channelType` | number | 频道类型 |
+| `memberUID` | string | 成员UID |
+| `memberName` | string | 成员名称 |
+| `memberRemark` | string | 成员备注 |
+| `memberAvatar` | string | 成员头像URL |
+| `role` | number | 成员角色（0=普通成员，1=管理员，2=群主） |
+| `status` | number | 成员状态（1=正常，2=黑名单） |
+| `isDeleted` | number | 是否删除（0=否，1=是） |
+| `version` | number | 版本号 |
+| `robot` | number | 是否机器人（0=否，1=是） |
+| `forbiddenExpirationTime` | number | 禁言到期时间戳 |
+
+### 成员角色说明
+
+| 角色值 | 说明 |
+|--------|------|
+| `0` | 普通成员 |
+| `1` | 管理员 |
+| `2` | 群主 |
+
+### 成员状态说明
+
+| 状态值 | 说明 |
+|--------|------|
+| `1` | 正常 |
+| `2` | 黑名单 |
+
+## HarmonyOS 组件集成示例
+
+### 成员列表组件
+
+```typescript
+@Component
+export struct ChannelMemberListComponent {
+  @State private members: WKChannelMember[] = [];
+  @State private filteredMembers: WKChannelMember[] = [];
+  @State private loading: boolean = true;
+  @State private searchKeyword: string = '';
+  private channelId: string;
+  private channelType: number;
+  private refreshListener?: (members: WKChannelMember[]) => void;
+  
+  constructor(channelId: string, channelType: number) {
+    this.channelId = channelId;
+    this.channelType = channelType;
+  }
+  
+  aboutToAppear(): void {
+    this.loadMembers();
+    this.setupListener();
+  }
+  
+  aboutToDisappear(): void {
+    if (this.refreshListener) {
+      ChannelMemberListener.removeRefreshMemberListener(this.refreshListener);
+    }
+  }
+  
+  private loadMembers(): void {
+    this.loading = true;
+    
+    const members = ChannelMemberManager.getAllMembers(this.channelId, this.channelType);
+    
+    this.members = members;
+    this.filteredMembers = members;
+    this.loading = false;
+  }
+  
+  private setupListener(): void {
+    this.refreshListener = (members: WKChannelMember[]) => {
+      // 过滤当前频道的成员
+      const channelMembers = members.filter(member => 
+        member.channelId === this.channelId && member.channelType === this.channelType
+      );
+      
+      if (channelMembers.length > 0) {
+        this.loadMembers();
+      }
+    };
+    
+    ChannelMemberListener.addRefreshMemberListener(this.refreshListener);
+  }
+  
+  private searchMembers(keyword: string): void {
+    this.searchKeyword = keyword;
+    
+    if (!keyword.trim()) {
+      this.filteredMembers = this.members;
+    } else {
+      this.filteredMembers = this.members.filter(member => {
+        const name = member.memberName.toLowerCase();
+        const remark = member.memberRemark.toLowerCase();
+        const uid = member.memberUID.toLowerCase();
+        const searchKey = keyword.toLowerCase();
+        
+        return name.includes(searchKey) || 
+               remark.includes(searchKey) || 
+               uid.includes(searchKey);
+      });
+    }
+  }
+  
+  build() {
+    Column() {
+      // 搜索框
+      Row() {
+        TextInput({ placeholder: '搜索成员' })
+          .layoutWeight(1)
+          .onChange((value: string) => {
+            this.searchMembers(value);
+          })
+        
+        Button('搜索')
+          .margin({ left: 8 })
+      }
+      .padding(16)
+      
+      // 成员统计
+      if (!this.loading) {
+        Row() {
+          Text(`共 ${this.filteredMembers.length} 个成员`)
+            .fontSize(14)
+            .fontColor(Color.Grey)
+        }
+        .padding({ left: 16, right: 16, bottom: 8 })
+      }
+      
+      // 成员列表
+      if (this.loading) {
+        Column() {
+          LoadingProgress()
+            .width(40)
+            .height(40)
+          Text('加载中...')
+            .margin({ top: 8 })
+        }
+        .justifyContent(FlexAlign.Center)
+        .layoutWeight(1)
+      } else if (this.filteredMembers.length === 0) {
+        Column() {
+          Image($r('app.media.empty_member'))
+            .width(64)
+            .height(64)
+            .margin({ bottom: 16 })
+          Text('暂无成员')
+            .fontSize(16)
+            .fontColor(Color.Grey)
+        }
+        .justifyContent(FlexAlign.Center)
+        .layoutWeight(1)
+      } else {
+        List() {
+          ForEach(this.filteredMembers, (member: WKChannelMember) => {
+            ListItem() {
+              this.buildMemberItem(member)
+            }
+          })
+        }
+        .layoutWeight(1)
+      }
+    }
+    .width('100%')
+    .height('100%')
+  }
+  
+  @Builder
+  private buildMemberItem(member: WKChannelMember) {
+    Row() {
+      // 头像
+      Image(member.memberAvatar || this.getDefaultAvatar(member.memberUID))
+        .width(50)
+        .height(50)
+        .borderRadius(25)
+        .margin({ right: 12 })
+      
+      Column() {
+        // 成员名称
+        Text(ChannelMemberManager.getMemberDisplayName(member))
+          .fontSize(16)
+          .fontWeight(FontWeight.Medium)
+          .maxLines(1)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+        
+        // 成员ID
+        Text(`ID: ${member.memberUID}`)
+          .fontSize(12)
+          .fontColor(Color.Grey)
+          .margin({ top: 2 })
+        
+        // 状态标签
+        Row() {
+          if (ChannelMemberManager.isAdmin(member)) {
+            this.buildStatusTag('管理员', Color.Orange)
+          }
+          if (member.robot === 1) {
+            this.buildStatusTag('机器人', Color.Blue)
+          }
+          if (ChannelMemberManager.isMuted(member)) {
+            this.buildStatusTag('已禁言', Color.Red)
+          }
+        }
+        .margin({ top: 4 })
+      }
+      .alignItems(HorizontalAlign.Start)
+      .layoutWeight(1)
+      
+      // 在线状态
+      Circle({ width: 8, height: 8 })
+        .fill(this.isOnline(member) ? Color.Green : Color.Grey)
+        .margin({ left: 8 })
+    }
+    .width('100%')
+    .padding(12)
+    .alignItems(VerticalAlign.Top)
+    .onClick(() => {
+      this.showMemberDetails(member);
+    })
+  }
+  
+  @Builder
+  private buildStatusTag(text: string, color: Color) {
+    Text(text)
+      .fontSize(10)
+      .fontColor(Color.White)
+      .backgroundColor(color)
+      .padding({ left: 4, right: 4, top: 2, bottom: 2 })
+      .borderRadius(4)
+      .margin({ right: 4 })
+  }
+  
+  private getDefaultAvatar(uid: string): string {
+    return `https://ui-avatars.com/api/?name=${uid}&background=random`;
+  }
+  
+  private isOnline(member: WKChannelMember): boolean {
+    const channel = WKIM.shared.channelManager().getChannel(member.memberUID, WKChannelType.personal);
+    return channel?.online === 1;
+  }
+  
+  private showMemberDetails(member: WKChannelMember): void {
+    // 显示成员详情
+    console.log('显示成员详情:', member.memberUID);
+  }
+}
+```
+
+## 下一步
+
+<CardGroup cols={2}>
+  <Card
+    title="命令管理"
+    icon="terminal"
+    href="/zh/sdk/wukongim/harmonyos/cmd"
+  >
+    学习命令消息处理和监听
+  </Card>
+  <Card
+    title="提醒管理"
+    icon="bell"
+    href="/zh/sdk/wukongim/harmonyos/reminder"
+  >
+    了解@提醒和自定义提醒功能
+  </Card>
+  <Card
+    title="频道管理"
+    icon="hash"
+    href="/zh/sdk/wukongim/harmonyos/channel"
+  >
+    回到频道管理功能
+  </Card>
+  <Card
+    title="高级功能"
+    icon="cog"
+    href="/zh/sdk/wukongim/harmonyos/advance"
+  >
+    探索自定义消息和扩展特性
+  </Card>
+</CardGroup>

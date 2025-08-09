@@ -1,0 +1,337 @@
+---
+title: "Conversation Management"
+description: "WuKongIM iOS SDK conversation management functionality, including conversation lists, unread messages and conversation extensions"
+icon: "messages-square"
+---
+
+Responsible for managing recent conversation data, such as: adding recent conversations, deleting recent conversations, unread message counts, etc.
+
+This documentation only covers core methods. For more details, check the `[WKSDK shared].conversationManager` interface in the code.
+
+## Recent Conversation List
+
+### Data Operations
+
+Get local recent conversation list:
+
+```objc
+NSArray<WKConversation*> *conversations = [[WKSDK shared].conversationManager getConversationList];
+```
+
+### Data Monitoring
+
+Add `WKConversationManagerDelegate`:
+
+```objc
+[[WKSDK shared].conversationManager addDelegate:self];
+```
+
+WKConversationManagerDelegate description:
+
+```objc
+/**
+ Called when recent conversation objects are updated
+
+ @param conversations Recent conversation collection
+ */
+- (void)onConversationUpdate:(NSArray<WKConversation*>*)conversations;
+
+/**
+ Recent conversation unread count changes
+
+ @param channel Channel
+ @param unreadCount Unread count
+ */
+- (void)onConversationUnreadCountUpdate:(WKChannel*)channel unreadCount:(NSInteger)unreadCount;
+
+/**
+ Conversation deleted
+
+ @param channel Deleted conversation channel
+ */
+- (void)onConversationDelete:(WKChannel*)channel;
+
+/**
+ New conversation added
+
+ @param conversation New conversation
+ */
+- (void)onConversationAdd:(WKConversation*)conversation;
+```
+
+### Data Source
+
+`Trigger timing: After establishing connection, SDK actively triggers pulling recent conversations after going offline`
+
+Incrementally sync recent conversation data after going offline:
+
+```objc
+// version Data version number
+// lastMsgSeqs Concatenated recent conversation seq relationship data
+// callback SDK should call this callback when getting messages from server (Note: callback must be called regardless of success or failure)
+[[WKSDK shared].conversationManager setSyncConversationProviderAndAck:^(long long version, NSString * _Nonnull lastMsgSeqs, WKSyncConversationCallback  _Nonnull callback) {
+    // Implement your server API call here
+    // Example:
+    [YourAPIManager syncConversations:version 
+                          lastMsgSeqs:lastMsgSeqs 
+                              success:^(NSArray<WKConversation*> *conversations, long long newVersion) {
+        callback(conversations, newVersion, nil);
+    } failure:^(NSError *error) {
+        callback(nil, version, error);
+    }];
+    
+} ack:^(uint64_t cmdVersion, void (^ _Nullable complete)(NSError * _Nullable)) {
+     // If ack receipt is not needed, directly call complete(nil);
+     complete(nil);
+}];
+```
+
+## Recent Conversation Extensions
+
+Through recent conversation extension properties, you can customize your unique business attributes, such as implementing draft functionality similar to WeChat, with draft data synchronized across multiple devices.
+
+### Data Operations
+
+#### Update Extensions
+
+```objc
+[[WKSDK shared].conversationManager updateOrAddExtra:(WKConversationExtra*)extra]
+```
+
+#### Sync Extensions
+
+```objc
+[[WKSDK shared].conversationManager syncExtra]
+```
+
+### Data Monitoring
+
+Any data changes to recent conversation objects will trigger the `WKConversationManagerDelegate` delegate. Similarly, calling `updateOrAddExtra` will also trigger this delegate.
+
+### Data Source
+
+#### Update Extensions
+
+`Trigger timing: Triggered when calling [[WKSDK shared].conversationManager updateOrAddExtra]`
+
+```objc
+// extra Updated extension data
+// callback Callback to SDK after update completion
+[[WKSDK shared].conversationManager setUpdateConversationExtraProvider:^(WKConversationExtra * _Nonnull extra, WKUpdateConversationExtraCallback  _Nonnull callback) {
+    // Implement your server API call here
+    // Example:
+    [YourAPIManager updateConversationExtra:extra 
+                                    success:^{
+        callback(nil);
+    } failure:^(NSError *error) {
+        callback(error);
+    }];
+}];
+```
+
+#### Sync Extensions
+
+`Trigger timing: Triggered when calling [[WKSDK shared].conversationManager syncExtra]`
+
+```objc
+// version Latest extension data version existing on client
+// callback Callback data to SDK after syncing extensions
+[[WKSDK shared].conversationManager setSyncConversationExtraProvider:^(long long version, WKSyncConversationExtraCallback  _Nonnull callback) {
+    // Implement your server API call here
+    // Example:
+    [YourAPIManager syncConversationExtras:version 
+                                   success:^(NSArray<WKConversationExtra*> *extras, long long newVersion) {
+        callback(extras, newVersion, nil);
+    } failure:^(NSError *error) {
+        callback(nil, version, error);
+    }];
+}];
+```
+
+## Conversation Operations
+
+### Delete Conversation
+
+```objc
+// Delete a conversation
+WKChannel *channel = [[WKChannel alloc] initWith:@"user123" channelType:WK_PERSON];
+[[WKSDK shared].conversationManager deleteConversation:channel];
+```
+
+### Clear Unread Count
+
+```objc
+// Clear unread count for a conversation
+WKChannel *channel = [[WKChannel alloc] initWith:@"user123" channelType:WK_PERSON];
+[[WKSDK shared].conversationManager clearUnreadCount:channel];
+```
+
+### Set Conversation Draft
+
+```objc
+// Set draft for a conversation using extensions
+WKChannel *channel = [[WKChannel alloc] initWith:@"user123" channelType:WK_PERSON];
+WKConversationExtra *extra = [[WKConversationExtra alloc] init];
+extra.channel = channel;
+extra.draft = @"This is a draft message...";
+extra.draftUpdatedAt = [[NSDate date] timeIntervalSince1970];
+
+[[WKSDK shared].conversationManager updateOrAddExtra:extra];
+```
+
+### Get Conversation by Channel
+
+```objc
+// Get specific conversation
+WKChannel *channel = [[WKChannel alloc] initWith:@"user123" channelType:WK_PERSON];
+WKConversation *conversation = [[WKSDK shared].conversationManager getConversation:channel];
+
+if (conversation) {
+    NSLog(@"Unread count: %ld", conversation.unreadCount);
+    NSLog(@"Last message: %@", conversation.lastMessage.content);
+}
+```
+
+## Core Class Properties
+
+### WKConversation
+
+```objc
+@interface WKConversation : NSObject
+
+// Channel information
+@property(nonatomic,strong) WKChannel *channel;
+
+// Last message
+@property(nonatomic,strong) WKMessage *lastMessage;
+
+// Unread message count
+@property(nonatomic,assign) NSInteger unreadCount;
+
+// Conversation timestamp
+@property(nonatomic,assign) NSTimeInterval timestamp;
+
+// Whether conversation is pinned
+@property(nonatomic,assign) BOOL stick;
+
+// Conversation extensions
+@property(nonatomic,strong) WKConversationExtra *extra;
+
+@end
+```
+
+### WKConversationExtra
+
+```objc
+@interface WKConversationExtra : NSObject
+
+// Channel
+@property(nonatomic,strong) WKChannel *channel;
+
+// Draft content
+@property(nonatomic,copy) NSString *draft;
+
+// Draft update time
+@property(nonatomic,assign) NSTimeInterval draftUpdatedAt;
+
+// Custom extension data
+@property(nonatomic,strong) NSMutableDictionary *extraData;
+
+// Extension version
+@property(nonatomic,assign) long long version;
+
+@end
+```
+
+## Best Practices
+
+### 1. Efficient Conversation Loading
+
+```objc
+- (void)loadConversations {
+    // Get cached conversations first
+    NSArray<WKConversation*> *conversations = [[WKSDK shared].conversationManager getConversationList];
+    
+    if (conversations.count > 0) {
+        [self updateConversationUI:conversations];
+    }
+    
+    // Sync latest data from server
+    [[WKSDK shared].conversationManager syncConversations];
+}
+```
+
+### 2. Handle Conversation Updates
+
+```objc
+- (void)onConversationUpdate:(NSArray<WKConversation*>*)conversations {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        // Sort conversations by timestamp
+        NSArray *sortedConversations = [conversations sortedArrayUsingComparator:^NSComparisonResult(WKConversation *obj1, WKConversation *obj2) {
+            if (obj1.stick && !obj2.stick) return NSOrderedAscending;
+            if (!obj1.stick && obj2.stick) return NSOrderedDescending;
+            
+            if (obj1.timestamp > obj2.timestamp) return NSOrderedAscending;
+            if (obj1.timestamp < obj2.timestamp) return NSOrderedDescending;
+            return NSOrderedSame;
+        }];
+        
+        [self updateConversationUI:sortedConversations];
+    });
+}
+```
+
+### 3. Draft Management
+
+```objc
+- (void)saveDraft:(NSString *)draftText forChannel:(WKChannel *)channel {
+    WKConversationExtra *extra = [[WKSDK shared].conversationManager getConversationExtra:channel];
+    if (!extra) {
+        extra = [[WKConversationExtra alloc] init];
+        extra.channel = channel;
+    }
+    
+    extra.draft = draftText;
+    extra.draftUpdatedAt = [[NSDate date] timeIntervalSince1970];
+    
+    [[WKSDK shared].conversationManager updateOrAddExtra:extra];
+}
+
+- (NSString *)getDraftForChannel:(WKChannel *)channel {
+    WKConversationExtra *extra = [[WKSDK shared].conversationManager getConversationExtra:channel];
+    return extra.draft;
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Media Messages"
+    icon="image"
+    href="/en/sdk/wukongim/ios/media"
+  >
+    Learn how to handle multimedia messages
+  </Card>
+  <Card
+    title="Chat Management"
+    icon="message-circle"
+    href="/en/sdk/wukongim/ios/chat"
+  >
+    Return to chat message management
+  </Card>
+  <Card
+    title="Channel Management"
+    icon="hash"
+    href="/en/sdk/wukongim/ios/channel"
+  >
+    Manage channel information
+  </Card>
+  <Card
+    title="Connection Management"
+    icon="link"
+    href="/en/sdk/wukongim/ios/connection"
+  >
+    Manage connection status
+  </Card>
+</CardGroup>

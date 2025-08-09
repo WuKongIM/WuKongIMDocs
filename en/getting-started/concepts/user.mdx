@@ -1,0 +1,269 @@
+---
+title: "User"
+description: "Core structure and management methods of WuKongIM users"
+icon: "user"
+---
+
+## Concept Explanation
+
+### What is a User?
+
+A User is the basic entity in the WuKongIM system, representing an individual or application using the instant messaging service. Each user has a unique identifier and related attributes, serving as the subject for sending and receiving messages.
+
+### Why are Users Important?
+
+- **Identity Identification**: User ID is the key to uniquely identify a user in the system
+- **Permission Foundation**: All message sending and receiving permissions are based on user identity
+- **Status Management**: User online status determines the method and timing of message delivery
+
+### Relationship with Other Concepts
+
+- **Message**: Users are the senders and receivers of messages
+- **Channel**: Users communicate through channels; personal channel ID is the user ID
+- **Conversation**: User conversation list shows all chats the user participates in
+- **Device**: A user can log in and use the service on multiple devices
+
+## Core Structure
+
+Users contain the following core attributes:
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `uid` | string | User unique identifier |
+| `online` | integer | Online status (0=offline, 1=online) |
+| `device_flag` | integer | Device type identifier |
+
+### Device Type Identifiers
+
+| Value | Device Type | Description |
+|-------|-------------|-------------|
+| 1 | iOS | iPhone, iPad devices |
+| 2 | Android | Android devices |
+| 3 | Web | Browser, Web applications |
+| 4 | Desktop | Desktop applications |
+
+### User Example
+
+```json
+{
+  "uid": "user123",
+  "online": 1,
+  "device_flag": 1
+}
+```
+
+## Related API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/user/onlinestatus` | POST | Query user online status |
+| `/user/token` | POST | Update user token |
+| `/user/device_quit` | POST | Force device offline |
+| `/user/systemuids` | GET | Get system user list |
+
+## EasySDK Code Examples
+
+### User Initialization and Connection
+
+<CodeGroup>
+```javascript Web
+import { WKIM, WKIMEvent } from 'easyjssdk';
+
+// Initialize SDK
+const im = WKIM.init("ws://your-server.com:5200", {
+  uid: "user123",                    // User unique identifier
+  token: "your_auth_token"           // User authentication token
+});
+
+// Listen for connection status
+im.on(WKIMEvent.Connect, (result) => {
+  console.log('User connected:', result);
+});
+
+im.on(WKIMEvent.Disconnect, (disconnectInfo) => {
+  console.log('User disconnected:', disconnectInfo);
+});
+
+// Connect to server
+try {
+  await im.connect();
+  console.log("Connection successful!");
+} catch (error) {
+  console.error("Connection failed:", error);
+}
+```
+
+```swift iOS
+import WuKongEasySDK
+
+// Configure user information
+let config = WuKongConfig(
+    serverUrl: "ws://your-server.com:5200",
+    uid: "user123",                 // User unique identifier
+    token: "your_auth_token"        // User authentication token
+)
+
+// Initialize SDK
+let easySDK = WuKongEasySDK(config: config)
+
+// Listen for connection status
+easySDK.onConnect { result in
+    print("User connected:", result)
+}
+
+easySDK.onDisconnect { disconnectInfo in
+    print("User disconnected:", disconnectInfo)
+}
+
+// Connect to server
+Task {
+    do {
+        try await easySDK.connect()
+        print("Connection successful!")
+    } catch {
+        print("Connection failed:", error)
+    }
+}
+```
+
+```kotlin Android
+import com.githubim.easysdk.WuKongEasySDK
+import com.githubim.easysdk.WuKongConfig
+import com.githubim.easysdk.WuKongEvent
+import com.githubim.easysdk.listener.WuKongEventListener
+
+// Configure user information
+val config = WuKongConfig.Builder()
+    .serverUrl("ws://your-server.com:5200")
+    .uid("user123")                // User unique identifier
+    .token("your_auth_token")      // User authentication token
+    .build()
+
+// Initialize SDK
+val easySDK = WuKongEasySDK.getInstance()
+easySDK.init(this, config)
+
+// Listen for connection status
+easySDK.addEventListener(WuKongEvent.CONNECT, object : WuKongEventListener<ConnectResult> {
+    override fun onEvent(result: ConnectResult) {
+        Log.d("WuKong", "User connected: $result")
+    }
+})
+
+easySDK.addEventListener(WuKongEvent.DISCONNECT, object : WuKongEventListener<DisconnectInfo> {
+    override fun onEvent(disconnectInfo: DisconnectInfo) {
+        Log.d("WuKong", "User disconnected: $disconnectInfo")
+    }
+})
+
+// Connect to server
+lifecycleScope.launch {
+    try {
+        easySDK.connect()
+        Log.d("WuKong", "Connection successful!")
+    } catch (e: Exception) {
+        Log.e("WuKong", "Connection failed: $e")
+    }
+}
+```
+
+```dart Flutter
+import 'package:wukong_easy_sdk/wukong_easy_sdk.dart';
+
+// Configure user information
+final config = WuKongConfig(
+  serverUrl: "ws://your-server.com:5200",
+  uid: "user123",                   // User unique identifier
+  token: "your_auth_token",         // User authentication token
+);
+
+// Initialize SDK
+final easySDK = WuKongEasySDK.getInstance();
+await easySDK.init(config);
+
+// Listen for connection status
+easySDK.addEventListener(WuKongEvent.connect, (ConnectResult result) {
+  print('User connected: $result');
+});
+
+easySDK.addEventListener(WuKongEvent.disconnect, (DisconnectInfo disconnectInfo) {
+  print('User disconnected: $disconnectInfo');
+});
+
+// Connect to server
+try {
+  await easySDK.connect();
+  print("Connection successful!");
+} catch (e) {
+  print("Connection failed: $e");
+}
+```
+</CodeGroup>
+
+### User Status Management
+
+<CodeGroup>
+```javascript Web
+// Check connection status
+const isConnected = im.isConnected();
+console.log('Connection status:', isConnected);
+
+// Disconnect
+await im.disconnect();
+
+// Listen for error events
+im.on(WKIMEvent.Error, (error) => {
+  console.log('Error occurred:', error);
+});
+```
+
+```swift iOS
+// Check connection status
+let isConnected = easySDK.isConnected()
+print("Connection status:", isConnected)
+
+// Disconnect
+Task {
+    await easySDK.disconnect()
+}
+
+// Listen for error events
+easySDK.onError { error in
+    print("Error occurred:", error)
+}
+```
+
+```kotlin Android
+// Check connection status
+val isConnected = easySDK.isConnected()
+Log.d("WuKong", "Connection status: $isConnected")
+
+// Disconnect
+easySDK.disconnect()
+
+// Listen for error events
+easySDK.addEventListener(WuKongEvent.ERROR, object : WuKongEventListener<WuKongError> {
+    override fun onEvent(error: WuKongError) {
+        Log.e("WuKong", "Error occurred: $error")
+    }
+})
+```
+
+```dart Flutter
+// Check connection status
+final isConnected = easySDK.isConnected();
+print('Connection status: $isConnected');
+
+// Disconnect
+await easySDK.disconnect();
+
+// Listen for error events
+easySDK.addEventListener(WuKongEvent.error, (WuKongError error) {
+  print('Error occurred: $error');
+});
+```
+</CodeGroup>
+
+<Note>
+  WuKongIM focuses on message transmission; detailed user profiles (such as nicknames, avatars, etc.) are typically managed by the application layer.
+</Note>

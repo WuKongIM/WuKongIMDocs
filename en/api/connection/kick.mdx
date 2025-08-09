@@ -1,0 +1,533 @@
+---
+title: "Kick Connection"
+description: "Kick/disconnect a specific connection for a specified user"
+api: "POST /conn/kick"
+---
+
+## Overview
+
+Kick/disconnect a specific connection for a specified user. Similar to removing connections, but typically used for actively disconnecting live connections.
+
+## Request Body
+
+### Required Parameters
+
+<ParamField body="uid" type="string" required>
+User ID
+</ParamField>
+
+<ParamField body="conn_id" type="integer" required>
+Connection ID
+</ParamField>
+
+### Optional Parameters
+
+<ParamField body="node_id" type="integer">
+Node ID, specifies connection on a specific node
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "http://localhost:5001/conn/kick" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "uid": "user123",
+    "conn_id": 12345,
+    "node_id": 1
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5001/conn/kick', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    uid: 'user123',
+    conn_id: 12345,
+    node_id: 1
+  })
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+
+data = {
+    "uid": "user123",
+    "conn_id": 12345,
+    "node_id": 1
+}
+
+response = requests.post('http://localhost:5001/conn/kick', json=data)
+result = response.json()
+print(result)
+```
+
+```go Go
+package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    data := map[string]interface{}{
+        "uid":     "user123",
+        "conn_id": 12345,
+        "node_id": 1,
+    }
+    
+    jsonData, _ := json.Marshal(data)
+    
+    resp, err := http.Post(
+        "http://localhost:5001/conn/kick",
+        "application/json",
+        bytes.NewBuffer(jsonData),
+    )
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    var result map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Printf("%+v\n", result)
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json Success Response
+{
+  "status": "ok"
+}
+```
+</ResponseExample>
+
+## Response Fields
+
+<ResponseField name="status" type="string" required>
+Operation status, returns `"ok"` on success
+</ResponseField>
+
+## Status Codes
+
+| Status Code | Description |
+|-------------|-------------|
+| 200 | Connection kicked successfully |
+| 400 | Request parameter error |
+| 404 | Connection does not exist |
+| 500 | Internal server error |
+
+## Difference from Remove Connection
+
+| Operation | Endpoint | Purpose | Characteristics |
+|-----------|----------|---------|-----------------|
+| Kick Connection | `/conn/kick` | Actively disconnect live connections | Sends disconnect notification to client |
+| Remove Connection | `/conn/remove` | Clean up connection records | Directly cleans server-side connection records |
+
+## Use Cases
+
+### User Session Management
+
+**Force User Logout**:
+```javascript
+// Force logout a user from specific device
+async function forceUserLogout(userId, connectionId, nodeId, reason = 'admin_action') {
+    try {
+        // Log the action
+        await logAdminAction({
+            action: 'force_logout',
+            target_user: userId,
+            connection_id: connectionId,
+            node_id: nodeId,
+            reason: reason,
+            timestamp: new Date().toISOString()
+        });
+        
+        // Kick the connection
+        await kickConnection({
+            uid: userId,
+            conn_id: connectionId,
+            node_id: nodeId
+        });
+        
+        // Notify user about forced logout
+        await sendNotificationToUser(userId, {
+            type: 'forced_logout',
+            reason: reason,
+            timestamp: new Date().toISOString()
+        });
+        
+        console.log(`User ${userId} forcibly logged out from connection ${connectionId}`);
+    } catch (error) {
+        console.error('Failed to force user logout:', error);
+    }
+}
+```
+
+**Session Timeout Management**:
+```javascript
+// Manage session timeouts
+class SessionTimeoutManager {
+    constructor(timeoutMinutes = 30) {
+        this.timeoutDuration = timeoutMinutes * 60 * 1000;
+        this.activeSessions = new Map();
+        this.checkInterval = 60000; // Check every minute
+    }
+    
+    startMonitoring() {
+        this.monitoringInterval = setInterval(() => {
+            this.checkExpiredSessions();
+        }, this.checkInterval);
+        
+        console.log('Session timeout monitoring started');
+    }
+    
+    stopMonitoring() {
+        if (this.monitoringInterval) {
+            clearInterval(this.monitoringInterval);
+            this.monitoringInterval = null;
+        }
+        console.log('Session timeout monitoring stopped');
+    }
+    
+    updateSessionActivity(userId, connectionId, nodeId) {
+        const sessionKey = `${userId}:${connectionId}:${nodeId}`;
+        this.activeSessions.set(sessionKey, {
+            userId,
+            connectionId,
+            nodeId,
+            lastActivity: Date.now()
+        });
+    }
+    
+    async checkExpiredSessions() {
+        const now = Date.now();
+        const expiredSessions = [];
+        
+        for (const [sessionKey, session] of this.activeSessions) {
+            const timeSinceActivity = now - session.lastActivity;
+            
+            if (timeSinceActivity > this.timeoutDuration) {
+                expiredSessions.push(session);
+                this.activeSessions.delete(sessionKey);
+            }
+        }
+        
+        // Kick expired sessions
+        for (const session of expiredSessions) {
+            try {
+                await this.kickExpiredSession(session);
+            } catch (error) {
+                console.error(`Failed to kick expired session for user ${session.userId}:`, error);
+            }
+        }
+        
+        if (expiredSessions.length > 0) {
+            console.log(`Kicked ${expiredSessions.length} expired sessions`);
+        }
+    }
+    
+    async kickExpiredSession(session) {
+        await kickConnection({
+            uid: session.userId,
+            conn_id: session.connectionId,
+            node_id: session.nodeId
+        });
+        
+        // Log timeout event
+        await logSessionEvent({
+            type: 'session_timeout',
+            user_id: session.userId,
+            connection_id: session.connectionId,
+            node_id: session.nodeId,
+            last_activity: new Date(session.lastActivity).toISOString(),
+            timeout_duration_minutes: this.timeoutDuration / 60000
+        });
+    }
+    
+    getActiveSessionCount() {
+        return this.activeSessions.size;
+    }
+}
+
+// Usage
+const sessionManager = new SessionTimeoutManager(30); // 30 minute timeout
+sessionManager.startMonitoring();
+
+// Update activity when user performs actions
+sessionManager.updateSessionActivity('user123', 12345, 1);
+```
+
+### Security Management
+
+**Suspicious Activity Response**:
+```javascript
+// Kick connections showing suspicious activity
+async function handleSuspiciousActivity(userId, connectionId, nodeId, activityType) {
+    try {
+        // Log security incident
+        const incidentId = await logSecurityIncident({
+            type: 'suspicious_activity',
+            user_id: userId,
+            connection_id: connectionId,
+            node_id: nodeId,
+            activity_type: activityType,
+            timestamp: new Date().toISOString(),
+            action_taken: 'connection_kicked'
+        });
+        
+        // Kick the suspicious connection
+        await kickConnection({
+            uid: userId,
+            conn_id: connectionId,
+            node_id: nodeId
+        });
+        
+        // Notify security team
+        await notifySecurityTeam({
+            incident_id: incidentId,
+            user_id: userId,
+            connection_id: connectionId,
+            activity_type: activityType,
+            action: 'Connection kicked due to suspicious activity'
+        });
+        
+        // Temporarily block user if needed
+        if (activityType === 'multiple_failed_auth' || activityType === 'rate_limit_exceeded') {
+            await temporarilyBlockUser(userId, 15); // 15 minute block
+        }
+        
+        console.log(`Kicked suspicious connection ${connectionId} for user ${userId}`);
+    } catch (error) {
+        console.error('Failed to handle suspicious activity:', error);
+    }
+}
+```
+
+### Administrative Control
+
+**Bulk Connection Management**:
+```javascript
+// Kick multiple connections for administrative purposes
+async function bulkKickConnections(connections, reason = 'admin_maintenance') {
+    const results = [];
+    
+    for (const conn of connections) {
+        try {
+            await kickConnection({
+                uid: conn.uid,
+                conn_id: conn.conn_id,
+                node_id: conn.node_id
+            });
+            
+            results.push({
+                uid: conn.uid,
+                conn_id: conn.conn_id,
+                success: true
+            });
+            
+            // Small delay to avoid overwhelming the system
+            await new Promise(resolve => setTimeout(resolve, 100));
+        } catch (error) {
+            results.push({
+                uid: conn.uid,
+                conn_id: conn.conn_id,
+                success: false,
+                error: error.message
+            });
+        }
+    }
+    
+    // Log bulk operation
+    await logAdminAction({
+        action: 'bulk_kick_connections',
+        reason: reason,
+        total_connections: connections.length,
+        successful_kicks: results.filter(r => r.success).length,
+        failed_kicks: results.filter(r => !r.success).length,
+        timestamp: new Date().toISOString()
+    });
+    
+    return results;
+}
+```
+
+### Maintenance Operations
+
+**Graceful Node Shutdown**:
+```javascript
+// Gracefully kick all connections from a node before shutdown
+async function gracefulNodeShutdown(nodeId, notificationMessage = 'Server maintenance in progress') {
+    try {
+        // Get all connections on the node
+        const nodeConnections = await getNodeConnections(nodeId);
+        
+        console.log(`Starting graceful shutdown for node ${nodeId} (${nodeConnections.length} connections)`);
+        
+        // Send notification to all users first
+        for (const conn of nodeConnections) {
+            try {
+                await sendMaintenanceNotification(conn.uid, {
+                    message: notificationMessage,
+                    estimated_downtime: '10-15 minutes',
+                    reconnect_instructions: 'Please reconnect in a few minutes'
+                });
+            } catch (error) {
+                console.error(`Failed to notify user ${conn.uid}:`, error);
+            }
+        }
+        
+        // Wait a bit for notifications to be delivered
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        
+        // Kick connections in batches
+        const batchSize = 10;
+        const batches = chunkArray(nodeConnections, batchSize);
+        
+        for (let i = 0; i < batches.length; i++) {
+            const batch = batches[i];
+            console.log(`Kicking batch ${i + 1}/${batches.length}`);
+            
+            const batchResults = await bulkKickConnections(batch, 'node_maintenance');
+            
+            // Wait between batches
+            if (i < batches.length - 1) {
+                await new Promise(resolve => setTimeout(resolve, 2000));
+            }
+        }
+        
+        console.log(`Graceful shutdown completed for node ${nodeId}`);
+    } catch (error) {
+        console.error(`Graceful shutdown failed for node ${nodeId}:`, error);
+    }
+}
+```
+
+### Connection Quality Management
+
+**Poor Connection Cleanup**:
+```javascript
+// Kick connections with poor quality metrics
+class ConnectionQualityManager {
+    constructor() {
+        this.qualityThresholds = {
+            maxLatency: 5000, // 5 seconds
+            minHeartbeatInterval: 60000, // 1 minute
+            maxFailedPings: 3
+        };
+    }
+    
+    async monitorAndKickPoorConnections() {
+        try {
+            const allConnections = await getAllActiveConnections();
+            const poorConnections = [];
+            
+            for (const conn of allConnections) {
+                const quality = await this.assessConnectionQuality(conn);
+                
+                if (!quality.isGood) {
+                    poorConnections.push({
+                        connection: conn,
+                        quality: quality
+                    });
+                }
+            }
+            
+            // Kick poor quality connections
+            for (const poor of poorConnections) {
+                await this.kickPoorConnection(poor.connection, poor.quality);
+            }
+            
+            return {
+                total_checked: allConnections.length,
+                poor_connections: poorConnections.length,
+                kicked: poorConnections.length
+            };
+        } catch (error) {
+            console.error('Connection quality monitoring failed:', error);
+            return { error: error.message };
+        }
+    }
+    
+    async assessConnectionQuality(connection) {
+        const metrics = await getConnectionMetrics(connection.conn_id);
+        
+        const issues = [];
+        
+        if (metrics.latency > this.qualityThresholds.maxLatency) {
+            issues.push(`High latency: ${metrics.latency}ms`);
+        }
+        
+        if (metrics.lastHeartbeat && 
+            Date.now() - metrics.lastHeartbeat > this.qualityThresholds.minHeartbeatInterval) {
+            issues.push('Missed heartbeat');
+        }
+        
+        if (metrics.failedPings > this.qualityThresholds.maxFailedPings) {
+            issues.push(`Too many failed pings: ${metrics.failedPings}`);
+        }
+        
+        return {
+            isGood: issues.length === 0,
+            issues: issues,
+            metrics: metrics
+        };
+    }
+    
+    async kickPoorConnection(connection, quality) {
+        try {
+            await kickConnection({
+                uid: connection.uid,
+                conn_id: connection.conn_id,
+                node_id: connection.node_id
+            });
+            
+            // Log quality issue
+            await logConnectionQualityEvent({
+                user_id: connection.uid,
+                connection_id: connection.conn_id,
+                node_id: connection.node_id,
+                quality_issues: quality.issues,
+                metrics: quality.metrics,
+                action: 'connection_kicked',
+                timestamp: new Date().toISOString()
+            });
+            
+            console.log(`Kicked poor quality connection ${connection.conn_id} for user ${connection.uid}`);
+        } catch (error) {
+            console.error(`Failed to kick poor connection ${connection.conn_id}:`, error);
+        }
+    }
+}
+
+// Usage
+const qualityManager = new ConnectionQualityManager();
+
+// Run quality check every 5 minutes
+setInterval(async () => {
+    const result = await qualityManager.monitorAndKickPoorConnections();
+    if (result.kicked > 0) {
+        console.log(`Quality check: kicked ${result.kicked} poor connections`);
+    }
+}, 5 * 60 * 1000);
+```
+
+## Best Practices
+
+1. **Graceful Notification**: Send notifications to users before kicking connections when possible
+2. **Logging**: Log all kick operations with reasons for audit purposes
+3. **Rate Limiting**: Avoid kicking too many connections simultaneously
+4. **Error Handling**: Handle kick failures gracefully
+5. **User Experience**: Provide clear reconnection instructions to affected users
+6. **Security**: Use kick operations as part of security incident response
+7. **Monitoring**: Monitor kick operations to identify patterns or issues

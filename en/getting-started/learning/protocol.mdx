@@ -1,0 +1,342 @@
+---
+title: "Binary Protocol"
+description: "Detailed specification of WuKongIM communication protocol and packet structure"
+icon: "code"
+---
+
+# WuKongIM Protocol
+
+<Info>
+WuKongIM protocol is an efficient binary communication protocol designed specifically for instant messaging scenarios. This document provides detailed descriptions of packet structure, control types, and encoding specifications.
+</Info>
+
+---
+
+## 📋 Control Packet Structure
+
+Each WuKongIM control packet consists of the following three parts:
+
+| Parameter Name  | Type   | Description     |
+| :-------------- | :----- | :-------------- |
+| Fixed header    | 1 byte | Fixed header    |
+| Variable header | bytes  | Variable header |
+| Payload         | bytes  | Message body    |
+
+---
+
+## 🔧 Fixed Header
+
+Each WuKongIM control packet contains a fixed header used to identify packet type and length information.
+
+| Bit | 7 | 6 | 5 | 4 | 3 | 2 | 1 | 0 |
+|-----|---|---|---|---|---|---|---|---|
+| byte 1 | WuKongIM control packet type | WuKongIM control packet type | WuKongIM control packet type | WuKongIM control packet type | Flag bits for control packet type | Flag bits for control packet type | Flag bits for control packet type | Flag bits for control packet type |
+| byte 2... | Remaining length | Remaining length | Remaining length | Remaining length | Remaining length | Remaining length | Remaining length | Remaining length |
+
+### 📝 WuKongIM Control Packet Types
+
+<Note>
+WuKongIM protocol defines 10 different control packet types, each with specific purposes and data structures.
+</Note>
+
+| Name | Value | Description |
+|------|-------|-------------|
+| Reserved | 0 | Reserved bit |
+| CONNECT | 1 | Client request to connect to server (c2s) |
+| CONNACK | 2 | Server acknowledgment packet after receiving connection request (s2c) |
+| SEND | 3 | Send message (c2s) |
+| SENDACK | 4 | Message acknowledgment packet (s2c) |
+| RECV | 5 | Receive message (s2c) |
+| RECVACK | 6 | Receive message acknowledgment (c2s) |
+| PING | 7 | Ping request |
+| PONG | 8 | Response to ping request |
+| DISCONNECT | 9 | Request to disconnect |
+
+### 🏷️ Control Packet Flag Bits
+
+Different protocol packets use different flag bits to control message behavior:
+
+Flag bits in Send and Recv protocols
+
+| bit | 3 | 2 | 1 | 0 |
+|-----|---|---|---|---|
+| byte | DUP | SyncOnce | RedDot | NoPersist |
+
+Flag bits in Connack protocol
+
+| bit | 3 | 2 | 1 | 0 |
+|-----|---|---|---|---|
+| byte | Reserved | Reserved | Reserved | HasServerVersion |
+
+Flag bits in Chunk protocol
+
+| bit | 3 | 2 | 1 | 0 |
+|-----|---|---|---|---|
+| byte | Reserved | Reserved | Reserved | End |
+
+<Tip>
+**Flag bit descriptions**:
+- **DUP**: Whether it's a duplicate message (clients need to mark DUP as 1 when resending messages)
+- **SyncOnce**: Sync only once. In multi-device scenarios, if one device has pulled this message, other devices will not pull this message again (e.g., friend request messages)
+- **RedDot**: Whether the client should show a red dot when receiving the message
+- **NoPersist**: Whether not to store this message
+- **Reserved**: Reserved bit
+- **HasServerVersion**: Whether there is a server version number
+- **End**: Whether it's the ending message chunk
+</Tip>
+
+### 📏 Remaining Length Encoding
+
+<Warning>
+The remaining length field indicates the number of bytes remaining in the current message, including variable header and payload (content). This is a variable-length encoding field.
+</Warning>
+
+**Encoding rules**:
+- Single byte maximum value: `01111111` (0x7F, 127)
+- The eighth bit (most significant bit) being 1 indicates there are subsequent bytes
+- Maximum of 4 bytes allowed to represent remaining length
+- Maximum length: `0xFF,0xFF,0xFF,0x7F` = 268,435,455 bytes = 256MB
+
+**Byte ranges**:
+
+| Digits | From                               | To                                   |
+| ------ | ---------------------------------- | ------------------------------------ |
+| 1      | 0 (0x00)                           | 127 (0x7F)                           |
+| 2      | 128 (0x80, 0x01)                   | 16 383 (0xFF, 0x7F)                  |
+| 3      | 16 384 (0x80, 0x80, 0x01)          | 2 097 151 (0xFF, 0xFF, 0x7F)         |
+| 4      | 2 097 152 (0x80, 0x80, 0x80, 0x01) | 268 435 455 (0xFF, 0xFF, 0xFF, 0x7F) |
+
+<Note>
+**Encoding understanding**:
+- 1st byte base: 1
+- 2nd byte base: 128 (2^7)
+- 3rd byte base: 128×128 = 2^14
+- 4th byte base: 128×128×128 = 2^21
+</Note>
+
+**Encoding example**:
+
+Expressing 321 = 65 + 2×128 (2 bytes): `11000001 00000010`
+
+```
+First byte 193 (11000001):
+  - Most significant bit is 1, indicating subsequent bytes
+  - Lower 7 bits are 1000001 (65)
+
+Second byte 2 (00000010):
+  - Most significant bit is 0, indicating end
+  - Lower 7 bits are 0000010 (2)
+
+Calculation: 321 = 65 + 2 × 128 = 65 + 256
+```
+
+<Tip>
+**Byte order**: The first byte is low-order, subsequent bytes are high-order, but within bytes, low-order is on the right, high-order is on the left.
+</Tip>
+
+### 🔤 String UTF-8 Encoding
+
+WuKongIM uses a modified UTF-8 encoding format:
+
+| bit | 7 | 6 | 5 | 4 | 3 | 2 | 1 | 0 |
+|-----|---|---|---|---|---|---|---|---|
+| byte 1 | String Length MSB | String Length MSB | String Length MSB | String Length MSB | String Length MSB | String Length MSB | String Length MSB | String Length MSB |
+| byte 2 | String Length MSB | String Length MSB | String Length MSB | String Length MSB | String Length MSB | String Length MSB | String Length MSB | String Length MSB |
+| bytes 3... | Encoded Character Data | Encoded Character Data | Encoded Character Data | Encoded Character Data | Encoded Character Data | Encoded Character Data | Encoded Character Data | Encoded Character Data |
+
+---
+
+## 🔄 Variable Header
+
+<Info>
+Some control packets contain a variable header section located between the fixed header and payload. The content of the variable header varies depending on the packet type.
+</Info>
+
+---
+
+# 📡 Protocol Packet Specifications
+
+## 🔌 CONNECT Connection Packet
+
+<Note>
+Packet format used when a client initiates a connection request to the server.
+</Note>
+
+| Parameter Name | Type | Description |
+|----------------|------|-------------|
+| Packet Type | 0.5 byte | Packet type (1) |
+| Flag | 0.5 byte | Flag bits |
+| Remaining Length | ... byte | Remaining packet length |
+| Protocol Version | int8 | Protocol version number |
+| Device Flag | int8 | Device flag (same flag for same account mutual kick) |
+| Device ID | string | Unique device ID |
+| UID | string | User ID |
+| Token | string | User token |
+| Client Timestamp | int64 | Client current timestamp (13-digit timestamp, to milliseconds) |
+| Client Key | string | Client KEY (base64 encoded DH public key) |
+
+## ✅ CONNACK Connection Acknowledgment
+
+<Warning>
+CONNACK packet is sent by the server as a response to the client's CONNECT packet. If the client doesn't receive a CONNACK packet within a reasonable time, it should close the network connection.
+</Warning>
+
+| Parameter Name | Type | Description |
+|----------------|------|-------------|
+| Packet Type | 0.5 byte | Packet type (2) |
+| Flag | 0.5 byte | Flag bits |
+| Remaining Length | ... byte | Remaining packet length |
+| ServerVersion | uint8 | Maximum version supported by server, valid when flag contains HasServerVersion |
+| Time Diff | int64 | Difference between client time and server time, in milliseconds |
+| Reason Code | uint8 | Connection reason code (see appendix) |
+| Server Key | string | Server base64 DH public key |
+| Salt | string | Security code |
+
+## 📤 SEND Send Message
+
+<Note>
+Packet format used when a client sends a message to the server.
+</Note>
+
+| Parameter Name | Type | Description |
+|----------------|------|-------------|
+| Packet Type | 0.5 byte | Packet type (3) |
+| Flag | 0.5 byte | Flag bits |
+| Remaining Length | ... byte | Remaining packet length |
+| Setting | 1 byte | Message settings |
+| Client Seq | uint32 | Client message sequence number (generated by client, unique per client) |
+| Client Msg No | string | Client unique identifier for message deduplication |
+| StreamNo | string | Stream message number (Stream must be enabled in settings) |
+| Channel Id | string | Channel ID (for personal channels, ChannelId is the person's UID) |
+| Channel Type | int8 | Channel type (1. Personal 2. Group) |
+| Expire | uint32 | Message expiration time (in seconds) version>=3 |
+| Msg Key | string | Used to verify message legitimacy (prevent man-in-the-middle tampering) |
+| Topic | string | Topic ID (only present when topic is enabled in settings) |
+| Payload | ... byte | Message content |
+
+## ✅ SENDACK Send Message Acknowledgment
+
+<Note>
+Server acknowledgment response to client message sending.
+</Note>
+
+| Parameter Name | Type | Description |
+|----------------|------|-------------|
+| Packet Type | 0.5 byte | Packet type (4) |
+| Flag | 0.5 byte | Flag bits |
+| Remaining Length | ... byte | Remaining packet length |
+| Message ID | uint64 | Server message ID (globally unique) |
+| Client Seq | uint32 | Client message sequence number |
+| Message Seq | uint32 | Message sequence number (ordered increment, channel unique) |
+| Reason Code | uint8 | Send reason code, 1 indicates success |
+
+## 📥 RECV Receive Message
+
+<Note>
+Packet format used when the server pushes messages to the client.
+</Note>
+
+| Parameter Name | Type | Description |
+|----------------|------|-------------|
+| Packet Type | 0.5 byte | Packet type (5) |
+| Flag | 0.5 byte | Flag bits |
+| Remaining Length | ... byte | Remaining packet length |
+| Setting | 1 byte | Message settings (see below, valid for version 4) |
+| Msg Key | string | Used to verify message legitimacy (prevent man-in-the-middle tampering) |
+| From UID | string | Sender UID |
+| Channel ID | string | Channel ID |
+| Channel Type | int8 | Channel type |
+| Expire | uint32 | Message expiration time (in seconds) version>=3 |
+| Client Msg No | string | Client unique identifier for message deduplication |
+| StreamNo | string | Stream message number, present based on whether stream is enabled in settings |
+| StreamId | uint32 | Stream sequence number, present based on whether stream is enabled in settings |
+| Message ID | uint64 | Server message ID (globally unique) |
+| Message Seq | uint32 | Server message sequence number (ordered increment, channel unique) |
+| Message Timestamp | int32 | Server message timestamp (10 digits, to seconds) |
+| Topic | string | Topic ID (only present when topic is enabled in settings) |
+| Payload | ... byte | Message content |
+
+## ✅ RECVACK Receive Message Acknowledgment
+
+<Note>
+Client acknowledgment response to server message push.
+</Note>
+
+| Parameter Name | Type | Description |
+|----------------|------|-------------|
+| Packet Type | 0.5 byte | Packet type (6) |
+| Flag | 0.5 byte | Flag bits |
+| Remaining Length | ... byte | Remaining packet length |
+| Message ID | uint64 | Server message ID (globally unique) |
+| Message Seq | uint32 | Sequence number |
+
+## 🏓 PING
+
+<Note>
+Heartbeat request packet sent by the client to keep the connection active.
+</Note>
+
+| Parameter Name | Type | Description |
+|----------------|------|-------------|
+| Packet Type | 0.5 byte | Packet type (7) |
+| Flag | 0.5 byte | Flag bits |
+
+## 🏓 PONG
+
+<Note>
+Server response packet to client PING request.
+</Note>
+
+| Parameter Name | Type | Description |
+|----------------|------|-------------|
+| Packet Type | 0.5 byte | Packet type (8) |
+| Flag | 0.5 byte | Flag bits |
+
+## 🔌 DISCONNECT
+
+<Warning>
+Packet format used when client or server requests to disconnect.
+</Warning>
+
+| Parameter Name | Type | Description |
+|----------------|------|-------------|
+| Packet Type | 0.5 byte | Packet type (9) |
+| Flag | 0.5 byte | Flag bits |
+| Remaining Length | ... byte | Remaining packet length |
+| ReasonCode | uint8 | Reason code |
+| Reason | string | Reason |
+
+---
+
+# ⚙️ Message Settings
+
+## 📊 Message Setting Bit Fields
+
+<Info>
+Message settings are 1 byte (8 bits) used to control various message behavior characteristics.
+</Info>
+
+| bit | 7 | 6 | 5 | 4 | 3 | 2 | 1 | 0 |
+|-----|---|---|---|---|---|---|---|---|
+| byte | Receipt | Reserved | Signal | NoEncrypt | Topic | Reserved | Stream | Reserved |
+
+## 🔧 Setting Bit Descriptions
+
+<Tip>
+**Bit function descriptions**:
+
+- **Receipt**: Message read receipt, this flag indicates this message requires read receipt
+- **Reserved**: Reserved bit, not yet used
+- **Signal**: Encryption flag
+- **NoEncrypt**: Whether message encryption is disabled
+- **Topic**: Whether message contains topic (if 1, both send and receive packets will include topic field)
+- **Reserved**: Reserved bit, not yet used
+- **Stream**: Stream message flag
+- **Reserved**: Reserved bit, not yet used
+</Tip>
+
+---
+
+<Note>
+**Complete Protocol Documentation**: This document contains the core parts of the WuKongIM protocol. The complete protocol specification also includes recommended Payload structure, regular message format, system message format, and other detailed content. Please refer to the source documentation for complete information.
+</Note>

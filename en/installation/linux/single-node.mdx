@@ -1,0 +1,278 @@
+---
+title: "Single Node Deployment"
+description: "Deploy WuKongIM single node instance on Linux system"
+icon: "server"
+---
+
+# Single Node Mode
+
+## Description
+
+**Applicable scenarios**: Small applications, applications with low data security requirements, can scale to cluster later when volume increases.
+
+**Advantages**: Simple deployment, good performance, supports online scaling.
+
+**Disadvantages**: Cannot provide disaster recovery, requires manual backup.
+
+## Environment Requirements
+
+- Linux system (Ubuntu recommended) (Recommended configuration: 2 cores 4GB or 4 cores 8GB)
+
+## Installation
+
+### 1. Download Executable File
+
+<CodeGroup>
+```bash AMD64
+curl -L -o wukongim https://github.com/WuKongIM/WuKongIM/releases/download/latest/wukongim-linux-amd64
+```
+
+```bash ARM64
+curl -L -o wukongim https://github.com/WuKongIM/WuKongIM/releases/download/latest/wukongim-linux-arm64
+```
+</CodeGroup>
+
+### 2. Modify Executable File Permissions
+
+```bash
+chmod +x wukongim
+```
+
+### 3. Create Configuration File
+
+Create configuration file `wk.yaml` with the following content:
+
+```yaml
+mode: "release"
+rootDir: "./wukongim_data"
+cluster:
+  nodeId: 1001 # Node ID
+  serverAddr: "xx.xx.xx.xx:11110" # Node internal communication request address
+external: # Public network configuration
+  ip: "xx.xx.xx.xx" # Node external IP, IP address that clients can access
+```
+
+<Note>
+- Replace `ip` with your server's external IP address
+- Replace `xx.xx.xx.xx` in `serverAddr` with your server's internal IP address
+</Note>
+
+### 4. Start or Stop
+
+```bash
+# Start (-d means run in background, otherwise run in foreground)
+./wukongim --config wk.yaml -d
+
+# Stop
+./wukongim stop
+```
+
+## Port Configuration
+
+| Port | Description |
+| --- | --- |
+| 5001 | HTTP API port (only open to internal LAN) |
+| 5100 | TCP port, app clients need to access |
+| 5200 | WebSocket port, web IM clients need to access |
+| 5300 | Management system port |
+| 5172 | Demo port, used for demonstrating WuKongIM communication capabilities |
+
+<Warning>
+Make sure to open the required ports in your firewall:
+
+```bash
+# Ubuntu/Debian
+sudo ufw allow 5100
+sudo ufw allow 5200
+sudo ufw allow 5300
+sudo ufw allow 5172
+
+# CentOS/RHEL
+sudo firewall-cmd --permanent --add-port=5100/tcp
+sudo firewall-cmd --permanent --add-port=5200/tcp
+sudo firewall-cmd --permanent --add-port=5300/tcp
+sudo firewall-cmd --permanent --add-port=5172/tcp
+sudo firewall-cmd --reload
+```
+</Warning>
+
+## Verification
+
+Access `http://server_ip:5300` to enter the management system. If you can access it normally, the deployment is successful.
+
+### Additional Verification Steps
+
+1. **Check service status**:
+```bash
+# Check if WuKongIM is running
+ps aux | grep wukongim
+
+# Check port listening
+netstat -tlnp | grep -E ':(5001|5100|5200|5300|5172)'
+```
+
+2. **Test API endpoint**:
+```bash
+# Check health status
+curl http://localhost:5001/health
+
+# Check version information
+curl http://localhost:5001/version
+```
+
+3. **Access demo**:
+Visit `http://server_ip:5172` to access the demo interface and test messaging functionality.
+
+## Service Management
+
+### Using systemd (Recommended)
+
+Create a systemd service file for easier management:
+
+```bash
+sudo nano /etc/systemd/system/wukongim.service
+```
+
+Add the following content:
+
+```ini
+[Unit]
+Description=WuKongIM Server
+After=network.target
+
+[Service]
+Type=forking
+User=root
+WorkingDirectory=/path/to/wukongim
+ExecStart=/path/to/wukongim --config wk.yaml -d
+ExecStop=/path/to/wukongim stop
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Enable and start the service:
+
+```bash
+# Reload systemd
+sudo systemctl daemon-reload
+
+# Enable auto-start
+sudo systemctl enable wukongim
+
+# Start service
+sudo systemctl start wukongim
+
+# Check status
+sudo systemctl status wukongim
+
+# View logs
+sudo journalctl -u wukongim -f
+```
+
+## Configuration Optimization
+
+### Performance Tuning
+
+For production environments, consider the following optimizations:
+
+```yaml
+mode: "release"
+rootDir: "./wukongim_data"
+cluster:
+  nodeId: 1001
+  serverAddr: "xx.xx.xx.xx:11110"
+external:
+  ip: "xx.xx.xx.xx"
+# Performance optimization
+logger:
+  level: "info"  # Reduce log level in production
+  dir: "./logs"
+datasource:
+  addr: "./wukongim_data"
+  shardNum: 32  # Increase shard number for better performance
+```
+
+### Security Configuration
+
+```yaml
+# Add security settings
+security:
+  tokenExpire: 3600  # Token expiration time
+  maxConnections: 10000  # Maximum connections
+  rateLimit: 1000  # Rate limiting
+```
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Port already in use**:
+```bash
+# Check which process is using the port
+sudo lsof -i :5100
+
+# Kill the process if needed
+sudo kill -9 <PID>
+```
+
+2. **Permission denied**:
+```bash
+# Make sure the executable has proper permissions
+chmod +x wukongim
+
+# Check if running as appropriate user
+whoami
+```
+
+3. **Configuration file not found**:
+```bash
+# Make sure config file exists and is readable
+ls -la wk.yaml
+cat wk.yaml
+```
+
+### Log Analysis
+
+```bash
+# View WuKongIM logs
+tail -f ./wukongim_data/logs/wukongim.log
+
+# Check system logs
+sudo journalctl -u wukongim -n 50
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Multi-Node Deployment"
+    icon="network"
+    href="/en/installation/linux/multi-node"
+  >
+    Scale to cluster deployment for high availability
+  </Card>
+  <Card
+    title="Server Configuration"
+    icon="gear"
+    href="/en/server/configuration"
+  >
+    Configure authentication and performance optimization
+  </Card>
+  <Card
+    title="Monitoring Setup"
+    icon="chart-line"
+    href="/en/installation/linux/monitoring"
+  >
+    Set up monitoring and alerting
+  </Card>
+  <Card
+    title="API Documentation"
+    icon="code"
+    href="/en/api/introduction"
+  >
+    Start using WuKongIM API
+  </Card>
+</CardGroup>

@@ -1,0 +1,460 @@
+---
+title: "Channel Management"
+description: "WuKongIM Flutter SDK channel management functionality, including channel information retrieval and monitoring"
+icon: "hash"
+---
+
+Channel is an abstract concept in WuKongIM. Messages are first sent to channels, and channels deliver messages according to their configuration rules. Channels are divided into channel and channel details. For more information, please refer to [What is a Channel](/en/guide/initialize#channels).
+
+## Data Source
+
+`Need to implement channel information data source` [Channel Information Data Source](/en/sdk/wukongim/flutter/datasource#channel-information-data-source)
+
+## Channel Information
+
+### Get Channel Information
+
+```dart
+// Get channel information
+WKIM.shared.channelManager.getChannel(String channelID, int channelType);
+```
+
+### Force Refresh Channel Information
+
+```dart
+// Force refresh channel information
+WKIM.shared.channelManager.fetchChannelInfo(String channelID, int channelType)
+```
+
+## Events
+
+### Listen for Channel Update Events
+
+```dart
+// Listen for channel refresh events
+WKIM.shared.channelManager.addOnRefreshListener('key', (wkChannel) {
+    // Refresh corresponding channel information
+});
+
+// Remove listener
+WKIM.shared.channelManager.removeOnRefreshListener('key');
+```
+
+<Note>
+The key is a unique identifier for the listener, can be any string. The same key must be used when adding and removing listeners.
+</Note>
+
+## Common Methods
+
+```dart
+// Batch save channel information
+WKIM.shared.channelManager.addOrUpdateChannels(List<WKChannel> channelList);
+
+// Search
+WKIM.shared.channelManager.search(String keyword);
+```
+
+## Complete Channel Management Example
+
+```dart
+class ChannelManager {
+  static final ChannelManager _instance = ChannelManager._internal();
+  factory ChannelManager() => _instance;
+  ChannelManager._internal();
+  
+  final Map<String, WKChannel> _channelCache = {};
+  final StreamController<WKChannel> _channelUpdateController = StreamController.broadcast();
+  
+  // Stream for UI to listen
+  Stream<WKChannel> get channelUpdateStream => _channelUpdateController.stream;
+  
+  void initialize() {
+    _setupChannelListener();
+  }
+  
+  void _setupChannelListener() {
+    // Listen for channel refresh
+    WKIM.shared.channelManager.addOnRefreshListener('global', (wkChannel) {
+      _handleChannelUpdate(wkChannel);
+    });
+  }
+  
+  void _handleChannelUpdate(WKChannel channel) {
+    final channelKey = '${channel.channelID}_${channel.channelType}';
+    _channelCache[channelKey] = channel;
+    
+    // Notify listeners
+    _channelUpdateController.add(channel);
+  }
+  
+  // Get channel with caching
+  WKChannel? getChannelWithCache(String channelID, int channelType) {
+    final channelKey = '${channelID}_$channelType';
+    
+    // First check cache
+    if (_channelCache.containsKey(channelKey)) {
+      return _channelCache[channelKey];
+    }
+    
+    // Get from SDK
+    final channel = WKIM.shared.channelManager.getChannel(channelID, channelType);
+    if (channel != null) {
+      _channelCache[channelKey] = channel;
+      return channel;
+    }
+    
+    // Trigger network request
+    fetchChannelInfo(channelID, channelType);
+    return null;
+  }
+  
+  // Force refresh channel information
+  void fetchChannelInfo(String channelID, int channelType) {
+    WKIM.shared.channelManager.fetchChannelInfo(channelID, channelType);
+  }
+  
+  // Batch save channels
+  void saveChannels(List<WKChannel> channels) {
+    WKIM.shared.channelManager.addOrUpdateChannels(channels);
+    
+    // Update cache
+    for (var channel in channels) {
+      final channelKey = '${channel.channelID}_${channel.channelType}';
+      _channelCache[channelKey] = channel;
+    }
+  }
+  
+  // Search channels
+  List<WKChannel> searchChannels(String keyword) {
+    return WKIM.shared.channelManager.search(keyword);
+  }
+  
+  // Get channel display name
+  String getChannelDisplayName(WKChannel channel) {
+    return channel.channelRemark.isNotEmpty 
+        ? channel.channelRemark 
+        : (channel.channelName.isNotEmpty ? channel.channelName : channel.channelID);
+  }
+  
+  // Check if channel is online
+  bool isChannelOnline(WKChannel channel) {
+    return channel.online == 1;
+  }
+  
+  // Check if channel is muted
+  bool isChannelMuted(WKChannel channel) {
+    return channel.mute == 1;
+  }
+  
+  // Check if channel is pinned
+  bool isChannelPinned(WKChannel channel) {
+    return channel.top == 1;
+  }
+  
+  // Get channel type text
+  String getChannelTypeText(int channelType) {
+    switch (channelType) {
+      case WKChannelType.personal:
+        return 'Personal';
+      case WKChannelType.group:
+        return 'Group';
+      default:
+        return 'Unknown';
+    }
+  }
+  
+  // Get channel avatar URL
+  String getChannelAvatarUrl(WKChannel channel) {
+    if (channel.avatar.isNotEmpty) {
+      final cacheKey = channel.avatarCacheKey.isNotEmpty ? '?v=${channel.avatarCacheKey}' : '';
+      return '${channel.avatar}$cacheKey';
+    }
+    return _getDefaultAvatar(channel.channelID);
+  }
+  
+  String _getDefaultAvatar(String channelID) {
+    return 'https://ui-avatars.com/api/?name=$channelID&background=random';
+  }
+  
+  // Format last offline time
+  String formatLastOfflineTime(int lastOffline) {
+    if (lastOffline == 0) return 'Never';
+    
+    final date = DateTime.fromMillisecondsSinceEpoch(lastOffline * 1000);
+    final now = DateTime.now();
+    final difference = now.difference(date);
+    
+    if (difference.inMinutes < 1) return 'Just now';
+    if (difference.inMinutes < 60) return '${difference.inMinutes} minutes ago';
+    if (difference.inHours < 24) return '${difference.inHours} hours ago';
+    if (difference.inDays < 7) return '${difference.inDays} days ago';
+    
+    return '${date.month}/${date.day}/${date.year}';
+  }
+  
+  // Get device flag text
+  String getDeviceFlagText(int deviceFlag) {
+    switch (deviceFlag) {
+      case 0: return 'APP';
+      case 1: return 'WEB';
+      case 2: return 'PC';
+      default: return 'Unknown';
+    }
+  }
+  
+  // Check if channel allows invites
+  bool canInviteMembers(WKChannel channel) {
+    return channel.invite == 1;
+  }
+  
+  // Check if channel has receipt enabled
+  bool hasReceiptEnabled(WKChannel channel) {
+    return channel.receipt == 1;
+  }
+  
+  // Check if channel is a robot
+  bool isRobotChannel(WKChannel channel) {
+    return channel.robot == 1;
+  }
+  
+  // Clear channel cache
+  void clearChannelCache() {
+    _channelCache.clear();
+  }
+  
+  void dispose() {
+    _channelUpdateController.close();
+    WKIM.shared.channelManager.removeOnRefreshListener('global');
+  }
+}
+```
+
+## Data Structure Description
+
+```dart
+class WKChannel {
+  String channelID = "";
+  int channelType = WKChannelType.personal;
+  String channelName = "";
+  // Channel remark (channel's remark name, personal remark for individuals, group alias for groups)
+  String channelRemark = "";
+  int showNick = 0;
+  // Whether pinned
+  int top = 0;
+  // Whether saved in contacts
+  int save = 0;
+  // Do not disturb
+  int mute = 0;
+  // Forbidden
+  int forbidden = 0;
+  // Invite confirmation
+  int invite = 0;
+  // Channel status [1: normal 2: blacklist]
+  int status = 1;
+  // Whether followed 0: not followed (stranger) 1: followed (friend)
+  int follow = 0;
+  // Whether deleted
+  int isDeleted = 0;
+  // Creation time
+  String createdAt = "";
+  // Update time
+  String updatedAt = "";
+  // Channel avatar
+  String avatar = "";
+  // Version
+  int version = 0;
+  // Extension fields
+  dynamic localExtra;
+  // Whether online
+  int online = 0;
+  // Last offline time
+  int lastOffline = 0;
+  // Last offline device flag
+  int deviceFlag = 0;
+  // Whether receipt message
+  int receipt = 0;
+  // Robot
+  int robot = 0;
+  // Category [service: customer service]
+  String category = "";
+  String username = "";
+  String avatarCacheKey = "";
+  dynamic remoteExtraMap;
+  String parentChannelID = "";
+  int parentChannelType = 0;
+}
+```
+
+## UI Integration Example
+
+```dart
+class ChannelInfoWidget extends StatefulWidget {
+  final String channelID;
+  final int channelType;
+  
+  const ChannelInfoWidget({
+    Key? key,
+    required this.channelID,
+    required this.channelType,
+  }) : super(key: key);
+  
+  @override
+  _ChannelInfoWidgetState createState() => _ChannelInfoWidgetState();
+}
+
+class _ChannelInfoWidgetState extends State<ChannelInfoWidget> {
+  WKChannel? _channel;
+  late StreamSubscription<WKChannel> _channelSubscription;
+  
+  @override
+  void initState() {
+    super.initState();
+    _loadChannelInfo();
+    _setupChannelListener();
+  }
+  
+  void _loadChannelInfo() {
+    _channel = ChannelManager().getChannelWithCache(widget.channelID, widget.channelType);
+    if (mounted) setState(() {});
+  }
+  
+  void _setupChannelListener() {
+    _channelSubscription = ChannelManager().channelUpdateStream.listen((channel) {
+      if (channel.channelID == widget.channelID && channel.channelType == widget.channelType) {
+        setState(() {
+          _channel = channel;
+        });
+      }
+    });
+  }
+  
+  @override
+  void dispose() {
+    _channelSubscription.cancel();
+    super.dispose();
+  }
+  
+  @override
+  Widget build(BuildContext context) {
+    if (_channel == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 30,
+                  backgroundImage: NetworkImage(
+                    ChannelManager().getChannelAvatarUrl(_channel!),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        ChannelManager().getChannelDisplayName(_channel!),
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        ChannelManager().getChannelTypeText(_channel!.channelType),
+                        style: TextStyle(
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (ChannelManager().isChannelOnline(_channel!))
+                  Container(
+                    width: 12,
+                    height: 12,
+                    decoration: const BoxDecoration(
+                      color: Colors.green,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _buildInfoRow('Status', ChannelManager().isChannelOnline(_channel!) ? 'Online' : 'Offline'),
+            if (!ChannelManager().isChannelOnline(_channel!))
+              _buildInfoRow('Last Seen', ChannelManager().formatLastOfflineTime(_channel!.lastOffline)),
+            _buildInfoRow('Muted', ChannelManager().isChannelMuted(_channel!) ? 'Yes' : 'No'),
+            _buildInfoRow('Pinned', ChannelManager().isChannelPinned(_channel!) ? 'Yes' : 'No'),
+            if (ChannelManager().isRobotChannel(_channel!))
+              _buildInfoRow('Type', 'Robot'),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  Widget _buildInfoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.grey[600],
+            ),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Channel Member Management"
+    icon="users"
+    href="/en/sdk/wukongim/flutter/channel_member"
+  >
+    Learn how to manage channel members
+  </Card>
+  <Card
+    title="Data Source Configuration"
+    icon="database"
+    href="/en/sdk/wukongim/flutter/datasource"
+  >
+    Configure channel data sources
+  </Card>
+  <Card
+    title="Message Management"
+    icon="message-circle"
+    href="/en/sdk/wukongim/flutter/message"
+  >
+    Return to message handling functionality
+  </Card>
+  <Card
+    title="Advanced Features"
+    icon="cog"
+    href="/en/sdk/wukongim/flutter/advance"
+  >
+    Explore advanced features and custom messages
+  </Card>
+</CardGroup>

@@ -1,0 +1,333 @@
+---
+title: "写入流消息"
+description: "向已打开的流消息会话写入数据"
+api: "POST /streamv2/write"
+---
+
+## 概述
+
+向已打开的流消息会话写入数据，支持分片传输和实时更新。
+
+## 请求体
+
+<ParamField body="stream_id" type="string" required>
+流消息会话 ID（通过打开流接口获得）
+</ParamField>
+
+<ParamField body="data" type="string" required>
+要写入的数据内容（Base64 编码）
+</ParamField>
+
+<ParamField body="end" type="boolean" default={false}>
+是否结束流
+- `false` - 继续写入，保持流开启
+- `true` - 结束流，关闭会话
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "http://localhost:5001/streamv2/write" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "stream_id": "stream_123456789",
+    "data": "VGhpcyBpcyBzdHJlYW0gZGF0YQ==",
+    "end": false
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5001/streamv2/write', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    stream_id: 'stream_123456789',
+    data: btoa('This is stream data'),
+    end: false
+  })
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+import base64
+
+data = {
+    "stream_id": "stream_123456789",
+    "data": base64.b64encode("This is stream data".encode()).decode(),
+    "end": False
+}
+
+response = requests.post('http://localhost:5001/streamv2/write', json=data)
+result = response.json()
+print(result)
+```
+
+```go Go
+package main
+
+import (
+    "bytes"
+    "encoding/base64"
+    "encoding/json"
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    streamData := "This is stream data"
+    encodedData := base64.StdEncoding.EncodeToString([]byte(streamData))
+    
+    data := map[string]interface{}{
+        "stream_id": "stream_123456789",
+        "data":      encodedData,
+        "end":       false,
+    }
+    
+    jsonData, _ := json.Marshal(data)
+    
+    resp, err := http.Post(
+        "http://localhost:5001/streamv2/write",
+        "application/json",
+        bytes.NewBuffer(jsonData),
+    )
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    var result map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Printf("%+v\n", result)
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json 成功响应
+{
+  "status": "ok"
+}
+```
+
+```json 流已结束
+{
+  "status": "ok",
+  "stream_closed": true
+}
+```
+</ResponseExample>
+
+## 响应字段
+
+<ResponseField name="status" type="string" required>
+操作状态，成功时返回 `"ok"`
+</ResponseField>
+
+<ResponseField name="stream_closed" type="boolean">
+流是否已关闭（仅在 end=true 时返回）
+</ResponseField>
+
+## 状态码
+
+| 状态码 | 说明 |
+|--------|------|
+| 200 | 数据写入成功 |
+| 400 | 请求参数错误 |
+| 404 | 流会话不存在或已关闭 |
+| 413 | 数据过大 |
+| 500 | 服务器内部错误 |
+
+## 写入机制
+
+### 数据分片
+
+流消息支持将大量数据分片传输：
+
+```javascript
+// 分片写入示例
+async function writeStreamInChunks(streamId, content, chunkSize = 1024) {
+  const chunks = [];
+  
+  // 将内容分割成块
+  for (let i = 0; i < content.length; i += chunkSize) {
+    chunks.push(content.slice(i, i + chunkSize));
+  }
+  
+  // 逐块写入
+  for (let i = 0; i < chunks.length; i++) {
+    const isLast = i === chunks.length - 1;
+    
+    await fetch('/streamv2/write', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        stream_id: streamId,
+        data: btoa(chunks[i]),
+        end: isLast
+      })
+    });
+    
+    // 可选：添加延迟模拟打字效果
+    if (!isLast) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+  }
+}
+```
+
+### 实时更新
+
+客户端可以实时接收流数据更新：
+
+```javascript
+// WebSocket 监听流更新
+const ws = new WebSocket('ws://localhost:5001/ws');
+
+ws.onmessage = (event) => {
+  const message = JSON.parse(event.data);
+  
+  if (message.type === 'stream_update') {
+    const streamData = atob(message.data);
+    updateStreamDisplay(message.stream_id, streamData);
+  }
+};
+
+function updateStreamDisplay(streamId, newData) {
+  const streamElement = document.getElementById(`stream-${streamId}`);
+  if (streamElement) {
+    streamElement.textContent += newData;
+  }
+}
+```
+
+## 使用场景
+
+### 渐进式内容展示
+
+```javascript
+// 模拟打字机效果
+async function typewriterEffect(streamId, text, speed = 50) {
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    const isLast = i === text.length - 1;
+    
+    await fetch('/streamv2/write', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        stream_id: streamId,
+        data: btoa(char),
+        end: isLast
+      })
+    });
+    
+    await new Promise(resolve => setTimeout(resolve, speed));
+  }
+}
+```
+
+### 大文件传输
+
+```javascript
+// 大文件分块传输
+async function uploadLargeContent(streamId, content) {
+  const maxChunkSize = 8192; // 8KB 每块
+  let offset = 0;
+  
+  while (offset < content.length) {
+    const chunk = content.slice(offset, offset + maxChunkSize);
+    const isLast = offset + maxChunkSize >= content.length;
+    
+    try {
+      await fetch('/streamv2/write', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          stream_id: streamId,
+          data: btoa(chunk),
+          end: isLast
+        })
+      });
+      
+      offset += maxChunkSize;
+      
+      // 更新进度
+      const progress = Math.min(100, (offset / content.length) * 100);
+      updateProgress(progress);
+      
+    } catch (error) {
+      console.error('写入失败:', error);
+      break;
+    }
+  }
+}
+```
+
+### 实时日志传输
+
+```javascript
+// 实时日志流
+class LogStream {
+  constructor(streamId) {
+    this.streamId = streamId;
+    this.buffer = [];
+    this.flushInterval = setInterval(() => this.flush(), 1000);
+  }
+  
+  log(message) {
+    const timestamp = new Date().toISOString();
+    const logEntry = `[${timestamp}] ${message}\n`;
+    this.buffer.push(logEntry);
+  }
+  
+  async flush() {
+    if (this.buffer.length === 0) return;
+    
+    const data = this.buffer.join('');
+    this.buffer = [];
+    
+    try {
+      await fetch('/streamv2/write', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          stream_id: this.streamId,
+          data: btoa(data),
+          end: false
+        })
+      });
+    } catch (error) {
+      console.error('日志写入失败:', error);
+    }
+  }
+  
+  async close() {
+    await this.flush();
+    clearInterval(this.flushInterval);
+    
+    await fetch('/streamv2/write', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        stream_id: this.streamId,
+        data: btoa(''),
+        end: true
+      })
+    });
+  }
+}
+```
+
+## 最佳实践
+
+1. **分片大小**：控制每次写入的数据大小，建议不超过 8KB
+2. **错误处理**：处理网络错误和流状态异常
+3. **进度反馈**：为长时间传输提供进度反馈
+4. **资源清理**：确保流在使用完毕后正确关闭
+5. **并发控制**：避免同时向同一流写入数据
+6. **超时处理**：设置合理的写入超时时间

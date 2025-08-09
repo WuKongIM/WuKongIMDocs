@@ -1,0 +1,359 @@
+---
+title: "Batch Send Messages"
+description: "Send multiple messages in batch"
+api: "POST /message/sendbatch"
+---
+
+## Overview
+
+Send multiple messages in batch to improve message sending efficiency, suitable for group notifications, bulk push, and other scenarios.
+
+## Request Body
+
+The request body is an array of message objects, each message object contains the following fields:
+
+### Required Parameters
+
+<ParamField body="[].payload" type="string" required>
+Base64 encoded message content
+</ParamField>
+
+<ParamField body="[].from_uid" type="string" required>
+Sender user ID
+</ParamField>
+
+<ParamField body="[].channel_id" type="string" required>
+Target channel ID
+</ParamField>
+
+<ParamField body="[].channel_type" type="integer" required>
+Channel type (1=personal channel, 2=group channel)
+</ParamField>
+
+### Optional Parameters
+
+<ParamField body="[].header" type="object">
+Message header information
+<Expandable title="header fields">
+<ParamField body="[].header.no_persist" type="integer">
+Whether to not persist message (0=persist, 1=do not persist)
+</ParamField>
+<ParamField body="[].header.red_dot" type="integer">
+Whether to show red dot notification (0=do not show, 1=show)
+</ParamField>
+<ParamField body="[].header.sync_once" type="integer">
+Whether it's write diffusion, generally 0, only cmd messages are 1
+</ParamField>
+</Expandable>
+</ParamField>
+
+<ParamField body="[].client_msg_no" type="string">
+Client message number
+</ParamField>
+
+<ParamField body="[].stream_no" type="string">
+Stream message number
+</ParamField>
+
+<ParamField body="[].expire" type="integer">
+Message expiration time (seconds), 0 means no expiration
+</ParamField>
+
+<ParamField body="[].subscribers" type="array">
+Specified list of subscribers to receive the message
+<ParamField body="[].subscribers[]" type="string">
+Subscriber user ID
+</ParamField>
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "http://localhost:5001/message/sendbatch" \
+  -H "Content-Type: application/json" \
+  -d '[
+    {
+      "header": {
+        "no_persist": 0,
+        "red_dot": 1,
+        "sync_once": 0
+      },
+      "client_msg_no": "batch_msg_1",
+      "from_uid": "system",
+      "channel_id": "group123",
+      "channel_type": 2,
+      "expire": 0,
+      "payload": "SGVsbG8gR3JvdXAgMQ==",
+      "tag_key": "notification"
+    },
+    {
+      "header": {
+        "no_persist": 0,
+        "red_dot": 1,
+        "sync_once": 0
+      },
+      "client_msg_no": "batch_msg_2",
+      "from_uid": "system",
+      "channel_id": "group456",
+      "channel_type": 2,
+      "expire": 0,
+      "payload": "SGVsbG8gR3JvdXAgMg==",
+      "tag_key": "notification"
+    }
+  ]'
+```
+
+```javascript JavaScript
+const messages = [
+  {
+    header: {
+      no_persist: 0,
+      red_dot: 1,
+      sync_once: 0
+    },
+    client_msg_no: `batch_msg_${Date.now()}_1`,
+    from_uid: "system",
+    channel_id: "group123",
+    channel_type: 2,
+    expire: 0,
+    payload: btoa(JSON.stringify({
+      type: "text",
+      content: "Hello Group 1"
+    })),
+    tag_key: "notification"
+  },
+  {
+    header: {
+      no_persist: 0,
+      red_dot: 1,
+      sync_once: 0
+    },
+    client_msg_no: `batch_msg_${Date.now()}_2`,
+    from_uid: "system",
+    channel_id: "group456",
+    channel_type: 2,
+    expire: 0,
+    payload: btoa(JSON.stringify({
+      type: "text",
+      content: "Hello Group 2"
+    })),
+    tag_key: "notification"
+  }
+];
+
+const response = await fetch('http://localhost:5001/message/sendbatch', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify(messages)
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+import base64
+import json
+
+messages = [
+    {
+        "header": {
+            "no_persist": 0,
+            "red_dot": 1,
+            "sync_once": 0
+        },
+        "client_msg_no": "batch_msg_1",
+        "from_uid": "system",
+        "channel_id": "group123",
+        "channel_type": 2,
+        "expire": 0,
+        "payload": base64.b64encode(
+            json.dumps({"type": "text", "content": "Hello Group 1"}).encode()
+        ).decode(),
+        "tag_key": "notification"
+    },
+    {
+        "header": {
+            "no_persist": 0,
+            "red_dot": 1,
+            "sync_once": 0
+        },
+        "client_msg_no": "batch_msg_2",
+        "from_uid": "system",
+        "channel_id": "group456",
+        "channel_type": 2,
+        "expire": 0,
+        "payload": base64.b64encode(
+            json.dumps({"type": "text", "content": "Hello Group 2"}).encode()
+        ).decode(),
+        "tag_key": "notification"
+    }
+]
+
+response = requests.post('http://localhost:5001/message/sendbatch', json=messages)
+result = response.json()
+print(result)
+```
+
+```go Go
+package main
+
+import (
+    "bytes"
+    "encoding/base64"
+    "encoding/json"
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    message1Content := map[string]interface{}{
+        "type":    "text",
+        "content": "Hello Group 1",
+    }
+    content1, _ := json.Marshal(message1Content)
+    payload1 := base64.StdEncoding.EncodeToString(content1)
+    
+    message2Content := map[string]interface{}{
+        "type":    "text",
+        "content": "Hello Group 2",
+    }
+    content2, _ := json.Marshal(message2Content)
+    payload2 := base64.StdEncoding.EncodeToString(content2)
+    
+    messages := []map[string]interface{}{
+        {
+            "header": map[string]interface{}{
+                "no_persist": 0,
+                "red_dot":    1,
+                "sync_once":  0,
+            },
+            "client_msg_no": "batch_msg_1",
+            "from_uid":      "system",
+            "channel_id":    "group123",
+            "channel_type":  2,
+            "expire":        0,
+            "payload":       payload1,
+            "tag_key":       "notification",
+        },
+        {
+            "header": map[string]interface{}{
+                "no_persist": 0,
+                "red_dot":    1,
+                "sync_once":  0,
+            },
+            "client_msg_no": "batch_msg_2",
+            "from_uid":      "system",
+            "channel_id":    "group456",
+            "channel_type":  2,
+            "expire":        0,
+            "payload":       payload2,
+            "tag_key":       "notification",
+        },
+    }
+    
+    jsonData, _ := json.Marshal(messages)
+    
+    resp, err := http.Post(
+        "http://localhost:5001/message/sendbatch",
+        "application/json",
+        bytes.NewBuffer(jsonData),
+    )
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    var result []map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Printf("%+v\n", result)
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json Success Response
+[
+  {
+    "message_id": 123456789,
+    "message_seq": 1001,
+    "client_msg_no": "batch_msg_1"
+  },
+  {
+    "message_id": 123456790,
+    "message_seq": 1002,
+    "client_msg_no": "batch_msg_2"
+  }
+]
+```
+</ResponseExample>
+
+## Response Fields
+
+The response is an array, each element corresponds to a sent message:
+
+<ResponseField name="message_id" type="integer" required>
+Server-generated message ID
+</ResponseField>
+
+<ResponseField name="message_seq" type="integer" required>
+Message sequence number
+</ResponseField>
+
+<ResponseField name="client_msg_no" type="string" required>
+Client message number (echo)
+</ResponseField>
+
+## Status Codes
+
+| Status Code | Description |
+|-------------|-------------|
+| 200 | Batch messages sent successfully |
+| 400 | Request parameter error |
+| 403 | No sending permission |
+| 500 | Internal server error |
+
+## Use Cases
+
+### System Notifications
+
+- **Announcement Push**: Send system announcements to multiple groups
+- **Activity Notifications**: Batch send activity reminder messages
+- **Maintenance Notifications**: Batch notifications before system maintenance
+
+### Marketing Promotion
+
+- **Promotional Messages**: Send promotional information to target user groups
+- **New Feature Introduction**: Batch push new feature usage guides
+- **User Surveys**: Send questionnaire survey messages
+
+### Operations Management
+
+- **Data Statistics**: Batch send data reports
+- **Task Assignment**: Batch assign tasks to team members
+- **Meeting Notifications**: Batch send meeting invitations
+
+## Performance Optimization
+
+### Batch Size
+
+- **Recommended Batch**: Single batch sending should not exceed 100 messages
+- **Batch Processing**: Large volumes of messages can be sent in batches to avoid timeouts
+- **Concurrency Control**: Control the number of concurrent batch requests
+
+### Message Optimization
+
+- **Content Compression**: For identical content, use templates to reduce data transmission
+- **Asynchronous Processing**: Use asynchronous methods to handle batch sending
+- **Error Retry**: Implement retry mechanism for failed messages
+
+## Best Practices
+
+1. **Message Deduplication**: Ensure each message's client_msg_no is unique
+2. **Error Handling**: Handle cases where some messages fail to send
+3. **Permission Verification**: Verify sender's sending permission for all target channels
+4. **Content Review**: Review batch message content
+5. **Rate Limiting**: Implement reasonable batch sending rate limits
+6. **Monitoring & Alerts**: Monitor batch sending success rate and performance

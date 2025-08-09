@@ -1,0 +1,390 @@
+---
+title: "Sync User Conversations"
+description: "Sync user's conversation list and status"
+api: "POST /conversation/sync"
+---
+
+## Overview
+
+Sync user's conversation list and status, supporting both incremental and full synchronization.
+
+## Request Body
+
+### Required Parameters
+
+<ParamField body="uid" type="string" required>
+User ID
+</ParamField>
+
+### Optional Parameters
+
+<ParamField body="version" type="integer">
+Version timestamp for incremental sync
+</ParamField>
+
+<ParamField body="last_msg_seqs" type="string">
+Client's last message sequence numbers, format: channelID:channelType:last_msg_seq|channelID:channelType:last_msg_seq
+</ParamField>
+
+<ParamField body="msg_count" type="integer">
+Number of recent messages to return for each conversation
+</ParamField>
+
+<ParamField body="only_unread" type="integer" default={0}>
+Whether to return only unread conversations (1=only unread, 0=return all)
+</ParamField>
+
+<ParamField body="exclude_channel_types" type="array">
+Array of channel types to exclude
+<ParamField body="exclude_channel_types[]" type="integer">
+Channel type
+</ParamField>
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "http://localhost:5001/conversation/sync" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "uid": "user123",
+    "version": 1640995200000000000,
+    "last_msg_seqs": "user1:1:100|group1:2:200",
+    "msg_count": 10,
+    "only_unread": 0,
+    "exclude_channel_types": [3, 4]
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5001/conversation/sync', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    uid: 'user123',
+    version: 1640995200000000000,
+    last_msg_seqs: 'user1:1:100|group1:2:200',
+    msg_count: 10,
+    only_unread: 0,
+    exclude_channel_types: [3, 4]
+  })
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+
+data = {
+    "uid": "user123",
+    "version": 1640995200000000000,
+    "last_msg_seqs": "user1:1:100|group1:2:200",
+    "msg_count": 10,
+    "only_unread": 0,
+    "exclude_channel_types": [3, 4]
+}
+
+response = requests.post('http://localhost:5001/conversation/sync', json=data)
+result = response.json()
+print(result)
+```
+
+```go Go
+package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    data := map[string]interface{}{
+        "uid":                    "user123",
+        "version":                1640995200000000000,
+        "last_msg_seqs":          "user1:1:100|group1:2:200",
+        "msg_count":              10,
+        "only_unread":            0,
+        "exclude_channel_types":  []int{3, 4},
+    }
+    
+    jsonData, _ := json.Marshal(data)
+    
+    resp, err := http.Post(
+        "http://localhost:5001/conversation/sync",
+        "application/json",
+        bytes.NewBuffer(jsonData),
+    )
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    var result []map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Printf("%+v\n", result)
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json Success Response
+[
+  {
+    "channel_id": "group123",
+    "channel_type": 2,
+    "unread": 5,
+    "timestamp": 1640995200,
+    "last_msg_seq": 1005,
+    "version": 1640995200000000000,
+    "messages": [
+      {
+        "message_id": 123456789,
+        "message_seq": 1005,
+        "client_msg_no": "msg_123",
+        "from_uid": "user456",
+        "timestamp": 1640995200,
+        "payload": "SGVsbG8gV29ybGQ="
+      }
+    ]
+  },
+  {
+    "channel_id": "private_user123_user789",
+    "channel_type": 1,
+    "unread": 2,
+    "timestamp": 1640995100,
+    "last_msg_seq": 502,
+    "version": 1640995100000000000,
+    "messages": [
+      {
+        "message_id": 123456788,
+        "message_seq": 502,
+        "client_msg_no": "msg_122",
+        "from_uid": "user789",
+        "timestamp": 1640995100,
+        "payload": "SGkgdGhlcmU="
+      }
+    ]
+  }
+]
+```
+</ResponseExample>
+
+## Response Fields
+
+The response is an array of conversations, each containing the following fields:
+
+### Conversation Information
+
+<ResponseField name="channel_id" type="string" required>
+Channel ID
+</ResponseField>
+
+<ResponseField name="channel_type" type="integer" required>
+Channel type
+- `1` - Personal channel
+- `2` - Group channel
+</ResponseField>
+
+<ResponseField name="unread" type="integer" required>
+Number of unread messages
+</ResponseField>
+
+<ResponseField name="timestamp" type="integer" required>
+Last message timestamp
+</ResponseField>
+
+<ResponseField name="last_msg_seq" type="integer" required>
+Last message sequence number
+</ResponseField>
+
+<ResponseField name="version" type="integer" required>
+Conversation version number (nanosecond timestamp)
+</ResponseField>
+
+### Message List
+
+<ResponseField name="messages" type="array" required>
+List of latest messages in the conversation
+<Expandable title="Message object fields">
+<ResponseField name="messages[].message_id" type="integer">
+Message ID
+</ResponseField>
+<ResponseField name="messages[].message_seq" type="integer">
+Message sequence number
+</ResponseField>
+<ResponseField name="messages[].client_msg_no" type="string">
+Client message number
+</ResponseField>
+<ResponseField name="messages[].from_uid" type="string">
+Sender user ID
+</ResponseField>
+<ResponseField name="messages[].timestamp" type="integer">
+Message timestamp
+</ResponseField>
+<ResponseField name="messages[].payload" type="string">
+Base64 encoded message content
+</ResponseField>
+</Expandable>
+</ResponseField>
+
+## Status Codes
+
+| Status Code | Description |
+|-------------|-------------|
+| 200 | Conversation sync successful |
+| 400 | Request parameter error |
+| 403 | No access permission |
+| 500 | Internal server error |
+
+## Parameter Details
+
+### Message Count (msg_count)
+
+Controls the number of messages returned for each conversation:
+
+| Value | Description | Use Case |
+|-------|-------------|----------|
+| 0 | No messages returned | Only need conversation list |
+| 1-50 | Return specified number | Normal usage |
+| > 50 | System limited to 50 | Avoid excessive data |
+
+### Version-based Incremental Sync
+
+Use version parameter for efficient incremental synchronization:
+
+```javascript
+// First sync - get all conversations
+const initialSync = await syncConversations({
+    uid: "user123",
+    msg_count: 1
+});
+
+// Save the latest version
+const latestVersion = Math.max(...initialSync.map(conv => conv.version));
+
+// Later incremental sync - only get updated conversations
+const incrementalSync = await syncConversations({
+    uid: "user123",
+    version: latestVersion,
+    msg_count: 1
+});
+```
+
+### Last Message Sequence Tracking
+
+Track message sequences to detect missed messages:
+
+```javascript
+// Build last_msg_seqs string from current conversations
+function buildLastMsgSeqs(conversations) {
+    return conversations
+        .map(conv => `${conv.channel_id}:${conv.channel_type}:${conv.last_msg_seq}`)
+        .join('|');
+}
+
+// Use in sync request
+const lastMsgSeqs = buildLastMsgSeqs(currentConversations);
+const syncResult = await syncConversations({
+    uid: "user123",
+    last_msg_seqs: lastMsgSeqs,
+    msg_count: 5
+});
+```
+
+## Use Cases
+
+### Chat List Display
+
+**Initial Load**:
+```javascript
+// Load conversation list for chat interface
+const conversations = await syncConversations({
+    uid: "user123",
+    msg_count: 1,
+    exclude_channel_types: [3, 4] // Exclude system channels
+});
+
+// Display in UI
+conversations.forEach(conv => {
+    displayConversation(conv);
+});
+```
+
+**Unread Badge Update**:
+```javascript
+// Get only unread conversations for badge updates
+const unreadConversations = await syncConversations({
+    uid: "user123",
+    only_unread: 1,
+    msg_count: 0
+});
+
+const totalUnread = unreadConversations.reduce((sum, conv) => sum + conv.unread, 0);
+updateUnreadBadge(totalUnread);
+```
+
+### Real-time Sync
+
+**Periodic Sync**:
+```javascript
+let lastSyncVersion = 0;
+
+async function periodicSync() {
+    const conversations = await syncConversations({
+        uid: "user123",
+        version: lastSyncVersion,
+        msg_count: 1
+    });
+
+    if (conversations.length > 0) {
+        updateConversationList(conversations);
+        lastSyncVersion = Math.max(...conversations.map(c => c.version));
+    }
+}
+
+// Sync every 30 seconds
+setInterval(periodicSync, 30000);
+```
+
+### Offline Recovery
+
+**Sync After Reconnection**:
+```javascript
+async function syncAfterReconnection(uid, lastKnownVersion) {
+    try {
+        const missedConversations = await syncConversations({
+            uid: uid,
+            version: lastKnownVersion,
+            msg_count: 10
+        });
+
+        // Process missed conversations
+        missedConversations.forEach(conv => {
+            updateConversation(conv);
+
+            // Show notification for new messages
+            if (conv.unread > 0) {
+                showNewMessageNotification(conv);
+            }
+        });
+
+    } catch (error) {
+        console.error('Failed to sync conversations:', error);
+    }
+}
+```
+
+## Best Practices
+
+1. **Incremental Sync**: Use version-based incremental sync to reduce data transfer
+2. **Appropriate Message Count**: Set reasonable msg_count based on UI needs
+3. **Error Handling**: Handle network errors and implement retry logic
+4. **Caching**: Cache conversation data locally to improve performance
+5. **Real-time Updates**: Combine with WebSocket events for real-time updates
+6. **Filtering**: Use exclude_channel_types to filter out unwanted channel types
+7. **Batch Processing**: Process conversation updates in batches for better performance

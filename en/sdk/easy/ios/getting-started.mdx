@@ -1,0 +1,323 @@
+---
+title: "5-Minute iOS Integration"
+description: "Quickly integrate WuKongIM iOS EasySDK and implement chat functionality in 5 minutes"
+icon: "apple"
+---
+
+## Overview
+
+WuKongIM iOS EasySDK is a lightweight iOS SDK that enables you to add real-time chat functionality to your iOS application in just 5 minutes. This guide will take you through the complete process from installation to sending your first message.
+
+<Note>
+  **System Requirements**: iOS 12.0 or higher, Xcode 12.0 or higher, Swift 5.0 or higher
+</Note>
+
+## Step 1: Install SDK
+
+Choose any of the following methods to install iOS EasySDK:
+
+<Tabs>
+  <Tab title="CocoaPods">
+    Add to your `Podfile`:
+    ```ruby
+    pod 'WuKongEasySDK', '~> 1.0.0'
+    ```
+    
+    Then run:
+    ```bash
+    pod install
+    ```
+  </Tab>
+  <Tab title="Swift Package Manager">
+    In Xcode:
+    1. File → Add Package Dependencies
+    2. Enter URL: `https://github.com/WuKongIM/WuKongEasySDK-iOS`
+    3. Select version and add to project
+  </Tab>
+  <Tab title="Manual Integration">
+    1. Download the latest [Release](https://github.com/WuKongIM/WuKongEasySDK-iOS/releases)
+    2. Drag `WuKongEasySDK.framework` into your project
+    3. Add dependency in Target → General → Frameworks
+  </Tab>
+</Tabs>
+
+## Step 2: Basic Integration
+
+### 2.1 Import SDK
+
+```swift
+import WuKongEasySDK
+```
+
+### 2.2 Initialize SDK
+
+```swift
+// 1. Initialize SDK
+let config = WuKongConfig(
+    serverUrl: "ws://your-wukongim-server.com:5200",
+    uid: "your_user_id",        // Your user ID
+    token: "your_auth_token"    // Your authentication token
+    // deviceId: "optional_device_id", // Optional: Device ID
+    // deviceFlag: .APP // Optional: Device flag, default is .APP
+)
+
+let easySDK = WuKongEasySDK(config: config)
+```
+
+### 2.3 Listen for Events
+
+```swift
+// 2. Listen for various events
+easySDK.onConnect { result in
+    print("Event: Connected!", result)
+    // Connection successful, can start sending messages
+    DispatchQueue.main.async {
+        self.updateUI(connected: true)
+    }
+}
+
+easySDK.onDisconnect { disconnectInfo in
+    print("Event: Disconnected.", disconnectInfo)
+    print("Disconnect code: \(disconnectInfo.code), reason: \(disconnectInfo.reason)")
+    // Connection lost, update UI status
+    DispatchQueue.main.async {
+        self.updateUI(connected: false)
+    }
+}
+
+easySDK.onMessage { message in
+    print("Event: Message Received", message)
+    // Handle received messages
+    DispatchQueue.main.async {
+        self.displayMessage(message)
+    }
+}
+
+easySDK.onError { error in
+    print("Event: Error Occurred", error.localizedDescription)
+    // Handle errors, may need to update UI or reconnect
+    DispatchQueue.main.async {
+        self.handleError(error)
+    }
+}
+
+// You can add multiple listeners for the same event
+easySDK.onMessage { message in
+    print("Second listener also received message:", message.messageId)
+    // Add different processing logic here
+}
+```
+
+### 2.4 Remove Event Listeners
+
+In some cases, you may need to remove event listeners to avoid memory leaks or duplicate processing. iOS EasySDK provides methods to remove listeners.
+
+<Note>
+  **Important Reminder**: In iOS, removing event listeners requires maintaining references to the listeners. It's recommended to use class properties to store listener references for later removal.
+</Note>
+
+#### Correct Usage
+
+```swift
+class ChatManager {
+    private let easySDK: WuKongEasySDK
+
+    // Save listener references
+    private var messageListener: EventListener?
+    private var connectListener: EventListener?
+    private var disconnectListener: EventListener?
+    private var errorListener: EventListener?
+
+    init(config: WuKongConfig) {
+        self.easySDK = WuKongEasySDK(config: config)
+    }
+
+    func setupEventListeners() {
+        // ✅ Correct: Save listener references
+        messageListener = easySDK.onMessage { [weak self] message in
+            print("Handle message:", message)
+            DispatchQueue.main.async {
+                self?.handleMessage(message)
+            }
+        }
+
+        connectListener = easySDK.onConnect { [weak self] result in
+            print("Connection successful:", result)
+            DispatchQueue.main.async {
+                self?.handleConnect(result)
+            }
+        }
+
+        disconnectListener = easySDK.onDisconnect { [weak self] disconnectInfo in
+            print("Connection lost:", disconnectInfo)
+            print("Disconnect code: \(disconnectInfo.code), reason: \(disconnectInfo.reason)")
+            DispatchQueue.main.async {
+                self?.handleDisconnect(disconnectInfo)
+            }
+        }
+
+        errorListener = easySDK.onError { [weak self] error in
+            print("Error occurred:", error)
+            DispatchQueue.main.async {
+                self?.handleError(error)
+            }
+        }
+    }
+
+    func removeEventListeners() {
+        // Remove specific event listeners - use saved references
+        if let listener = messageListener {
+            easySDK.removeListener(listener)
+            messageListener = nil
+        }
+
+        if let listener = connectListener {
+            easySDK.removeListener(listener)
+            connectListener = nil
+        }
+
+        if let listener = disconnectListener {
+            easySDK.removeListener(listener)
+            disconnectListener = nil
+        }
+
+        if let listener = errorListener {
+            easySDK.removeListener(listener)
+            errorListener = nil
+        }
+    }
+
+    private func handleMessage(_ message: Message) {
+        // Message handling logic
+    }
+
+    private func handleConnect(_ result: ConnectResult) {
+        // Connection success handling logic
+    }
+
+    private func handleDisconnect(_ disconnectInfo: DisconnectInfo) {
+        // Connection lost handling logic
+        print("Handle disconnect event - code: \(disconnectInfo.code), reason: \(disconnectInfo.reason)")
+    }
+
+    private func handleError(_ error: Error) {
+        // Error handling logic
+    }
+}
+```
+
+### 2.5 Connect to Server
+
+```swift
+// 4. Connect to server
+Task {
+    do {
+        try await easySDK.connect()
+        print("Connection successful!")
+    } catch {
+        print("Connection failed:", error)
+    }
+}
+```
+
+### 2.6 Send Messages
+
+```swift
+// 5. Send message example
+func sendMessage() async {
+    let targetChannelID = "friend_user_id" // Target user ID
+    let messagePayload = MessagePayload(
+        type: 1,
+        content: "Hello from iOS EasySDK!"
+    ) // Your custom message payload
+    
+    do {
+        let result = try await easySDK.send(
+            channelId: targetChannelID,
+            channelType: .person,
+            payload: messagePayload
+        )
+        print("Message sent successfully:", result)
+    } catch {
+        print("Message sending failed:", error)
+    }
+}
+```
+
+## Step 3: Error Handling and Best Practices
+
+### 3.1 Error Handling
+
+<Note>
+  **Built-in Auto Reconnection**: iOS EasySDK has built-in intelligent reconnection mechanism, no need to manually implement reconnection logic. The SDK will automatically attempt to reconnect when the connection is lost.
+</Note>
+
+```swift
+// Proper connection status listening
+easySDK.onConnect { result in
+    print("Connection successful:", result)
+    // Update UI status, enable sending functionality
+    DispatchQueue.main.async {
+        self.updateConnectionUI(connected: true)
+    }
+}
+
+easySDK.onDisconnect { disconnectInfo in
+    print("Connection lost:", disconnectInfo)
+    print("Disconnect code: \(disconnectInfo.code), reason: \(disconnectInfo.reason)")
+    // Update UI status, disable sending functionality
+    DispatchQueue.main.async {
+        self.updateConnectionUI(connected: false)
+    }
+    // SDK will automatically attempt to reconnect, no manual handling needed
+}
+
+easySDK.onError { error in
+    print("Error occurred:", error)
+
+    // Handle based on error type
+    DispatchQueue.main.async {
+        switch error {
+        case WuKongError.authFailed:
+            // Authentication failed, need to get new token
+            self.handleAuthError()
+        case WuKongError.networkError:
+            // Network error, show network prompt
+            self.showNetworkError()
+        default:
+            // Other errors
+            self.showGeneralError(error.localizedDescription)
+        }
+    }
+}
+```
+
+## Related Resources
+
+<CardGroup cols={2}>
+  <Card title="Complete Example Code" icon="code" href="https://github.com/WuKongIM/EasyJSSDK/blob/main/example/app.js">
+    View complete example code and more feature demonstrations
+  </Card>
+  <Card title="Complete Protocol Documentation" icon="file-text" href="https://github.com/WuKongIM/WuKongIM/blob/main/pkg/jsonrpc/wukongim_rpc_schema.json">
+    View WuKongIM's complete protocol documentation
+  </Card>
+  <Card title="GitHub Repository" icon="github" href="https://github.com/WuKongIM/EasyJSSDK">
+    Visit EasyJSSDK's GitHub repository
+  </Card>
+  <Card title="Issue Feedback" icon="bug" href="https://github.com/WuKongIM/EasyJSSDK/issues">
+    Report issues or provide suggestions
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+Congratulations! You have successfully integrated WuKongIM iOS EasySDK. Now you can:
+
+1. **Extend Functionality**: Add group chat, file transfer and other features
+2. **Customize UI**: Customize chat interface according to your app design
+3. **Integrate into Project**: Integrate chat functionality into your existing project
+4. **Performance Optimization**: Optimize performance based on actual usage
+
+<Tip>
+  If you need more complex functionality or higher performance requirements, consider using the full version of WuKongIMSDK.
+</Tip>

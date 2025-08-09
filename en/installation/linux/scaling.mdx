@@ -1,0 +1,340 @@
+---
+title: "Cluster Scaling"
+description: "WuKongIM Linux cluster scaling operations guide"
+icon: "expand"
+---
+
+WuKongIM supports dynamic scaling in Linux environments, allowing flexible adjustment of cluster size based on business requirements.
+
+# Single Node Mode Scaling
+
+## Description
+
+The previously deployed [single node mode](single-node.md) now needs to be scaled to multiple servers. Here we use two servers as an example to explain how to scale.
+
+Assume there are two servers with the following information:
+
+| Name | Internal IP | External IP | Description |
+| --- | --- | --- | --- |
+| node1(1001) | 192.168.1.10 | 221.123.68.10 | Master node (originally deployed single node) |
+| node2(1002) | 192.168.1.20 | 221.123.68.20 | New node to be added |
+
+node1 is the originally deployed single node, now we want to scale to two servers, node2 is the newly added node.
+
+<Note>
+The following file contents are set with assumed server IPs, just replace the corresponding IPs with your own.
+</Note>
+
+## Preparation
+
+You need to deploy `nginx` (recommended version 1.27.0) on the node1 node for load balancing.
+
+## Deploy WuKongIM
+
+Deploy `WuKongIM` on the node2 node. The process is the same as single node mode, so it won't be repeated here. For details:
+
+Refer to the WuKongIM deployment tutorial [Single Node Mode](./single-node).
+
+## Configure WuKongIM
+
+Modify the configuration file `wk.yaml` on node2, complete content as follows:
+
+```yaml
+mode: "release"
+external: # Public network configuration
+  ip: "221.123.68.20" # Node external IP, IP address that clients can access
+  tcpAddr: "221.123.68.10:15100" # Long connection address for app access, note this is the load balancer server's IP and port, not local
+  wsAddr: "ws://221.123.68.10:15200" # Long connection address for web access, note this is the load balancer server's IP and port, not local
+cluster:
+  nodeId: 1002 # Node ID
+  apiUrl: "http://192.168.1.20:5001" # Current node's internal API address
+  serverAddr: "192.168.1.20:11110" # Current node's internal distributed communication address
+  seed: "1001@192.168.1.10:11110" # Seed node, original node's address
+```
+
+Modify the configuration file `wk.yaml` on node1, complete content as follows:
+
+```yaml
+mode: "release"
+external: # Public network configuration
+  ip: "221.123.68.10" # Node external IP, IP address that clients can access
+  tcpAddr: "221.123.68.10:15100" # Long connection address for app access, note this is the load balancer server's IP and port
+  wsAddr: "ws://221.123.68.10:15200" # Long connection address for web access, note this is the load balancer server's IP and port
+cluster:
+  nodeId: 1001 # Node ID
+  apiUrl: "http://192.168.1.10:5001" # Current node's internal API address
+  serverAddr: "192.168.1.10:11110" # Current node's internal distributed communication address
+```
+
+## Configure nginx
+
+```nginx
+user  nginx;
+worker_processes  auto;
+
+error_log  /var/log/nginx/error.log notice;
+pid        /var/run/nginx.pid;
+
+events {
+    worker_connections  1024;
+}
+
+http {
+    include       /etc/nginx/mime.types;
+    default_type  application/octet-stream;
+
+    log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+                      '$status $body_bytes_sent "$http_referer" '
+                      '"$http_user_agent" "$http_x_forwarded_for"';
+
+    access_log  /var/log/nginx/access.log  main;
+
+    sendfile        on;
+    keepalive_timeout  65;
+
+    # API load balancing
+    upstream wukongimapi {
+        server 192.168.1.10:5001;
+        server 192.168.1.20:5001;
+    }
+    # Demo load balancing
+    upstream wukongimdemo {
+        server 192.168.1.10:5172;
+        server 192.168.1.20:5172;
+    }
+    # Manager load balancing
+    upstream wukongimanager {
+        server 192.168.1.10:5300;
+        server 192.168.1.20:5300;
+    }
+    # WebSocket load balancing
+    upstream wukongimws {
+        server 192.168.1.10:5200;
+        server 192.168.1.20:5200;
+    }
+    # HTTP API forwarding
+    server {
+        listen 5001;
+        location / {
+            proxy_pass http://wukongimapi;
+            proxy_connect_timeout 20s;
+            proxy_read_timeout 60s;
+        }
+    }
+    # Demo
+    server {
+        listen 5172;
+        location / {
+            proxy_pass http://wukongimdemo;
+            proxy_connect_timeout 20s;
+            proxy_read_timeout 60s;
+        }
+        location /login {
+            rewrite ^ /chatdemo?apiurl=http://221.123.68.10:15001;
+            proxy_pass http://wukongimdemo;
+            proxy_connect_timeout 20s;
+            proxy_read_timeout 60s;
+        }
+    }
+    # Manager
+    server {
+        listen 5300;
+        location / {
+            proxy_pass http://wukongimanager;
+            proxy_connect_timeout 60s;
+            proxy_read_timeout 60s;
+        }
+    }
+    # WebSocket
+    server {
+        listen 5200;
+        location / {
+            proxy_pass http://wukongimws;
+            proxy_redirect off;
+            proxy_http_version 1.1;
+            # nginx receives data from upstream server timeout, default 120s, connection closes if no byte received in consecutive 120s
+            proxy_read_timeout 120s;
+            # nginx sends data to upstream server timeout, default 120s, connection closes if no byte sent in consecutive 120s
+            proxy_send_timeout 120s;
+            # nginx connection timeout with upstream server
+            proxy_connect_timeout 4s;
+            proxy_set_header  X-Real-IP $remote_addr;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+        }
+    }
+}
+
+# TCP
+stream {
+  # TCP load balancing
+  upstream wukongimtcp {
+    server 192.168.1.10:5100;
+    server 192.168.1.20:5100;
+  }
+  server {
+    listen 5100;
+    proxy_connect_timeout 4s;
+    proxy_timeout 120s;
+    proxy_pass wukongimtcp;
+  }
+}
+```
+
+## Restart
+
+Finally, restart nginx on node1 and WuKongIM on both node1 and node2.
+
+```bash
+# Restart nginx on node1
+sudo systemctl restart nginx
+
+# Restart WuKongIM on node1
+./wukongim stop
+./wukongim --config wk.yaml -d
+
+# Start WuKongIM on node2
+./wukongim --config wk.yaml -d
+```
+
+## Verification
+
+Log into the management system, in node management you can see if the newly added node's status is "Joined". If so, scaling is successful.
+
+# Multi-Node Scaling Mode
+
+## Description
+
+Nodes originally deployed using [multi-node mode](./multi-node) can expand cluster size by adding nodes. This document describes how to expand cluster size by adding nodes.
+
+Assume the newly added node information is as follows:
+
+| Name | Internal IP | External IP |
+| --- | --- | --- |
+| node4(1004) | 192.168.12.4 | 222.222.222.4 |
+
+## Install WuKongIM
+
+On node4:
+
+### 1. Download Executable File
+
+<CodeGroup>
+```bash AMD64
+curl -L -o wukongim https://github.com/WuKongIM/WuKongIM/releases/download/latest/wukongim-linux-amd64
+```
+
+```bash ARM64
+curl -L -o wukongim https://github.com/WuKongIM/WuKongIM/releases/download/latest/wukongim-linux-arm64
+```
+</CodeGroup>
+
+### 2. Modify Executable File Permissions
+
+```bash
+chmod +x wukongim
+```
+
+## Configuration
+
+### Configure WuKongIM
+
+Create configuration file `wk.yaml` on node4 with the following content:
+
+```yaml
+mode: "release"
+external: # Public network configuration
+  ip: "222.222.222.4" # Node external IP, IP address that clients can access
+  tcpAddr: "222.222.222.1:15100" # Long connection address for app access, note this is the load balancer server's IP and port, not local
+  wsAddr: "ws://222.222.222.1:15200" # Long connection address for web access, note this is the load balancer server's IP and port, not local
+cluster:
+  nodeId: 1004 # Node ID
+  apiUrl: "http://192.168.12.4:5001" # Current node's internal API address
+  serverAddr: "192.168.12.4:11110" # Current node's internal distributed communication address
+  seed: "1001@192.168.12.1:11100" # Seed node, any node in original cluster can be seed node, here use node1 as seed
+```
+
+### Configure nginx
+
+Configure nginx on the original node1 node, add load balancing configuration for node4.
+
+```nginx
+upstream wukongimapi {
+    # ... existing servers ...
+    server 192.168.12.4:5001;
+}
+
+upstream wukongimdemo {
+    # ... existing servers ...
+    server 192.168.12.4:5172;
+}
+
+upstream wukongimanager {
+    # ... existing servers ...
+    server 192.168.12.4:5300;
+}
+
+upstream wukongimws {
+    # ... existing servers ...
+    server 192.168.12.4:5200;
+}
+
+stream {
+  # ... existing configuration ...
+  upstream wukongimtcp {
+      # ... existing servers ...
+     server 192.168.12.4:5100;
+  }
+  # ... rest of configuration ...
+}
+```
+
+<Note>
+Remember to restart nginx for the configuration to take effect:
+```bash
+sudo systemctl restart nginx
+```
+</Note>
+
+## Start WuKongIM
+
+```bash
+./wukongim --config wk.yaml -d
+```
+
+## Verification
+
+Log into the management system, in node management you can see if the newly added node's status is "Joined". If so, scaling is successful.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Upgrade Guide"
+    icon="arrow-up"
+    href="/en/installation/linux/upgrade"
+  >
+    Learn about version upgrades
+  </Card>
+  <Card
+    title="Monitoring Setup"
+    icon="chart-line"
+    href="/en/installation/linux/monitoring"
+  >
+    Set up monitoring for scaled cluster
+  </Card>
+  <Card
+    title="Multi-Node Deployment"
+    icon="network"
+    href="/en/installation/linux/multi-node"
+  >
+    Learn about multi-node deployment
+  </Card>
+  <Card
+    title="Server Configuration"
+    icon="gear"
+    href="/en/server/configuration"
+  >
+    Configure advanced settings
+  </Card>
+</CardGroup>

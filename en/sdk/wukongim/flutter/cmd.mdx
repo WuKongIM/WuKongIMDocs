@@ -1,0 +1,672 @@
+---
+title: "Command Management"
+description: "WuKongIM Flutter SDK command management functionality, including CMD message listening and processing"
+icon: "terminal"
+---
+
+Command management is responsible for handling CMD (command) messages sent from the server. CMD messages can only be sent from the server to the client for parsing, used to handle various system-level instructions and status synchronization.
+
+<Note>
+CMD messages can only be sent from the server, clients cannot actively send CMD messages
+</Note>
+
+## Listen for Command Messages
+
+### Basic Listening
+
+```dart
+// Listen for command messages
+WKIM.shared.cmdManager.addOnCmdListener('chat', (cmdMsg) {
+    // TODO handle cmd messages as needed
+});
+
+// Remove listener
+WKIM.shared.cmdManager.removeCmdListener('chat');
+```
+
+### Complete Command Listening Management
+
+```dart
+class CMDMessageManager {
+  static final Map<String, Function> _cmdListeners = {};
+  static StreamController<CMDMessageEvent>? _cmdController;
+  
+  // Get command message stream
+  static Stream<CMDMessageEvent> get cmdMessageStream {
+    _cmdController ??= StreamController<CMDMessageEvent>.broadcast();
+    return _cmdController!.stream;
+  }
+  
+  // Add command listener
+  static void addCmdListener(String key, Function(WKCMD) callback) {
+    _cmdListeners[key] = callback;
+    
+    WKIM.shared.cmdManager.addOnCmdListener(key, (WKCMD cmdMsg) {
+      // Call callback
+      callback(cmdMsg);
+      
+      // Send to stream
+      _cmdController?.add(CMDMessageEvent(
+        cmd: cmdMsg,
+        timestamp: DateTime.now(),
+      ));
+      
+      // Handle common commands
+      _handleCommonCommands(cmdMsg);
+      
+      print('Received command message: ${cmdMsg.cmd}');
+    });
+  }
+  
+  // Remove command listener
+  static void removeCmdListener(String key) {
+    _cmdListeners.remove(key);
+    WKIM.shared.cmdManager.removeCmdListener(key);
+  }
+  
+  // Remove all listeners
+  static void removeAllListeners() {
+    for (final key in _cmdListeners.keys) {
+      WKIM.shared.cmdManager.removeCmdListener(key);
+    }
+    _cmdListeners.clear();
+  }
+  
+  // Handle common commands
+  static void _handleCommonCommands(WKCMD cmdMsg) {
+    switch (cmdMsg.cmd) {
+      case 'syncConversation':
+        _handleSyncConversation(cmdMsg);
+        break;
+      case 'syncChannelInfo':
+        _handleSyncChannelInfo(cmdMsg);
+        break;
+      case 'syncChannelMember':
+        _handleSyncChannelMember(cmdMsg);
+        break;
+      case 'syncMessageExtra':
+        _handleSyncMessageExtra(cmdMsg);
+        break;
+      case 'syncMessageReaction':
+        _handleSyncMessageReaction(cmdMsg);
+        break;
+      case 'userStatusUpdate':
+        _handleUserStatusUpdate(cmdMsg);
+        break;
+      case 'channelUpdate':
+        _handleChannelUpdate(cmdMsg);
+        break;
+      case 'memberUpdate':
+        _handleMemberUpdate(cmdMsg);
+        break;
+      default:
+        print('Unhandled command: ${cmdMsg.cmd}');
+        break;
+    }
+  }
+  
+  // Handle sync conversation command
+  static void _handleSyncConversation(WKCMD cmdMsg) {
+    print('Handle sync conversation command');
+    // Trigger conversation sync logic
+    // Can call conversation manager's sync method here
+  }
+  
+  // Handle sync channel info command
+  static void _handleSyncChannelInfo(WKCMD cmdMsg) {
+    print('Handle sync channel info command');
+    if (cmdMsg.param is Map) {
+      final params = cmdMsg.param as Map;
+      final channelId = params['channel_id'] as String?;
+      final channelType = params['channel_type'] as int?;
+      
+      if (channelId != null && channelType != null) {
+        // Refresh channel info
+        WKIM.shared.channelManager.fetchChannelInfo(channelId, channelType);
+      }
+    }
+  }
+  
+  // Handle sync channel member command
+  static void _handleSyncChannelMember(WKCMD cmdMsg) {
+    print('Handle sync channel member command');
+    // Trigger channel member sync logic
+  }
+  
+  // Handle sync message extra command
+  static void _handleSyncMessageExtra(WKCMD cmdMsg) {
+    print('Handle sync message extra command');
+    // Trigger message extra sync logic
+  }
+  
+  // Handle sync message reaction command
+  static void _handleSyncMessageReaction(WKCMD cmdMsg) {
+    print('Handle sync message reaction command');
+    // Trigger message reaction sync logic
+  }
+  
+  // Handle user status update command
+  static void _handleUserStatusUpdate(WKCMD cmdMsg) {
+    print('Handle user status update command');
+    if (cmdMsg.param is Map) {
+      final params = cmdMsg.param as Map;
+      final uid = params['uid'] as String?;
+      final online = params['online'] as int?;
+      
+      if (uid != null && online != null) {
+        // Update user online status
+        print('User $uid status update: ${online == 1 ? 'online' : 'offline'}');
+      }
+    }
+  }
+  
+  // Handle channel update command
+  static void _handleChannelUpdate(WKCMD cmdMsg) {
+    print('Handle channel update command');
+    // Handle channel info changes
+  }
+  
+  // Handle member update command
+  static void _handleMemberUpdate(WKCMD cmdMsg) {
+    print('Handle member update command');
+    // Handle member info changes
+  }
+  
+  // Dispose
+  static void dispose() {
+    removeAllListeners();
+    _cmdController?.close();
+    _cmdController = null;
+  }
+}
+
+// Command message event
+class CMDMessageEvent {
+  final WKCMD cmd;
+  final DateTime timestamp;
+  
+  CMDMessageEvent({
+    required this.cmd,
+    required this.timestamp,
+  });
+  
+  @override
+  String toString() {
+    return 'CMDMessageEvent{cmd: ${cmd.cmd}, timestamp: $timestamp}';
+  }
+}
+```
+
+## Common Command Types
+
+### System Sync Commands
+
+These commands are used to sync various data states:
+
+```dart
+class SystemSyncCommands {
+  
+  // Sync conversation list
+  static const String SYNC_CONVERSATION = 'syncConversation';
+  
+  // Sync channel info
+  static const String SYNC_CHANNEL_INFO = 'syncChannelInfo';
+  
+  // Sync channel member
+  static const String SYNC_CHANNEL_MEMBER = 'syncChannelMember';
+  
+  // Sync message extra
+  static const String SYNC_MESSAGE_EXTRA = 'syncMessageExtra';
+  
+  // Sync message reaction
+  static const String SYNC_MESSAGE_REACTION = 'syncMessageReaction';
+  
+  // Handle system sync commands
+  static void handleSyncCommand(WKCMD cmdMsg) {
+    switch (cmdMsg.cmd) {
+      case SYNC_CONVERSATION:
+        _syncConversations(cmdMsg.param);
+        break;
+      case SYNC_CHANNEL_INFO:
+        _syncChannelInfo(cmdMsg.param);
+        break;
+      case SYNC_CHANNEL_MEMBER:
+        _syncChannelMember(cmdMsg.param);
+        break;
+      case SYNC_MESSAGE_EXTRA:
+        _syncMessageExtra(cmdMsg.param);
+        break;
+      case SYNC_MESSAGE_REACTION:
+        _syncMessageReaction(cmdMsg.param);
+        break;
+    }
+  }
+  
+  static void _syncConversations(dynamic param) {
+    // Implement conversation sync logic
+    print('Sync conversation data');
+  }
+  
+  static void _syncChannelInfo(dynamic param) {
+    // Implement channel info sync logic
+    print('Sync channel info');
+  }
+  
+  static void _syncChannelMember(dynamic param) {
+    // Implement channel member sync logic
+    print('Sync channel member');
+  }
+  
+  static void _syncMessageExtra(dynamic param) {
+    // Implement message extra sync logic
+    print('Sync message extra');
+  }
+  
+  static void _syncMessageReaction(dynamic param) {
+    // Implement message reaction sync logic
+    print('Sync message reaction');
+  }
+}
+```
+
+### Status Update Commands
+
+These commands are used for real-time status updates:
+
+```dart
+class StatusUpdateCommands {
+  
+  // User online status update
+  static const String USER_STATUS_UPDATE = 'userStatusUpdate';
+  
+  // Channel status update
+  static const String CHANNEL_UPDATE = 'channelUpdate';
+  
+  // Member status update
+  static const String MEMBER_UPDATE = 'memberUpdate';
+  
+  // Message status update
+  static const String MESSAGE_UPDATE = 'messageUpdate';
+  
+  // Handle status update commands
+  static void handleStatusCommand(WKCMD cmdMsg) {
+    switch (cmdMsg.cmd) {
+      case USER_STATUS_UPDATE:
+        _handleUserStatusUpdate(cmdMsg.param);
+        break;
+      case CHANNEL_UPDATE:
+        _handleChannelUpdate(cmdMsg.param);
+        break;
+      case MEMBER_UPDATE:
+        _handleMemberUpdate(cmdMsg.param);
+        break;
+      case MESSAGE_UPDATE:
+        _handleMessageUpdate(cmdMsg.param);
+        break;
+    }
+  }
+  
+  static void _handleUserStatusUpdate(dynamic param) {
+    if (param is Map) {
+      final uid = param['uid'] as String?;
+      final online = param['online'] as int?;
+      final lastSeen = param['last_seen'] as int?;
+      
+      print('User status update: $uid, online: $online, last seen: $lastSeen');
+      
+      // Update local user status
+      // Can notify UI update through events
+    }
+  }
+  
+  static void _handleChannelUpdate(dynamic param) {
+    if (param is Map) {
+      final channelId = param['channel_id'] as String?;
+      final channelType = param['channel_type'] as int?;
+      
+      print('Channel update: $channelId, type: $channelType');
+      
+      // Refresh channel info
+      if (channelId != null && channelType != null) {
+        WKIM.shared.channelManager.fetchChannelInfo(channelId, channelType);
+      }
+    }
+  }
+  
+  static void _handleMemberUpdate(dynamic param) {
+    if (param is Map) {
+      final channelId = param['channel_id'] as String?;
+      final memberUid = param['member_uid'] as String?;
+      
+      print('Member update: channel $channelId, member $memberUid');
+      
+      // Refresh member info
+      // Trigger member list update
+    }
+  }
+  
+  static void _handleMessageUpdate(dynamic param) {
+    if (param is Map) {
+      final messageId = param['message_id'] as String?;
+      final action = param['action'] as String?;
+      
+      print('Message update: $messageId, action: $action');
+      
+      // Handle message updates (like recall, edit, etc.)
+    }
+  }
+}
+```
+
+## Custom Command Processing
+
+### Business Command Handler
+
+```dart
+class BusinessCommandHandler {
+  
+  // Register business command handlers
+  static void registerBusinessCommands() {
+    CMDMessageManager.addCmdListener('business', (WKCMD cmdMsg) {
+      _handleBusinessCommand(cmdMsg);
+    });
+  }
+  
+  // Handle business commands
+  static void _handleBusinessCommand(WKCMD cmdMsg) {
+    switch (cmdMsg.cmd) {
+      case 'groupInvite':
+        _handleGroupInvite(cmdMsg.param);
+        break;
+      case 'friendRequest':
+        _handleFriendRequest(cmdMsg.param);
+        break;
+      case 'systemNotice':
+        _handleSystemNotice(cmdMsg.param);
+        break;
+      case 'customAction':
+        _handleCustomAction(cmdMsg.param);
+        break;
+      default:
+        print('Unknown business command: ${cmdMsg.cmd}');
+        break;
+    }
+  }
+  
+  // Handle group invite
+  static void _handleGroupInvite(dynamic param) {
+    if (param is Map) {
+      final groupId = param['group_id'] as String?;
+      final inviterUid = param['inviter_uid'] as String?;
+      final inviterName = param['inviter_name'] as String?;
+      
+      print('Received group invite: group $groupId, inviter $inviterName');
+      
+      // Show invite notification
+      _showInviteNotification(groupId, inviterName);
+    }
+  }
+  
+  // Handle friend request
+  static void _handleFriendRequest(dynamic param) {
+    if (param is Map) {
+      final fromUid = param['from_uid'] as String?;
+      final fromName = param['from_name'] as String?;
+      final message = param['message'] as String?;
+      
+      print('Received friend request: from $fromName, message: $message');
+      
+      // Show friend request notification
+      _showFriendRequestNotification(fromUid, fromName, message);
+    }
+  }
+  
+  // Handle system notice
+  static void _handleSystemNotice(dynamic param) {
+    if (param is Map) {
+      final title = param['title'] as String?;
+      final content = param['content'] as String?;
+      final type = param['type'] as String?;
+      
+      print('Received system notice: $title - $content');
+      
+      // Show system notification
+      _showSystemNotification(title, content, type);
+    }
+  }
+  
+  // Handle custom action
+  static void _handleCustomAction(dynamic param) {
+    if (param is Map) {
+      final action = param['action'] as String?;
+      final data = param['data'];
+      
+      print('Received custom action: $action');
+      
+      // Process custom business logic
+      _processCustomAction(action, data);
+    }
+  }
+  
+  // Show invite notification
+  static void _showInviteNotification(String? groupId, String? inviterName) {
+    // Implement invite notification UI
+  }
+  
+  // Show friend request notification
+  static void _showFriendRequestNotification(String? fromUid, String? fromName, String? message) {
+    // Implement friend request notification UI
+  }
+  
+  // Show system notification
+  static void _showSystemNotification(String? title, String? content, String? type) {
+    // Implement system notification UI
+  }
+  
+  // Process custom action
+  static void _processCustomAction(String? action, dynamic data) {
+    // Implement custom business logic
+  }
+}
+```
+
+## Data Structure Description
+
+### WKCMD Command Object
+
+```dart
+class WKCMD {
+  String cmd = '';     // Command ID
+  dynamic param;       // Corresponding command parameters
+}
+```
+
+### Field Description
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `cmd` | String | Command identifier, used to distinguish different types of commands |
+| `param` | dynamic | Command parameters, can be any type of data |
+
+### Common Command Parameter Formats
+
+#### Sync Command Parameters
+
+```dart
+// Sync conversation command parameters
+{
+  "version": 123456,
+  "last_msg_seqs": "1,2,3,4,5",
+  "msg_count": 20
+}
+
+// Sync channel info command parameters
+{
+  "channel_id": "channel123",
+  "channel_type": 2,
+  "version": 123456
+}
+```
+
+#### Status Update Command Parameters
+
+```dart
+// User status update parameters
+{
+  "uid": "user123",
+  "online": 1,
+  "last_seen": 1640995200,
+  "device_flag": 1
+}
+
+// Channel update parameters
+{
+  "channel_id": "channel123",
+  "channel_type": 2,
+  "action": "update",
+  "fields": ["name", "avatar"]
+}
+```
+
+## Flutter Widget Integration Example
+
+```dart
+class CMDMessageHandler extends StatefulWidget {
+  final Widget child;
+  
+  const CMDMessageHandler({Key? key, required this.child}) : super(key: key);
+  
+  @override
+  _CMDMessageHandlerState createState() => _CMDMessageHandlerState();
+}
+
+class _CMDMessageHandlerState extends State<CMDMessageHandler> {
+  StreamSubscription<CMDMessageEvent>? _subscription;
+  
+  @override
+  void initState() {
+    super.initState();
+    _setupCMDListener();
+  }
+  
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    CMDMessageManager.removeCmdListener('app');
+    super.dispose();
+  }
+  
+  void _setupCMDListener() {
+    // Add global command listener
+    CMDMessageManager.addCmdListener('app', (WKCMD cmdMsg) {
+      _handleAppLevelCommand(cmdMsg);
+    });
+    
+    // Listen to command message stream
+    _subscription = CMDMessageManager.cmdMessageStream.listen((event) {
+      _processCommandEvent(event);
+    });
+  }
+  
+  void _handleAppLevelCommand(WKCMD cmdMsg) {
+    // Handle app-level commands
+    switch (cmdMsg.cmd) {
+      case 'appUpdate':
+        _handleAppUpdate(cmdMsg.param);
+        break;
+      case 'maintenance':
+        _handleMaintenance(cmdMsg.param);
+        break;
+      case 'forceLogout':
+        _handleForceLogout(cmdMsg.param);
+        break;
+    }
+  }
+  
+  void _processCommandEvent(CMDMessageEvent event) {
+    // Process command events
+    print('Processing command event: ${event.cmd.cmd}');
+  }
+  
+  void _handleAppUpdate(dynamic param) {
+    // Handle app update command
+    if (param is Map) {
+      final version = param['version'] as String?;
+      final url = param['url'] as String?;
+      final force = param['force'] as bool? ?? false;
+      
+      _showUpdateDialog(version, url, force);
+    }
+  }
+  
+  void _handleMaintenance(dynamic param) {
+    // Handle maintenance notice command
+    if (param is Map) {
+      final message = param['message'] as String?;
+      final startTime = param['start_time'] as int?;
+      final endTime = param['end_time'] as int?;
+      
+      _showMaintenanceNotice(message, startTime, endTime);
+    }
+  }
+  
+  void _handleForceLogout(dynamic param) {
+    // Handle force logout command
+    if (param is Map) {
+      final reason = param['reason'] as String?;
+      
+      _performForceLogout(reason);
+    }
+  }
+  
+  void _showUpdateDialog(String? version, String? url, bool force) {
+    // Show update dialog
+  }
+  
+  void _showMaintenanceNotice(String? message, int? startTime, int? endTime) {
+    // Show maintenance notice
+  }
+  
+  void _performForceLogout(String? reason) {
+    // Perform force logout
+  }
+  
+  @override
+  Widget build(BuildContext context) {
+    return widget.child;
+  }
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Reminder Management"
+    icon="bell"
+    href="/en/sdk/wukongim/flutter/reminder"
+  >
+    Learn about @mentions and custom reminder functionality
+  </Card>
+  <Card
+    title="Advanced Features"
+    icon="cog"
+    href="/en/sdk/wukongim/flutter/advance"
+  >
+    Explore custom messages and extension features
+  </Card>
+  <Card
+    title="Channel Member Management"
+    icon="users"
+    href="/en/sdk/wukongim/flutter/channel_member"
+  >
+    Return to channel member management functionality
+  </Card>
+  <Card
+    title="Data Source Configuration"
+    icon="database"
+    href="/en/sdk/wukongim/flutter/datasource"
+  >
+    Configure data sources and sync logic
+  </Card>
+</CardGroup>

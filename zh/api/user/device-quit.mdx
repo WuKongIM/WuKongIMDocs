@@ -1,0 +1,117 @@
+---
+title: "强制设备退出"
+description: "强制用户设备退出/断开连接"
+api: "POST /user/device_quit"
+---
+
+## 概述
+
+强制指定用户的设备退出/断开连接，用于管理员踢出用户或处理异常连接。
+
+## 请求体
+
+<ParamField body="uid" type="string" required>
+用户 ID
+</ParamField>
+
+<ParamField body="device_flag" type="integer">
+设备标识，用于指定特定设备类型
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "http://localhost:5001/user/device_quit" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "uid": "user123",
+    "device_flag": 1
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5001/user/device_quit', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    uid: 'user123',
+    device_flag: 1
+  })
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+
+data = {
+    "uid": "user123",
+    "device_flag": 1
+}
+
+response = requests.post('http://localhost:5001/user/device_quit', json=data)
+result = response.json()
+print(result)
+```
+
+```go Go
+package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    data := map[string]interface{}{
+        "uid":         "user123",
+        "device_flag": 1,
+    }
+    
+    jsonData, _ := json.Marshal(data)
+    
+    resp, err := http.Post(
+        "http://localhost:5001/user/device_quit",
+        "application/json",
+        bytes.NewBuffer(jsonData),
+    )
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    var result map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Printf("%+v\n", result)
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json 成功响应
+{
+  "status": "ok"
+}
+```
+</ResponseExample>
+
+## 响应字段
+
+<ResponseField name="status" type="string" required>
+操作状态，成功时返回 `"ok"`
+</ResponseField>
+
+## 状态码
+
+| 状态码 | 说明 |
+|--------|------|
+| 200 | 设备退出成功 |
+| 400 | 请求参数错误 |
+| 404 | 用户不存在或设备未连接 |
+| 500 | 服务器内部错误 |
+

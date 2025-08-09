@@ -1,0 +1,201 @@
+---
+title: "删除频道"
+description: "删除指定的频道"
+api: "POST /channel/delete"
+---
+
+## 概述
+
+删除指定的频道，包括频道的所有相关数据和成员关系。
+
+## 请求体
+
+### 必传参数
+
+<ParamField body="channel_id" type="string" required>
+频道 ID
+</ParamField>
+
+<ParamField body="channel_type" type="integer" required>
+频道类型
+- `1` - 个人频道
+- `2` - 群组频道
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "http://localhost:5001/channel/delete" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "channel_id": "group123",
+    "channel_type": 2
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5001/channel/delete', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    channel_id: 'group123',
+    channel_type: 2
+  })
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+
+data = {
+    "channel_id": "group123",
+    "channel_type": 2
+}
+
+response = requests.post('http://localhost:5001/channel/delete', json=data)
+result = response.json()
+print(result)
+```
+
+```go Go
+package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    data := map[string]interface{}{
+        "channel_id":   "group123",
+        "channel_type": 2,
+    }
+    
+    jsonData, _ := json.Marshal(data)
+    
+    resp, err := http.Post(
+        "http://localhost:5001/channel/delete",
+        "application/json",
+        bytes.NewBuffer(jsonData),
+    )
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    var result map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Printf("%+v\n", result)
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json 成功响应
+{
+  "status": "ok"
+}
+```
+</ResponseExample>
+
+## 响应字段
+
+<ResponseField name="status" type="string" required>
+操作状态，成功时返回 `"ok"`
+</ResponseField>
+
+## 状态码
+
+| 状态码 | 说明 |
+|--------|------|
+| 200 | 频道删除成功 |
+| 400 | 请求参数错误 |
+| 403 | 没有删除权限 |
+| 404 | 频道不存在 |
+| 500 | 服务器内部错误 |
+
+## 删除影响
+
+### 数据清理
+
+删除频道会清理以下相关数据：
+
+| 数据类型 | 清理范围 | 影响 |
+|----------|----------|------|
+| 频道信息 | 频道基本信息、设置 | 频道完全消失 |
+| 成员关系 | 所有成员的订阅关系 | 成员无法再接收消息 |
+| 消息历史 | 频道内的所有消息 | 消息记录永久删除 |
+| 会话记录 | 用户的会话列表 | 频道从会话列表中移除 |
+
+### 用户影响
+
+- **成员通知**：所有成员会收到频道解散通知
+- **会话清理**：频道从所有成员的会话列表中移除
+- **消息丢失**：频道内的消息历史将无法恢复
+- **权限失效**：所有频道相关权限立即失效
+
+## 权限要求
+
+### 个人频道 (channel_type = 1)
+
+- **参与者**：频道的任一参与者都可以删除
+- **系统管理员**：具有删除任意个人频道的权限
+
+### 群组频道 (channel_type = 2)
+
+- **群主**：只有群主可以解散群组
+- **系统管理员**：具有删除任意群组的权限
+- **普通成员**：无删除权限，只能退出群组
+
+## 安全考虑
+
+### 删除确认
+
+建议在删除前进行二次确认：
+
+1. **权限验证**：确认操作者有删除权限
+2. **身份验证**：要求输入密码或验证码
+3. **影响提示**：明确告知删除的影响范围
+4. **最后确认**：提供最后的取消机会
+
+### 数据备份
+
+在删除前考虑数据备份：
+
+- **消息导出**：允许导出重要消息
+- **成员列表**：保存成员信息用于重建
+- **文件备份**：备份频道内的重要文件
+- **日志记录**：记录删除操作的详细信息
+
+## 替代方案
+
+### 软删除
+
+对于重要频道，可以考虑软删除：
+
+- **隐藏频道**：从用户界面隐藏但保留数据
+- **禁用功能**：禁止发送消息但保留历史
+- **设置过期**：设定自动删除时间
+- **权限回收**：移除所有成员权限
+
+### 归档处理
+
+- **消息归档**：将消息转移到归档存储
+- **只读模式**：设置为只读状态
+- **历史查看**：允许查看但不能操作
+- **定期清理**：定期清理归档数据
+
+## 最佳实践
+
+1. **权限控制**：严格控制删除权限，防止误操作
+2. **操作日志**：详细记录删除操作的时间、操作者、原因
+3. **通知机制**：及时通知所有相关成员
+4. **数据备份**：重要频道删除前进行数据备份
+5. **恢复机制**：提供一定时间内的恢复功能
+6. **批量删除**：支持批量删除多个频道的功能

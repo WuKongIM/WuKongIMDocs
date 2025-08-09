@@ -1,0 +1,1083 @@
+---
+title: "高级功能"
+description: "WuKongIM Android SDK 高级功能，包括自定义消息、消息扩展、消息回执和消息回复"
+icon: "settings"
+---
+
+高级功能为开发者提供了扩展 WuKongIM Android SDK 的能力，包括自定义消息类型、消息扩展、消息回执、消息编辑和消息回复等企业级功能。
+
+<Note>
+在 WuKongIM 中所有的消息类型都是自定义消息
+</Note>
+
+## 自定义消息
+
+### 自定义普通消息
+
+下面我们以名片消息举例，展示如何创建自定义消息类型。
+
+#### 第一步：定义消息
+
+定义消息对象并继承 `WKMessageContent` 并在构造方法中指定消息类型。
+
+<Note>
+SDK 内置消息类型可通过 `WKMsgContentType` 查看
+</Note>
+
+<CodeGroup>
+```java Java
+public class WKCardContent extends WKMessageContent {
+
+    public WKCardContent() {
+        type = 3; //指定消息类型
+    }
+    
+    // 定义需发送给对方的字段
+    public String uid;    // 用户ID
+    public String name;   // 名称
+    public String avatar; // 头像
+}
+```
+
+```kotlin Kotlin
+class WKCardContent : WKMessageContent() {
+    var uid: String = ""
+    var name: String = ""
+    var avatar: String = ""
+
+    init {
+        type = 3 //指定消息类型
+    }
+}
+```
+</CodeGroup>
+
+<Warning>
+注意：自定义消息对象必须提供无参数的构造方法
+</Warning>
+
+#### 第二步：编码和解码
+
+我们需要将 `uid`、`name`、`avatar` 三个字段信息发送给对方，最终传递的消息内容为：
+
+```json
+{
+  "type": 3,
+  "uid": "xxxx",
+  "name": "xxx",
+  "avatar": "xxx"
+}
+```
+
+重写 `WKMessageContent` 的 `encodeMsg` 方法开始编码：
+
+<CodeGroup>
+```java Java
+@Override
+public JSONObject encodeMsg() {
+    JSONObject jsonObject = new JSONObject();
+    try {
+        jsonObject.put("uid", uid);
+        jsonObject.put("name", name);
+        jsonObject.put("avatar", avatar);
+    } catch (JSONException e) {
+        e.printStackTrace();
+    }
+    return jsonObject;
+}
+```
+
+```kotlin Kotlin
+override fun encodeMsg(): JSONObject {
+    val jsonObject = JSONObject()
+    jsonObject.put("uid", uid)
+    jsonObject.put("name", name)
+    jsonObject.put("avatar", avatar)
+    return jsonObject
+}
+```
+</CodeGroup>
+
+重写 `WKMessageContent` 的 `decodeMsg` 方法开始解码：
+
+<CodeGroup>
+```java Java
+@Override
+public WKMessageContent decodeMsg(JSONObject jsonObject) {
+    uid = jsonObject.optString("uid");
+    name = jsonObject.optString("name");
+    avatar = jsonObject.optString("avatar");
+    return this;
+}
+```
+
+```kotlin Kotlin
+override fun decodeMsg(jsonObject: JSONObject): WKMessageContent {
+    this.uid = jsonObject.optString("uid")
+    this.name = jsonObject.optString("name")
+    this.avatar = jsonObject.optString("avatar")
+    return this
+}
+```
+</CodeGroup>
+
+<Note>
+解码和编码消息时无需将 `type` 字段考虑其中，SDK 内部会自动处理
+</Note>
+
+如果您想控制该自定义消息在获取时显示的内容可重写 `getDisplayContent` 方法：
+
+<CodeGroup>
+```java Java
+@Override
+public String getDisplayContent() {
+    return "[名片消息]";
+}
+```
+
+```kotlin Kotlin
+override fun getDisplayContent(): String {
+    return "[名片消息]"
+}
+```
+</CodeGroup>
+
+如果你想在全局搜索时能搜索到该类型的消息，可重写 `getSearchableWord` 方法：
+
+<CodeGroup>
+```java Java
+@Override
+public String getSearchableWord() {
+    return "[名片]";
+}
+```
+
+```kotlin Kotlin
+override fun getSearchableWord(): String {
+    return "[名片]"
+}
+```
+</CodeGroup>
+
+#### 第三步：注册消息
+
+<CodeGroup>
+```java Java
+WKIM.getInstance().getMsgManager().registerContentMsg(WKCardContent.class);
+```
+
+```kotlin Kotlin
+WKIM.getInstance().msgManager.registerContentMsg(WKCardContent::class.java)
+```
+</CodeGroup>
+
+通过这三步自定义普通消息就已完成。在收到消息时 `WKMsg` 中的 type 为 3 就表示该消息是名片消息，其中 `baseContentMsgModel` 则为自定义的 `WKCardContent`，这时可将 `baseContentMsgModel` 强转为 `WKCardContent` 并渲染到UI上。
+
+<Note>
+完整代码参考：[名片消息](https://github.com/TangSengDaoDao/TangSengDaoDaoAndroid/blob/master/wkuikit/src/main/java/com/chat/uikit/chat/msgmodel/WKCardContent.java)
+</Note>
+
+### 完整名片消息实现示例
+
+```java
+public class WKCardContent extends WKMessageContent {
+    public String uid;
+    public String name;
+    public String avatar;
+    public String phone;
+    public String email;
+
+    public WKCardContent() {
+        type = 3;
+    }
+
+    public WKCardContent(String uid, String name, String avatar) {
+        this();
+        this.uid = uid;
+        this.name = name;
+        this.avatar = avatar;
+    }
+
+    @Override
+    public JSONObject encodeMsg() {
+        JSONObject jsonObject = new JSONObject();
+        try {
+            jsonObject.put("uid", uid);
+            jsonObject.put("name", name);
+            jsonObject.put("avatar", avatar);
+            if (!TextUtils.isEmpty(phone)) {
+                jsonObject.put("phone", phone);
+            }
+            if (!TextUtils.isEmpty(email)) {
+                jsonObject.put("email", email);
+            }
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+        return jsonObject;
+    }
+
+    @Override
+    public WKMessageContent decodeMsg(JSONObject jsonObject) {
+        uid = jsonObject.optString("uid");
+        name = jsonObject.optString("name");
+        avatar = jsonObject.optString("avatar");
+        phone = jsonObject.optString("phone");
+        email = jsonObject.optString("email");
+        return this;
+    }
+
+    @Override
+    public String getDisplayContent() {
+        return String.format("[名片] %s", name);
+    }
+
+    @Override
+    public String getSearchableWord() {
+        return String.format("[名片] %s %s", name, phone != null ? phone : "");
+    }
+
+    // 验证名片信息是否完整
+    public boolean isValid() {
+        return !TextUtils.isEmpty(uid) && !TextUtils.isEmpty(name);
+    }
+}
+
+// 注册名片消息
+WKIM.getInstance().getMsgManager().registerContentMsg(WKCardContent.class);
+
+// 发送名片消息
+public void sendCardMessage(WKChannel channel, String uid, String name, String avatar) {
+    WKCardContent cardContent = new WKCardContent(uid, name, avatar);
+    if (cardContent.isValid()) {
+        WKIM.getInstance().getMsgManager().sendMessage(cardContent, channel);
+    }
+}
+```
+
+### 自定义附件消息
+
+我们在发送消息的时候有时需发送带附件的消息。WuKongIM 也提供自定义附件消息，自定义附件消息和普通消息区别不大。下面我们以地理位置消息举例。
+
+#### 第一步：定义消息
+
+值得注意的是自定义附件消息需继承 `WKMediaMessageContent` 而不是 `WKMessageContent`。
+
+<CodeGroup>
+```java Java
+public class WKLocationContent extends WKMediaMessageContent {
+    // 定义需发送给对方的字段
+    public double longitude; // 经度
+    public double latitude;  // 纬度
+    public String address;   // 地址详细信息
+    
+    public WKLocationContent(double longitude, double latitude, String address) {
+        type = 6;
+        this.longitude = longitude;
+        this.latitude = latitude;
+        this.address = address;
+    }
+    
+    // 这里必须提供无参数的构造方法
+    public WKLocationContent() {
+        type = 6;
+    }
+}
+```
+
+```kotlin Kotlin
+class WKLocationContent(var longitude: Double, var latitude: Double, var address: String) :
+    WKMediaMessageContent() {
+
+    init {
+        type = 6 //指定消息类型
+    }
+}
+```
+</CodeGroup>
+
+<Note>
+`WKMediaMessageContent` 提供了 `url`、`localPath` 字段，自定义消息无需再定义网络地址和本地地址字段
+</Note>
+
+#### 第二步：编码和解码
+
+我们需要将 `longitude`、`latitude`、`address`、`url` 信息发送给对方，最终传递的消息内容为：
+
+```json
+{
+  "type": 6,
+  "longitude": 115.25,
+  "latitude": 39.26,
+  "url": "xxx",
+  "address": "xxx"
+}
+```
+
+重写 `WKMessageContent` 的 `encodeMsg` 方法开始编码：
+
+<CodeGroup>
+```java Java
+@Override
+public JSONObject encodeMsg() {
+    JSONObject jsonObject = new JSONObject();
+    try {
+        jsonObject.put("address", address);
+        jsonObject.put("latitude", latitude);
+        jsonObject.put("longitude", longitude);
+        jsonObject.put("url", url); // 位置截图
+        jsonObject.put("localPath", localPath);
+    } catch (JSONException e) {
+        e.printStackTrace();
+    }
+    return jsonObject;
+}
+```
+
+```kotlin Kotlin
+override fun encodeMsg(): JSONObject {
+    val jsonObject = JSONObject()
+    jsonObject.put("longitude", longitude)
+    jsonObject.put("latitude", latitude)
+    jsonObject.put("address", address)
+    jsonObject.put("url", url)
+    jsonObject.put("localPath", localPath)
+    return jsonObject
+}
+```
+</CodeGroup>
+
+<Note>
+编码消息可以写入 `localPath` 本地字段，SDK 在保存完消息时发送给对方的消息是不包含该字段的
+</Note>
+
+重写 `WKMessageContent` 的 `decodeMsg` 方法开始解码：
+
+<CodeGroup>
+```java Java
+@Override
+public WKMessageContent decodeMsg(JSONObject jsonObject) {
+    latitude = jsonObject.optDouble("latitude");
+    longitude = jsonObject.optDouble("longitude");
+    address = jsonObject.optString("address");
+    url = jsonObject.optString("url");
+    if (jsonObject.has("localPath"))
+        localPath = jsonObject.optString("localPath");
+    return this;
+}
+```
+
+```kotlin Kotlin
+override fun decodeMsg(jsonObject: JSONObject): WKMessageContent {
+    this.latitude = jsonObject.optDouble("latitude")
+    this.longitude = jsonObject.optDouble("longitude")
+    this.address = jsonObject.optString("address")
+    this.url = jsonObject.optString("url")
+    if (jsonObject.has("localPath"))
+        this.localPath = jsonObject.optString("localPath")
+    return this
+}
+```
+</CodeGroup>
+
+<Note>
+在解码消息时如果是解码本地字段需判断该字段是否存在，因为收到的消息并没有本地字段。如 `localPath` 在收到消息时是没有的
+</Note>
+
+#### 第三步：注册消息
+
+<CodeGroup>
+```java Java
+WKIM.getInstance().getMsgManager().registerContentMsg(WKLocationContent.class);
+```
+
+```kotlin Kotlin
+WKIM.getInstance().msgManager.registerContentMsg(WKLocationContent::class.java)
+```
+</CodeGroup>
+
+### 完整位置消息实现示例
+
+```java
+public class WKLocationContent extends WKMediaMessageContent {
+    public double longitude;
+    public double latitude;
+    public String address;
+    public String title;
+    public String mapType; // 地图类型：高德、百度等
+
+    public WKLocationContent() {
+        type = 6;
+    }
+
+    public WKLocationContent(double longitude, double latitude, String address) {
+        this();
+        this.longitude = longitude;
+        this.latitude = latitude;
+        this.address = address;
+    }
+
+    @Override
+    public JSONObject encodeMsg() {
+        JSONObject jsonObject = new JSONObject();
+        try {
+            jsonObject.put("address", address);
+            jsonObject.put("latitude", latitude);
+            jsonObject.put("longitude", longitude);
+            jsonObject.put("url", url);
+            jsonObject.put("localPath", localPath);
+            
+            if (!TextUtils.isEmpty(title)) {
+                jsonObject.put("title", title);
+            }
+            if (!TextUtils.isEmpty(mapType)) {
+                jsonObject.put("map_type", mapType);
+            }
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+        return jsonObject;
+    }
+
+    @Override
+    public WKMessageContent decodeMsg(JSONObject jsonObject) {
+        latitude = jsonObject.optDouble("latitude");
+        longitude = jsonObject.optDouble("longitude");
+        address = jsonObject.optString("address");
+        url = jsonObject.optString("url");
+        title = jsonObject.optString("title");
+        mapType = jsonObject.optString("map_type");
+        
+        if (jsonObject.has("localPath")) {
+            localPath = jsonObject.optString("localPath");
+        }
+        return this;
+    }
+
+    @Override
+    public String getDisplayContent() {
+        return String.format("[位置] %s", !TextUtils.isEmpty(title) ? title : address);
+    }
+
+    @Override
+    public String getSearchableWord() {
+        return String.format("[位置] %s %s", address, title != null ? title : "");
+    }
+
+    // 验证位置信息是否有效
+    public boolean isValid() {
+        return latitude != 0 && longitude != 0 && !TextUtils.isEmpty(address);
+    }
+
+    // 获取地图链接
+    public String getMapUrl() {
+        return String.format("https://maps.google.com/?q=%f,%f", latitude, longitude);
+    }
+}
+
+// 注册位置消息
+WKIM.getInstance().getMsgManager().registerContentMsg(WKLocationContent.class);
+
+// 发送位置消息
+public void sendLocationMessage(WKChannel channel, double longitude, double latitude, String address) {
+    WKLocationContent locationContent = new WKLocationContent(longitude, latitude, address);
+    if (locationContent.isValid()) {
+        WKIM.getInstance().getMsgManager().sendMessage(locationContent, channel);
+    }
+}
+```
+
+## 消息扩展
+
+随着业务的发展应用在聊天中的功能也日益增多，为了满足绝大部分的需求 WuKongIM 中增加了消息扩展功能。消息扩展分 `本地扩展` 和 `远程扩展`，本地扩展只针对 app 本地使用卸载 app 后将丢失，远程扩展是服务器保存卸载重装后数据将恢复。
+
+### 本地扩展
+
+本地扩展就是消息对象 `WKMsg` 中的 `localExtraMap` 字段。
+
+<CodeGroup>
+```java Java
+/**
+ * 修改消息本地扩展
+ *
+ * @param clientMsgNo 客户端ID
+ * @param hashExtra   扩展字段
+ */
+WKIM.getInstance().getMsgManager().updateLocalExtraWithClientMsgNo(String clientMsgNo, HashMap<String, Object> hashExtra);
+```
+
+```kotlin Kotlin
+WKIM.getInstance().msgManager.updateLocalExtraWithClientMsgNo(clientMsgNo, hashExtra)
+```
+</CodeGroup>
+
+<Note>
+更新成功后 SDK 会触发刷新消息回调
+</Note>
+
+### 远程扩展
+
+远程扩展就是消息对象 `WKMsg` 中的 `remoteExtra` 字段。
+
+<CodeGroup>
+```java Java
+/**
+ * 保存远程扩展
+ * @param channel 某个channel信息
+ * @param list 远程扩展数据
+ */
+WKIM.getInstance().getMsgManager().saveRemoteExtraMsg(WKChannel channel, List<WKSyncExtraMsg> list);
+```
+
+```kotlin Kotlin
+WKIM.getInstance().msgManager.saveRemoteExtraMsg(channel, list)
+```
+</CodeGroup>
+
+<Note>
+更新成功后 SDK 会触发刷新消息回调
+</Note>
+
+#### 数据结构说明
+
+```java
+public class WKMsgExtra {
+    public String messageID;         // 消息ID
+    public String channelID;         // 频道ID
+    public byte channelType;         // 频道类型
+    public int readed;              // 是否已读
+    public int readedCount;         // 消息已读数量
+    public int unreadCount;         // 消息未读数量
+    public int revoke;              // 消息是否撤回
+    public int isMutualDeleted;     // 是否删除
+    public String revoker;          // 消息撤回者uid
+    public long extraVersion;       // 版本号
+    public long editedAt;           // 消息编辑时间
+    public String contentEdit;      // 消息编辑内容
+    public int needUpload;          // 是否需要上传(这里指业务服务器)
+    public int isPinned;            // 是否置顶
+    public WKMessageContent contentEditMsgModel; // 消息编辑内容体
+}
+```
+
+### 消息扩展管理示例
+
+```java
+public class MessageExtraManager {
+    
+    // 添加本地标记（如：重要消息、待办事项等）
+    public void addLocalTag(String clientMsgNo, String tag, Object value) {
+        HashMap<String, Object> extraMap = new HashMap<>();
+        extraMap.put(tag, value);
+        WKIM.getInstance().getMsgManager().updateLocalExtraWithClientMsgNo(clientMsgNo, extraMap);
+    }
+    
+    // 标记消息为重要
+    public void markAsImportant(String clientMsgNo, boolean important) {
+        addLocalTag(clientMsgNo, "important", important);
+    }
+    
+    // 添加本地备注
+    public void addLocalNote(String clientMsgNo, String note) {
+        addLocalTag(clientMsgNo, "note", note);
+    }
+    
+    // 设置消息提醒时间
+    public void setReminder(String clientMsgNo, long reminderTime) {
+        addLocalTag(clientMsgNo, "reminder_time", reminderTime);
+    }
+    
+    // 批量处理远程扩展
+    public void batchUpdateRemoteExtra(WKChannel channel, List<WKSyncExtraMsg> extraList) {
+        if (extraList != null && !extraList.isEmpty()) {
+            WKIM.getInstance().getMsgManager().saveRemoteExtraMsg(channel, extraList);
+        }
+    }
+    
+    // 获取消息的本地扩展
+    public Object getLocalExtra(WKMsg message, String key) {
+        if (message.localExtraMap != null) {
+            return message.localExtraMap.get(key);
+        }
+        return null;
+    }
+    
+    // 检查消息是否被标记为重要
+    public boolean isImportant(WKMsg message) {
+        Object important = getLocalExtra(message, "important");
+        return important instanceof Boolean && (Boolean) important;
+    }
+    
+    // 获取消息备注
+    public String getLocalNote(WKMsg message) {
+        Object note = getLocalExtra(message, "note");
+        return note instanceof String ? (String) note : null;
+    }
+}
+```
+
+## 消息已读未读
+
+消息的已读未读又称消息回执。消息回执功能可通过 setting 进行设置。
+
+<CodeGroup>
+```java Java
+WKMsgSetting setting = new WKMsgSetting();
+setting.receipt = 1; // 开启回执
+
+WKSendOptions options = new WKSendOptions();
+options.setting = setting;
+
+// 发送消息
+WKIM.getInstance().getMsgManager().sendWithOptions(contentModel, channel, options);
+```
+
+```kotlin Kotlin
+val setting = WKMsgSetting()
+setting.receipt = 1 // 开启回执
+
+val options = WKSendOptions()
+options.setting = setting
+
+// 发送消息
+WKIM.getInstance().msgManager.sendWithOptions(
+    wkBaseContentMsgModel, channel, options
+)
+```
+</CodeGroup>
+
+当登录用户浏览过对方发送的消息时，如果对方开启了消息回执这时需将查看过的消息上传到服务器标记该消息已读。当对方或者自己上传过已读消息这时服务器会下发同步消息扩展的 cmd(命令)消息 `syncMessageExtra`，此时需同步最新消息扩展保存到 SDK 中。
+
+### 消息回执管理示例
+
+```java
+public class MessageReceiptManager {
+
+    // 发送带回执的消息
+    public void sendMessageWithReceipt(WKMessageContent content, WKChannel channel) {
+        WKMsgSetting setting = new WKMsgSetting();
+        setting.receipt = 1; // 开启回执
+
+        WKSendOptions options = new WKSendOptions();
+        options.setting = setting;
+
+        WKIM.getInstance().getMsgManager().sendWithOptions(content, channel, options);
+    }
+
+    // 批量标记消息为已读
+    public void markMessagesAsRead(List<String> messageIds, WKChannel channel) {
+        // 这里需要调用业务服务器的API来标记消息已读
+        // 服务器会下发同步消息扩展的命令
+        uploadReadStatus(messageIds, channel);
+    }
+
+    // 上传已读状态到服务器
+    private void uploadReadStatus(List<String> messageIds, WKChannel channel) {
+        // 实现上传逻辑
+        // 成功后服务器会下发 syncMessageExtra 命令
+    }
+
+    // 获取消息已读数量
+    public int getReadCount(WKMsg message) {
+        if (message.remoteExtra != null) {
+            return message.remoteExtra.readedCount;
+        }
+        return 0;
+    }
+
+    // 获取消息未读数量
+    public int getUnreadCount(WKMsg message) {
+        if (message.remoteExtra != null) {
+            return message.remoteExtra.unreadCount;
+        }
+        return 0;
+    }
+
+    // 检查消息是否已读
+    public boolean isMessageRead(WKMsg message) {
+        if (message.remoteExtra != null) {
+            return message.remoteExtra.readed == 1;
+        }
+        return false;
+    }
+}
+```
+
+## 消息编辑
+
+当我们给对方发送消息发现发送内容有错误时，这时无需撤回重发只需要将消息编辑即可。
+
+### 设置编辑内容
+
+<CodeGroup>
+```java Java
+/**
+ * 修改编辑内容
+ * @param msgID 消息服务器ID
+ * @param channelID 频道ID
+ * @param channelType 频道类型
+ * @param content 编辑后的内容
+ */
+WKIM.getInstance().getMsgManager().updateMsgEdit(String msgID, String channelID, byte channelType, String content);
+```
+
+```kotlin Kotlin
+WKIM.getInstance().msgManager.updateMsgEdit(msgID, channelID, channelType, content)
+```
+</CodeGroup>
+
+更改 SDK 消息编辑内容后需将编辑后的内容上传到服务器，则需要监听上传消息扩展。
+
+### 监听上传消息扩展
+
+<CodeGroup>
+```java Java
+// 监听上传消息扩展
+WKIM.getInstance().getMsgManager().addOnUploadMsgExtraListener(new IUploadMsgExtraListener() {
+    @Override
+    public void onUpload(WKMsgExtra msgExtra) {
+        // 上传到自己的服务器
+    }
+});
+```
+
+```kotlin Kotlin
+WKIM.getInstance().msgManager.addOnUploadMsgExtraListener(object : IUploadMsgExtraListener {
+    override fun onUpload(msgExtra: WKMsgExtra) {
+        // 上传到服务器
+    }
+})
+```
+</CodeGroup>
+
+### 消息编辑管理示例
+
+```java
+public class MessageEditManager {
+
+    // 编辑文本消息
+    public void editTextMessage(String msgID, String channelID, byte channelType, String newContent) {
+        WKIM.getInstance().getMsgManager().updateMsgEdit(msgID, channelID, channelType, newContent);
+    }
+
+    // 设置编辑监听器
+    public void setupEditListener() {
+        WKIM.getInstance().getMsgManager().addOnUploadMsgExtraListener(new IUploadMsgExtraListener() {
+            @Override
+            public void onUpload(WKMsgExtra msgExtra) {
+                if (msgExtra.editedAt > 0 && !TextUtils.isEmpty(msgExtra.contentEdit)) {
+                    // 上传编辑内容到服务器
+                    uploadEditedMessage(msgExtra);
+                }
+            }
+        });
+    }
+
+    // 上传编辑后的消息到服务器
+    private void uploadEditedMessage(WKMsgExtra msgExtra) {
+        // 实现上传逻辑
+        // 包含消息ID、编辑内容、编辑时间等信息
+    }
+
+    // 检查消息是否被编辑过
+    public boolean isMessageEdited(WKMsg message) {
+        return message.remoteExtra != null &&
+               message.remoteExtra.editedAt > 0 &&
+               !TextUtils.isEmpty(message.remoteExtra.contentEdit);
+    }
+
+    // 获取消息编辑内容
+    public String getEditedContent(WKMsg message) {
+        if (isMessageEdited(message)) {
+            return message.remoteExtra.contentEdit;
+        }
+        return null;
+    }
+
+    // 获取消息编辑时间
+    public long getEditedTime(WKMsg message) {
+        if (message.remoteExtra != null) {
+            return message.remoteExtra.editedAt;
+        }
+        return 0;
+    }
+}
+```
+
+## 消息回复
+
+在聊天中如果消息过多，发送消息回复就会显得消息很乱无章可循。这时就需要对某条消息进行特定的回复，即消息回复。
+
+在发送消息时，只需将消息正文 `WKMessageContent` 中的 `WKReply` 对象赋值就能达到消息回复效果。
+
+### WKReply 对象核心字段
+
+```java
+public class WKReply {
+    // 被回复的消息根ID，多级回复时的第一次回复的消息ID
+    public String root_mid;
+    // 被回复的消息ID
+    public String message_id;
+    // 被回复的MessageSeq
+    public long message_seq;
+    // 被回复者uid
+    public String from_uid;
+    // 被回复者名称
+    public String from_name;
+    // 被回复的消息体
+    public WKMessageContent payload;
+    // 被回复消息编辑后的内容
+    public String contentEdit;
+    // 被回复消息编辑后的消息实体
+    public WKMessageContent contentEditMsgModel;
+    // 编辑时间
+    public long editAt;
+}
+```
+
+### 消息回复管理示例
+
+```java
+public class MessageReplyManager {
+
+    // 回复消息
+    public void replyToMessage(WKMsg originalMessage, WKMessageContent replyContent, WKChannel channel) {
+        // 创建回复对象
+        WKReply reply = new WKReply();
+        reply.message_id = originalMessage.messageID;
+        reply.message_seq = originalMessage.messageSeq;
+        reply.from_uid = originalMessage.fromUID;
+        reply.from_name = getUserName(originalMessage.fromUID);
+        reply.payload = originalMessage.baseContentMsgModel;
+
+        // 处理多级回复
+        if (originalMessage.baseContentMsgModel.reply != null) {
+            // 如果原消息也是回复消息，则使用根消息ID
+            reply.root_mid = originalMessage.baseContentMsgModel.reply.root_mid;
+        } else {
+            // 如果是第一次回复，则设置根消息ID
+            reply.root_mid = originalMessage.messageID;
+        }
+
+        // 设置回复内容的回复对象
+        replyContent.reply = reply;
+
+        // 发送回复消息
+        WKIM.getInstance().getMsgManager().sendMessage(replyContent, channel);
+    }
+
+    // 获取用户名称（需要根据实际业务实现）
+    private String getUserName(String uid) {
+        // 从本地缓存或服务器获取用户名称
+        return "用户名称";
+    }
+
+    // 检查消息是否为回复消息
+    public boolean isReplyMessage(WKMsg message) {
+        return message.baseContentMsgModel != null &&
+               message.baseContentMsgModel.reply != null;
+    }
+
+    // 获取被回复的消息内容摘要
+    public String getReplyContentSummary(WKReply reply) {
+        if (reply.payload != null) {
+            return reply.payload.getDisplayContent();
+        }
+        return "原消息";
+    }
+
+    // 构建回复消息的显示文本
+    public String buildReplyDisplayText(WKMsg message) {
+        if (!isReplyMessage(message)) {
+            return message.baseContentMsgModel.getDisplayContent();
+        }
+
+        WKReply reply = message.baseContentMsgModel.reply;
+        String replyContent = getReplyContentSummary(reply);
+        String currentContent = message.baseContentMsgModel.getDisplayContent();
+
+        return String.format("回复 %s: %s\n%s", reply.from_name, replyContent, currentContent);
+    }
+}
+```
+
+## 消息回应(点赞)
+
+### 保存消息回应
+
+<CodeGroup>
+```java Java
+// 保存消息回应
+WKIM.getInstance().getMsgManager().saveMessageReactions(List<WKSyncMsgReaction> list)
+```
+
+```kotlin Kotlin
+// 保存消息回应
+WKIM.getInstance().msgManager.saveMessageReactions(list)
+```
+</CodeGroup>
+
+<Note>
+同一个用户对同一条消息只能做出一条回应。重复进行消息不同 emoji 的回应会做为修改回应，重复进行相同 emoji 的回应则做为删除回应。SDK 更新消息回应后会触发消息刷新的事件。app 需监听此事件并对 UI 进行刷新。
+</Note>
+
+### 获取消息回应
+
+<CodeGroup>
+```java Java
+// 获取某条消息的回应
+WKIM.getInstance().getMsgManager().getMsgReactions(String messageID);
+```
+
+```kotlin Kotlin
+// 获取某条消息的回应
+WKIM.getInstance().msgManager.getMsgReactions(messageID)
+```
+</CodeGroup>
+
+### 数据结构说明
+
+```java
+public class WKMsgReaction {
+    public String messageID;    // 消息ID
+    public String channelID;    // 频道ID
+    public byte channelType;    // 频道类型
+    public String uid;          // 用户ID
+    public long seq;            // 消息序列号
+    public String emoji;        // 表情
+    public int isDeleted;       // 是否删除
+    public String createdAt;    // 创建时间
+}
+```
+
+### 消息回应管理示例
+
+```java
+public class MessageReactionManager {
+
+    // 添加消息回应
+    public void addReaction(String messageID, String emoji, String uid) {
+        WKSyncMsgReaction reaction = new WKSyncMsgReaction();
+        reaction.messageID = messageID;
+        reaction.emoji = emoji;
+        reaction.uid = uid;
+        reaction.isDeleted = 0;
+        reaction.createdAt = String.valueOf(System.currentTimeMillis());
+
+        List<WKSyncMsgReaction> reactions = new ArrayList<>();
+        reactions.add(reaction);
+
+        WKIM.getInstance().getMsgManager().saveMessageReactions(reactions);
+    }
+
+    // 移除消息回应
+    public void removeReaction(String messageID, String emoji, String uid) {
+        WKSyncMsgReaction reaction = new WKSyncMsgReaction();
+        reaction.messageID = messageID;
+        reaction.emoji = emoji;
+        reaction.uid = uid;
+        reaction.isDeleted = 1;
+
+        List<WKSyncMsgReaction> reactions = new ArrayList<>();
+        reactions.add(reaction);
+
+        WKIM.getInstance().getMsgManager().saveMessageReactions(reactions);
+    }
+
+    // 获取消息的所有回应
+    public List<WKMsgReaction> getMessageReactions(String messageID) {
+        return WKIM.getInstance().getMsgManager().getMsgReactions(messageID);
+    }
+
+    // 获取消息特定表情的回应数量
+    public int getReactionCount(String messageID, String emoji) {
+        List<WKMsgReaction> reactions = getMessageReactions(messageID);
+        int count = 0;
+
+        if (reactions != null) {
+            for (WKMsgReaction reaction : reactions) {
+                if (emoji.equals(reaction.emoji) && reaction.isDeleted == 0) {
+                    count++;
+                }
+            }
+        }
+
+        return count;
+    }
+
+    // 检查当前用户是否对消息做出了特定回应
+    public boolean hasUserReacted(String messageID, String emoji, String currentUid) {
+        List<WKMsgReaction> reactions = getMessageReactions(messageID);
+
+        if (reactions != null) {
+            for (WKMsgReaction reaction : reactions) {
+                if (emoji.equals(reaction.emoji) &&
+                    currentUid.equals(reaction.uid) &&
+                    reaction.isDeleted == 0) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    // 获取消息所有表情的统计
+    public Map<String, Integer> getReactionStats(String messageID) {
+        List<WKMsgReaction> reactions = getMessageReactions(messageID);
+        Map<String, Integer> stats = new HashMap<>();
+
+        if (reactions != null) {
+            for (WKMsgReaction reaction : reactions) {
+                if (reaction.isDeleted == 0) {
+                    stats.put(reaction.emoji, stats.getOrDefault(reaction.emoji, 0) + 1);
+                }
+            }
+        }
+
+        return stats;
+    }
+
+    // 切换消息回应（如果已存在则删除，不存在则添加）
+    public void toggleReaction(String messageID, String emoji, String uid) {
+        if (hasUserReacted(messageID, emoji, uid)) {
+            removeReaction(messageID, emoji, uid);
+        } else {
+            addReaction(messageID, emoji, uid);
+        }
+    }
+}
+```
+
+## 下一步
+
+<CardGroup cols={2}>
+  <Card
+    title="提醒管理"
+    icon="bell"
+    href="/zh/sdk/wukongim/android/reminder"
+  >
+    回到提醒管理功能
+  </Card>
+  <Card
+    title="数据源配置"
+    icon="database"
+    href="/zh/sdk/wukongim/android/datasource"
+  >
+    回到数据源配置
+  </Card>
+  <Card
+    title="消息管理"
+    icon="message-circle"
+    href="/zh/sdk/wukongim/android/message"
+  >
+    回到消息管理功能
+  </Card>
+  <Card
+    title="基础功能"
+    icon="foundation"
+    href="/zh/sdk/wukongim/android/base"
+  >
+    回到基础功能
+  </Card>
+</CardGroup>

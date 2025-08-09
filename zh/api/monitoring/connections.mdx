@@ -1,0 +1,210 @@
+---
+title: "获取连接信息"
+description: "获取当前服务器的连接统计信息"
+api: "GET /connz"
+---
+
+## 概述
+
+获取当前服务器的连接统计信息，包括连接数量、用户分布等监控数据。
+
+## 查询参数
+
+<ParamField query="offset" type="integer" default={0}>
+偏移量，用于分页
+</ParamField>
+
+<ParamField query="limit" type="integer" default={20}>
+限制数量，用于分页
+</ParamField>
+
+<ParamField query="subs" type="integer" default={0}>
+是否包含订阅信息
+- `0` - 不包含订阅信息
+- `1` - 包含订阅信息
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X GET "http://localhost:5001/connz?offset=0&limit=50&subs=1"
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5001/connz?offset=0&limit=50&subs=1');
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+
+params = {
+    'offset': 0,
+    'limit': 50,
+    'subs': 1
+}
+
+response = requests.get('http://localhost:5001/connz', params=params)
+data = response.json()
+print(data)
+```
+
+```go Go
+package main
+
+import (
+    "encoding/json"
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    resp, err := http.Get("http://localhost:5001/connz?offset=0&limit=50&subs=1")
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    var result map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Printf("%+v\n", result)
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json 成功响应
+{
+  "now": "2024-01-15T10:30:00Z",
+  "num_connections": 1250,
+  "total": 1250,
+  "offset": 0,
+  "limit": 50,
+  "connections": [
+    {
+      "cid": 12345,
+      "uid": "user123",
+      "ip": "192.168.1.100",
+      "port": 54321,
+      "start": "2024-01-15T09:15:30Z",
+      "last_activity": "2024-01-15T10:29:45Z",
+      "uptime": "1h14m15s",
+      "idle": "15s",
+      "pending_bytes": 0,
+      "in_msgs": 156,
+      "out_msgs": 203,
+      "in_bytes": 15680,
+      "out_bytes": 25440,
+      "subscriptions": 8,
+      "device_flag": 1,
+      "device_level": 1,
+      "version": "1.0.0"
+    }
+  ]
+}
+```
+</ResponseExample>
+
+## 响应字段
+
+<ResponseField name="now" type="string" required>
+当前服务器时间（ISO 8601 格式）
+</ResponseField>
+
+<ResponseField name="num_connections" type="integer" required>
+当前连接数量
+</ResponseField>
+
+<ResponseField name="total" type="integer" required>
+总连接数量
+</ResponseField>
+
+<ResponseField name="offset" type="integer" required>
+当前偏移量
+</ResponseField>
+
+<ResponseField name="limit" type="integer" required>
+当前限制数量
+</ResponseField>
+
+<ResponseField name="connections" type="array" required>
+连接详情列表
+<Expandable title="connections 字段">
+<ResponseField name="connections[].cid" type="integer">
+连接 ID
+</ResponseField>
+<ResponseField name="connections[].uid" type="string">
+用户 ID
+</ResponseField>
+<ResponseField name="connections[].ip" type="string">
+客户端 IP 地址
+</ResponseField>
+<ResponseField name="connections[].port" type="integer">
+客户端端口
+</ResponseField>
+<ResponseField name="connections[].start" type="string">
+连接开始时间
+</ResponseField>
+<ResponseField name="connections[].last_activity" type="string">
+最后活动时间
+</ResponseField>
+<ResponseField name="connections[].uptime" type="string">
+连接持续时间
+</ResponseField>
+<ResponseField name="connections[].idle" type="string">
+空闲时间
+</ResponseField>
+<ResponseField name="connections[].pending_bytes" type="integer">
+待发送字节数
+</ResponseField>
+<ResponseField name="connections[].in_msgs" type="integer">
+接收消息数
+</ResponseField>
+<ResponseField name="connections[].out_msgs" type="integer">
+发送消息数
+</ResponseField>
+<ResponseField name="connections[].in_bytes" type="integer">
+接收字节数
+</ResponseField>
+<ResponseField name="connections[].out_bytes" type="integer">
+发送字节数
+</ResponseField>
+<ResponseField name="connections[].subscriptions" type="integer">
+订阅数量
+</ResponseField>
+<ResponseField name="connections[].device_flag" type="integer">
+设备标识
+</ResponseField>
+<ResponseField name="connections[].device_level" type="integer">
+设备级别
+</ResponseField>
+<ResponseField name="connections[].version" type="string">
+客户端版本
+</ResponseField>
+</Expandable>
+</ResponseField>
+
+## 状态码
+
+| 状态码 | 说明 |
+|--------|------|
+| 200 | 成功获取连接信息 |
+| 500 | 服务器内部错误 |
+
+## 最佳实践
+
+1. **分页查询**：对于大量连接，使用分页避免性能问题
+2. **定期监控**：设置合理的监控间隔，避免过于频繁
+3. **告警机制**：设置连接数、活跃度等关键指标的告警
+4. **数据导出**：支持连接数据的导出和分析
+5. **性能优化**：监控连接的性能指标，及时发现问题
+6. **安全监控**：关注异常 IP 的连接情况
+
+## 最佳实践
+
+1. **分页查询**：对于大量连接，使用分页避免性能问题
+2. **定期监控**：设置合理的监控间隔，避免过于频繁
+3. **告警机制**：设置连接数、活跃度等关键指标的告警
+4. **数据导出**：支持连接数据的导出和分析
+5. **性能优化**：监控连接的性能指标，及时发现问题
+6. **安全监控**：关注异常 IP 的连接情况

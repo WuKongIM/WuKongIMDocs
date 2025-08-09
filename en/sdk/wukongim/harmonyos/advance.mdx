@@ -1,0 +1,477 @@
+---
+title: "Advanced Features"
+description: "WuKongIM HarmonyOS SDK advanced features, including custom message types and extension functionality"
+icon: "settings"
+---
+
+Advanced features provide developers with the ability to extend WuKongIM HarmonyOS SDK, including custom message types, message extensions, message receipts and other enterprise-level features.
+
+<Note>
+In WuKongIM, all message types are custom messages
+</Note>
+
+## Custom Messages
+
+### Custom Regular Messages
+
+Below we use business card messages as an example.
+
+#### Step 1: Define Message
+
+Define a message object that inherits from `WKMessageContent` and specify the message type in the constructor.
+
+```typescript
+// Define business card message
+export class CardMessageContent extends WKMessageContent {
+  uid: string = '';
+  name: string = '';
+  avatar: string = '';
+  
+  constructor() {
+    super();
+    this.contentType = 16; // Specify type
+  }
+}
+```
+
+#### Step 2: Encoding and Decoding
+
+We need to send uid, name, avatar three field information to the recipient. The final message content passed is:
+
+```typescript
+{
+  "type": 16,
+  "uid": "xxxx",
+  "name": "xxx",
+  "avatar": "xxx"
+}
+```
+
+Override the `encodeJson` and `decodeJson` methods of `WKMessageContent` to start encoding and decoding:
+
+```typescript
+// Encode send content
+encodeJson(): Record<string, Object> {
+  let json: Record<string, Object> = {};
+  json['uid'] = this.uid;
+  json['name'] = this.name;
+  json['avatar'] = this.avatar;
+  return json;
+}
+
+// Decode content
+decodeJson(jsonStr: string): WKMessageContent {
+  let json = CommonUtil.jsonToRecord(jsonStr);
+  if (json !== undefined) {
+    this.uid = CommonUtil.readString(json, 'uid');
+    this.name = CommonUtil.readString(json, 'name');
+    this.avatar = CommonUtil.readString(json, 'avatar');
+  }
+  return this;
+}
+```
+
+<Note>
+When encoding and decoding messages, there's no need to consider the `type` field, as the SDK handles it internally
+</Note>
+
+#### Step 3: Register Message
+
+```typescript
+// Register custom message
+WKIM.shared.messageManager().registerMsgContent(16, (jsonStr: string) => {
+  return new CardMessageContent().decodeJson(jsonStr);
+});
+```
+
+### Complete Business Card Message Implementation
+
+```typescript
+// Custom regular message
+export class CardMessageContent extends WKMessageContent {
+  uid: string = '';
+  name: string = '';
+  avatar: string = '';
+  
+  constructor() {
+    super();
+    this.contentType = 16; // Specify type
+  }
+
+  // Encode send content
+  encodeJson(): Record<string, Object> {
+    let json: Record<string, Object> = {};
+    json['uid'] = this.uid;
+    json['name'] = this.name;
+    json['avatar'] = this.avatar;
+    return json;
+  }
+
+  // Decode content
+  decodeJson(jsonStr: string): WKMessageContent {
+    let json = CommonUtil.jsonToRecord(jsonStr);
+    if (json !== undefined) {
+      this.uid = CommonUtil.readString(json, 'uid');
+      this.name = CommonUtil.readString(json, 'name');
+      this.avatar = CommonUtil.readString(json, 'avatar');
+    }
+    return this;
+  }
+
+  // Recent conversation display content
+  displayText(): string {
+    return '[Business Card]';
+  }
+  
+  // Validate message content
+  isValid(): boolean {
+    return this.uid.length > 0 && this.name.length > 0;
+  }
+}
+
+// Register business card message type
+WKIM.shared.messageManager().registerMsgContent(16, (jsonStr: string) => {
+  return new CardMessageContent().decodeJson(jsonStr);
+});
+
+// Send business card message
+function sendCardMessage(channelId: string, channelType: number, uid: string, name: string, avatar: string): void {
+  const cardContent = new CardMessageContent();
+  cardContent.uid = uid;
+  cardContent.name = name;
+  cardContent.avatar = avatar;
+  
+  if (cardContent.isValid()) {
+    WKIM.shared.messageManager().send(cardContent, new WKChannel(channelId, channelType));
+  }
+}
+```
+
+## Custom Attachment Messages
+
+Sometimes we need to send messages with attachments when sending messages. WuKongIM also provides custom attachment messages, which are not much different from regular messages. Below we use location messages as an example.
+
+### Step 1: Define Message
+
+Note that custom attachment messages need to inherit from `WKMediaMessageContent` instead of `WKMessageContent`.
+
+```typescript
+export class LocationMessageContent extends WKMediaMessageContent {
+  address: string = '';
+  longitude: number = 0.0;
+  latitude: number = 0.0;
+
+  constructor() {
+    super();
+    this.contentType = 17; // Specify type
+  }
+}
+```
+
+<Note>
+`WKMediaMessageContent` provides `url` and `localPath` fields, so custom messages don't need to define network address and local address fields again
+</Note>
+
+### Step 2: Encoding and Decoding
+
+We need to send `longitude`, `latitude`, `address`, `url` information to the recipient. The final message content passed is:
+
+```typescript
+{
+  "type": 17,
+  "longitude": 115.25,
+  "latitude": 39.26,
+  "url": "xxx",
+  "address": "xxx"
+}
+```
+
+Override the `encodeJson` and `decodeJson` methods of `WKMessageContent` to start encoding and decoding:
+
+```typescript
+// Encode
+encodeJson(): Record<string, Object> {
+  let json: Record<string, Object> = {};
+  json['url'] = this.url;
+  json['longitude'] = this.longitude;
+  json['latitude'] = this.latitude;
+  json['address'] = this.address;
+  return json;
+}
+
+// Decode
+decodeJson(jsonStr: string): WKMessageContent {
+  let json = CommonUtil.jsonToRecord(jsonStr);
+  if (json !== undefined) {
+    this.address = CommonUtil.readString(json, 'address');
+    this.url = CommonUtil.readString(json, 'url');
+    this.longitude = CommonUtil.readNumber(json, 'longitude');
+    this.latitude = CommonUtil.readNumber(json, 'latitude');
+  }
+  return this;
+}
+```
+
+### Step 3: Register Message
+
+```typescript
+// Register custom message
+WKIM.shared.messageManager().registerMsgContent(17, (jsonStr: string) => {
+  return new LocationMessageContent().decodeJson(jsonStr);
+});
+```
+
+## Message Extensions
+
+As business develops, applications have increasingly more features in chat. To meet most requirements, WuKongIM has added message extension functionality. Message extensions are divided into `local extensions` and `remote extensions`. Local extensions are only for local app use and will be lost after uninstalling the app. Remote extensions are saved on the server and data will be restored after uninstalling and reinstalling.
+
+### Local Extensions
+
+Local extensions are the `localExtraMap` field in the message object `WKMsg`.
+
+```typescript
+/**
+ * Modify message local extensions
+ *
+ * @param clientMsgNo Client ID
+ * @param extra   Extension fields
+ */
+WKIM.shared.messageManager().updateLocalExtra(clientMsgNo: string, extra: Record<string, Object>);
+```
+
+<Note>
+After successful update, the SDK will trigger a refresh message callback
+</Note>
+
+### Remote Extensions
+
+Remote extensions are the `remoteExtra` field in the message object `WKMsg`.
+
+```typescript
+WKIM.shared.messageManager().saveRemoteExtras(list: WKMsgExtra[]);
+```
+
+<Note>
+After successful update, the SDK will trigger a refresh message callback
+</Note>
+
+## Message Read/Unread
+
+Message read/unread is also called message receipts. Message receipt functionality can be set through settings.
+
+```typescript
+let option = new WKSendOptions();
+option.setting.receipt = 1; // Enable receipts
+// Send message
+WKIM.shared.messageManager().sendWithOption(textModel, channel, option);
+```
+
+When a logged-in user views messages sent by others, if the sender has enabled message receipts, the viewed messages need to be uploaded to the server to mark them as read. When the sender or yourself uploads read messages, the business server will send a sync message extension cmd (command) message `syncMessageExtra`. At this time, you need to sync the latest message extensions and save them to the SDK.
+
+## Message Reply
+
+In chat, if there are too many messages, sending message replies will make the messages very messy and hard to follow. At this time, you need to make specific replies to certain messages, which is message reply.
+
+When sending a message, you just need to assign the `WKReply` object in the message content `WKMessageContent` to achieve the message reply effect.
+
+```typescript
+let textModel: WKTextContent = new WKTextContent(this.sendContent);
+textModel.reply = new WKReply();
+textModel.reply.messageId = '';
+// Set other field information
+
+// Send message
+WKIM.shared.messageManager().send(textModel, channel);
+```
+
+### WKReply Structure Description
+
+```typescript
+export class WKReply {
+  // Root message ID of the replied message, the first reply message ID in multi-level replies
+  rootMid = '';
+  // Replied message ID
+  messageId = '';
+  // Replied MessageSeq
+  messageSeq = 0;
+  // Replied user uid
+  fromUID = '';
+  // Replied user name
+  fromName = '';
+  // Replied message string
+  contentEdit = '';
+  // Edit time
+  editAt = 0;
+  // Reply message revoke flag 1.yes
+  revoke = 0;
+  // Replied message edited content
+  contentEditMsgModel?: WKMessageContent;
+  // Replied message body
+  payload?: WKMessageContent;
+}
+```
+
+## Message Reactions (Likes)
+
+### Save
+
+```typescript
+WKIM.shared.messageManager().saveReactions(list: WKMsgReaction[]);
+```
+
+<Note>
+The same user can only make one reaction to the same message. Repeated reactions with different emojis to the same message will be treated as modifying the reaction, while repeated reactions with the same emoji will be treated as deleting the reaction
+</Note>
+
+After the SDK updates message reactions, it will trigger a message refresh event. The app needs to listen for this event and refresh the UI.
+
+Listen for message reaction refresh:
+
+```typescript
+// Listen for message reaction refresh
+WKIM.shared.messageManager().addRefreshReactionListener((list) => {
+  // Refresh UI
+});
+```
+
+### Get
+
+```typescript
+WKIM.shared.messageManager().getMsgReactions(messageId: string);
+```
+
+### WKMsgReaction Data Structure Description
+
+```typescript
+export class WKMsgReaction {
+  // Message ID
+  messageId = "";
+  // Channel ID
+  channelId = "";
+  // Channel type
+  channelType = WKChannelType.personal;
+  // Reactor uid
+  uid = "";
+  // Message sequence number
+  seq = 0;
+  // Reaction emoji
+  emoji = "";
+  // Is deleted 1.yes
+  isDeleted = 0;
+  // Creation time
+  createdAt = "";
+}
+```
+
+## Complete Advanced Features Manager
+
+```typescript
+class AdvancedFeaturesManager {
+  
+  static initialize(): void {
+    // Register custom messages
+    this.registerCustomMessages();
+    
+    // Setup message extensions
+    this.setupMessageExtensions();
+    
+    // Setup message receipts
+    this.setupMessageReceipts();
+    
+    // Setup message reactions
+    this.setupMessageReactions();
+    
+    console.log('Advanced features manager initialized');
+  }
+  
+  private static registerCustomMessages(): void {
+    // Register business card message
+    WKIM.shared.messageManager().registerMsgContent(16, (jsonStr: string) => {
+      return new CardMessageContent().decodeJson(jsonStr);
+    });
+    
+    // Register location message
+    WKIM.shared.messageManager().registerMsgContent(17, (jsonStr: string) => {
+      return new LocationMessageContent().decodeJson(jsonStr);
+    });
+  }
+  
+  private static setupMessageExtensions(): void {
+    // Setup upload message extra callback
+    WKIM.shared.config.provider.uploadMessageExtraCallback = (extra: WKMsgExtra) => {
+      this.uploadMessageExtra(extra);
+    };
+  }
+  
+  private static setupMessageReceipts(): void {
+    // Setup message receipt handling
+    // This would typically involve listening for receipt-related commands
+  }
+  
+  private static setupMessageReactions(): void {
+    // Listen for message reaction refresh
+    WKIM.shared.messageManager().addRefreshReactionListener((list) => {
+      console.log('Message reactions updated:', list.length);
+    });
+  }
+  
+  private static async uploadMessageExtra(extra: WKMsgExtra): Promise<void> {
+    try {
+      // Upload message extra to business server
+      console.log('Uploading message extra:', extra.messageId);
+    } catch (error) {
+      console.error('Failed to upload message extra:', error);
+    }
+  }
+}
+
+// Initialize advanced features
+AdvancedFeaturesManager.initialize();
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Data Source Configuration"
+    icon="database"
+    href="/en/sdk/wukongim/harmonyos/datasource"
+  >
+    Return to data source configuration
+  </Card>
+  <Card
+    title="Message Management"
+    icon="message-circle"
+    href="/en/sdk/wukongim/harmonyos/message"
+  >
+    Return to message handling functionality
+  </Card>
+  <Card
+    title="Channel Management"
+    icon="hash"
+    href="/en/sdk/wukongim/harmonyos/channel"
+  >
+    Return to channel management functionality
+  </Card>
+  <Card
+    title="Basic Features"
+    icon="foundation"
+    href="/en/sdk/wukongim/harmonyos/base"
+  >
+    Return to basic features
+  </Card>
+</CardGroup>
+
+## Summary
+
+HarmonyOS SDK has now completed all core functionality documentation:
+
+✅ **Integration Guide** - Complete installation and configuration guidance  
+✅ **Basic Features** - Connection management and basic APIs  
+✅ **Message Management** - Message sending/receiving and history messages  
+✅ **Channel Management** - Channel information and member management  
+✅ **Conversation Management** - Conversation lists and unread messages  
+✅ **Data Source Configuration** - File upload and data synchronization  
+✅ **Advanced Features** - Custom messages and extension features  
+
+HarmonyOS SDK documentation is now fully complete, providing developers with comprehensive technical guidance from beginner to advanced levels! 🎉

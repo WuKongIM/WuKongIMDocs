@@ -1,0 +1,316 @@
+---
+title: "JSON-RPC Protocol"
+description: "Learn about the JSON-RPC 2.0 communication protocol format and message types used by WuKongIM"
+icon: "braces"
+---
+
+# JSON-RPC Protocol
+
+## Overview
+
+WuKongIM uses the JSON-RPC 2.0 specification for communication. All requests, responses and notifications follow the JSON-RPC 2.0 standard structure.
+
+### Protocol Field Description
+
+- `jsonrpc`: **Optional** string, fixed as "2.0". If omitted, server should assume it's "2.0"
+- `method`: Method name for request or notification
+- `params`: Parameters for request or notification, usually an object
+- `id`: Unique identifier for request (string type). Response must contain the same id as request. Notifications don't have id
+- `result`: Result data for successful response
+- `error`: Error object for error response
+
+<Note>
+Complete protocol schema can be found at: [wukongim_rpc_schema.json](https://github.com/WuKongIM/WuKongIM/blob/main/pkg/jsonrpc/wukongim_rpc_schema.json)
+</Note>
+
+## Important Notes
+
+<Warning>
+1. After establishing WebSocket connection, authentication (`connect`) must be performed **within 2 seconds**. Connections exceeding 2 seconds or failing authentication will be disconnected
+2. Send ping packets regularly to let server know you're alive (recommended interval around 1-2 minutes)
+</Warning>
+
+## Common Components
+
+### ErrorObject
+
+When request processing fails, this object will be included in the response:
+
+| Field     | Type    | Required | Description        |
+| :-------- | :------ | :------- | :----------------- |
+| `code`    | integer | Yes      | Error code         |
+| `message` | string  | Yes      | Error description  |
+| `data`    | any     | No       | Additional error data |
+
+### Header
+
+Optional message header information:
+
+| Field       | Type    | Required | Description                    |
+| :---------- | :------ | :------- | :----------------------------- |
+| `noPersist` | boolean | No       | Whether message is not stored  |
+| `redDot`    | boolean | No       | Whether to show red dot        |
+| `syncOnce`  | boolean | No       | Whether only synced once       |
+| `dup`       | boolean | No       | Whether it's a resent message  |
+
+### SettingFlags
+
+Message setting flags:
+
+| Field     | Type    | Required | Description              |
+| :-------- | :------ | :------- | :----------------------- |
+| `receipt` | boolean | No       | Message read receipt     |
+| `stream`  | boolean | No       | Whether it's stream message |
+| `topic`   | boolean | No       | Whether contains Topic   |
+
+## Core Message Types
+
+### 1. Connection Authentication (Connect)
+
+#### Connect Request
+
+The first request initiated by client, used to establish connection and authentication.
+
+**Parameters (`params`)**
+
+| Field             | Type    | Required | Description                    |
+| :---------------- | :------ | :------- | :----------------------------- |
+| `uid`             | string  | Yes      | User ID                        |
+| `token`           | string  | Yes      | Authentication Token           |
+| `header`          | Header  | No       | Message header                 |
+| `version`         | integer | No       | Client protocol version        |
+| `clientKey`       | string  | No       | Client public key              |
+| `deviceId`        | string  | No       | Device ID                      |
+| `deviceFlag`      | integer | No       | Device flag (1:APP, 2:WEB...)  |
+| `clientTimestamp` | integer | No       | Client 13-digit millisecond timestamp |
+
+**Example Request**
+
+```json
+{
+  "method": "connect",
+  "params": {
+    "uid": "testUser",
+    "token": "testToken"
+  },
+  "id": "req-conn-1"
+}
+```
+
+#### Connect Response
+
+**Success Response (`result`)**
+
+| Field             | Type    | Required | Description                    |
+| :---------------- | :------ | :------- | :----------------------------- |
+| `timeDiff`        | integer | No       | Time difference with server    |
+| `reasonCode`      | integer | No       | Connection reason code         |
+| `serverKey`       | string  | No       | Server public key              |
+| `salt`            | string  | No       | Encryption salt                |
+| `nodeId`          | integer | No       | Server node ID                 |
+
+**Example Success Response**
+
+```json
+{
+  "result": {
+    "timeDiff": 0,
+    "reasonCode": 1
+  },
+  "id": "req-conn-1"
+}
+```
+
+**Error Response**
+
+```json
+{
+  "error": {
+    "code": -32001,
+    "message": "Authentication failed"
+  },
+  "id": "req-conn-1"
+}
+```
+
+### 2. Send Message
+
+#### Send Request
+
+Send message to specified channel.
+
+**Parameters (`params`)**
+
+| Field         | Type         | Required | Description                |
+| :------------ | :----------- | :------- | :------------------------- |
+| `header`      | Header       | No       | Message header             |
+| `setting`     | SettingFlags | No       | Message settings           |
+| `clientMsgNo` | string       | Yes      | Client message number      |
+| `channelId`   | string       | Yes      | Channel ID                 |
+| `channelType` | integer      | Yes      | Channel type               |
+| `payload`     | string       | Yes      | Base64 encoded message content |
+| `expire`      | integer      | No       | Message expiration time    |
+
+**Example Request**
+
+```json
+{
+  "method": "send",
+  "params": {
+    "clientMsgNo": "msg-001",
+    "channelId": "user123",
+    "channelType": 1,
+    "payload": "eyJ0eXBlIjoidGV4dCIsImNvbnRlbnQiOiJIZWxsbyJ9"
+  },
+  "id": "req-send-1"
+}
+```
+
+#### Send Response
+
+**Success Response (`result`)**
+
+| Field         | Type    | Required | Description           |
+| :------------ | :------ | :------- | :-------------------- |
+| `clientMsgNo` | string  | Yes      | Client message number |
+| `messageId`   | integer | Yes      | Server message ID     |
+| `messageSeq`  | integer | Yes      | Message sequence      |
+| `timestamp`   | integer | Yes      | Server timestamp      |
+
+**Example Success Response**
+
+```json
+{
+  "result": {
+    "clientMsgNo": "msg-001",
+    "messageId": 12345,
+    "messageSeq": 1,
+    "timestamp": 1640995200
+  },
+  "id": "req-send-1"
+}
+```
+
+### 3. Receive Message (Notification)
+
+Server pushes messages to client.
+
+**Parameters (`params`)**
+
+| Field         | Type         | Required | Description                |
+| :------------ | :----------- | :------- | :------------------------- |
+| `header`      | Header       | No       | Message header             |
+| `setting`     | SettingFlags | No       | Message settings           |
+| `messageId`   | integer      | Yes      | Server message ID          |
+| `messageSeq`  | integer      | Yes      | Message sequence           |
+| `clientMsgNo` | string       | No       | Client message number      |
+| `timestamp`   | integer      | Yes      | Server timestamp           |
+| `fromUid`     | string       | Yes      | Sender user ID             |
+| `channelId`   | string       | Yes      | Channel ID                 |
+| `channelType` | integer      | Yes      | Channel type               |
+| `payload`     | string       | Yes      | Base64 encoded message content |
+| `expire`      | integer      | No       | Message expiration time    |
+
+**Example Notification**
+
+```json
+{
+  "method": "message",
+  "params": {
+    "messageId": 12345,
+    "messageSeq": 1,
+    "timestamp": 1640995200,
+    "fromUid": "user456",
+    "channelId": "user123",
+    "channelType": 1,
+    "payload": "eyJ0eXBlIjoidGV4dCIsImNvbnRlbnQiOiJIZWxsbyJ9"
+  }
+}
+```
+
+### 4. Ping/Pong
+
+#### Ping Request
+
+Client sends ping to keep connection alive.
+
+**Example Request**
+
+```json
+{
+  "method": "ping",
+  "id": "req-ping-1"
+}
+```
+
+#### Pong Response
+
+**Example Response**
+
+```json
+{
+  "result": {},
+  "id": "req-ping-1"
+}
+```
+
+### 5. Disconnect
+
+#### Disconnect Request
+
+Client initiates disconnection.
+
+**Parameters (`params`)**
+
+| Field        | Type    | Required | Description      |
+| :----------- | :------ | :------- | :--------------- |
+| `reasonCode` | integer | No       | Disconnect reason |
+
+**Example Request**
+
+```json
+{
+  "method": "disconnect",
+  "params": {
+    "reasonCode": 1
+  },
+  "id": "req-disc-1"
+}
+```
+
+## Error Codes
+
+Common error codes and their meanings:
+
+| Code   | Description              |
+| :----- | :----------------------- |
+| -32001 | Authentication failed    |
+| -32002 | Invalid parameters       |
+| -32003 | Channel not found        |
+| -32004 | Permission denied        |
+| -32005 | Rate limit exceeded      |
+| -32006 | Message too large        |
+| -32007 | Invalid message format   |
+
+## Best Practices
+
+1. **Connection Management**
+   - Always authenticate within 2 seconds after connection
+   - Send ping regularly to maintain connection
+   - Handle reconnection gracefully
+
+2. **Message Handling**
+   - Use unique `clientMsgNo` for each message
+   - Handle message deduplication on client side
+   - Implement proper error handling
+
+3. **Performance Optimization**
+   - Batch multiple operations when possible
+   - Use appropriate channel types
+   - Implement message queuing for offline scenarios
+
+## Related Resources
+
+- [API Documentation](/en/api/introduction)
+- [SDK Documentation](/en/sdk/overview)
+- [System Integration](/en/getting-started/learning/system-integration)

@@ -1,0 +1,427 @@
+---
+title: "Basic Features"
+description: "WuKongIM Flutter SDK basic functionality, including initialization, connection management and status monitoring"
+icon: "building"
+---
+
+## Initialization
+
+### Connection IP
+
+```dart
+WKIM.shared.options.getAddr = (Function(String address) complete) async {
+  // Can get through interface and return
+  complete('xxxxx:5100');
+};
+```
+
+<Note>
+Return the IP of the IM communication end and the TCP port of the IM communication end. **For distributed systems, call the interface to get IP and Port before returning**
+</Note>
+
+### Initialize SDK
+
+```dart
+// uid Login user ID (uid registered with IM communication end by business server)
+// token Login user token (token registered with IM communication end by business server)
+WKIM.shared.setup(Options.newDefault('uid', 'token'));
+```
+
+## Connect/Disconnect
+
+### Connect
+
+```dart
+WKIM.shared.connectionManager.connect();
+```
+
+### Disconnect
+
+```dart
+// isLogout true: logout and no longer reconnect false: logout but maintain reconnection
+WKIM.shared.connectionManager.disconnect(isLogout)
+```
+
+## Connection Status Monitoring
+
+```dart
+WKIM.shared.connectionManager.addOnConnectionStatus('home',
+        (status, reason, connInfo) {
+      if (status == WKConnectStatus.connecting) {
+        // Connecting
+      } else if (status == WKConnectStatus.success) {
+        // Connection successful
+        // connInfo.nodeId Node ID
+      } else if (status == WKConnectStatus.noNetwork) {
+        // No network connection
+      } else if (status == WKConnectStatus.syncMsg) {
+       // Syncing messages
+      } else if (status == WKConnectStatus.kicked) {
+       // Kicked offline - need to exit app and return to login page
+      } else if (status == WKConnectStatus.fail) {
+       // Connection failed
+      } else if (status == WKConnectStatus.syncCompleted) {
+        // Sync completed
+      }
+    });
+```
+
+### Remove Connection Status Listener
+
+```dart
+// Remove specific listener
+WKIM.shared.connectionManager.removeOnConnectionStatus('home');
+```
+
+## Complete Connection Management Example
+
+```dart
+class ConnectionManager {
+  static final ConnectionManager _instance = ConnectionManager._internal();
+  factory ConnectionManager() => _instance;
+  ConnectionManager._internal();
+  
+  bool _isConnected = false;
+  String? _currentNodeId;
+  
+  // Initialize connection
+  Future<void> initialize(String uid, String token) async {
+    try {
+      // Setup SDK
+      await WKIM.shared.setup(Options.newDefault(uid, token));
+      
+      // Configure server address
+      WKIM.shared.options.getAddr = (Function(String address) complete) async {
+        final serverAddress = await _getServerAddress();
+        complete(serverAddress);
+      };
+      
+      // Setup connection listener
+      _setupConnectionListener();
+      
+      print('Connection manager initialized');
+    } catch (e) {
+      print('Failed to initialize connection manager: $e');
+    }
+  }
+  
+  void _setupConnectionListener() {
+    WKIM.shared.connectionManager.addOnConnectionStatus('connection_manager',
+        (status, reason, connInfo) {
+      _handleConnectionStatus(status, reason, connInfo);
+    });
+  }
+  
+  void _handleConnectionStatus(int status, String reason, WKConnectInfo? connInfo) {
+    switch (status) {
+      case WKConnectStatus.connecting:
+        print('🔄 Connecting to server...');
+        _isConnected = false;
+        _notifyConnectionStatus(false, 'Connecting...');
+        break;
+        
+      case WKConnectStatus.success:
+        print('✅ Connected successfully');
+        _isConnected = true;
+        _currentNodeId = connInfo?.nodeId;
+        _notifyConnectionStatus(true, 'Connected');
+        _onConnected();
+        break;
+        
+      case WKConnectStatus.noNetwork:
+        print('❌ No network connection');
+        _isConnected = false;
+        _notifyConnectionStatus(false, 'No network');
+        break;
+        
+      case WKConnectStatus.syncMsg:
+        print('🔄 Syncing messages...');
+        _notifyConnectionStatus(false, 'Syncing messages...');
+        break;
+        
+      case WKConnectStatus.kicked:
+        print('❌ Kicked offline');
+        _isConnected = false;
+        _handleKickedOffline();
+        break;
+        
+      case WKConnectStatus.fail:
+        print('❌ Connection failed: $reason');
+        _isConnected = false;
+        _notifyConnectionStatus(false, 'Connection failed');
+        _handleConnectionFailure(reason);
+        break;
+        
+      case WKConnectStatus.syncCompleted:
+        print('✅ Sync completed');
+        _notifyConnectionStatus(true, 'Sync completed');
+        break;
+        
+      default:
+        print('Unknown connection status: $status');
+        break;
+    }
+  }
+  
+  void _onConnected() {
+    // Perform actions after successful connection
+    _syncOfflineData();
+    _updateOnlineStatus();
+  }
+  
+  void _handleKickedOffline() {
+    // Handle being kicked offline
+    _notifyKickedOffline();
+    _clearUserSession();
+    _redirectToLogin();
+  }
+  
+  void _handleConnectionFailure(String reason) {
+    // Handle connection failure
+    if (reason.contains('auth')) {
+      // Authentication failure
+      _handleAuthFailure();
+    } else {
+      // Network or server error
+      _scheduleReconnect();
+    }
+  }
+  
+  void _syncOfflineData() {
+    // Sync offline conversations and messages
+    print('Syncing offline data...');
+  }
+  
+  void _updateOnlineStatus() {
+    // Update user online status
+    print('Updating online status...');
+  }
+  
+  void _handleAuthFailure() {
+    // Handle authentication failure
+    print('Authentication failed - redirecting to login');
+    _clearUserSession();
+    _redirectToLogin();
+  }
+  
+  void _scheduleReconnect() {
+    // Schedule automatic reconnection
+    print('Scheduling reconnection...');
+  }
+  
+  void _clearUserSession() {
+    // Clear user session data
+    print('Clearing user session...');
+  }
+  
+  void _redirectToLogin() {
+    // Redirect to login page
+    print('Redirecting to login page...');
+  }
+  
+  // Public methods
+  void connect() {
+    WKIM.shared.connectionManager.connect();
+  }
+  
+  void disconnect({bool logout = false}) {
+    WKIM.shared.connectionManager.disconnect(logout);
+    _isConnected = false;
+  }
+  
+  bool get isConnected => _isConnected;
+  String? get currentNodeId => _currentNodeId;
+  
+  // Helper methods
+  Future<String> _getServerAddress() async {
+    // Get server address from configuration or API
+    // For distributed systems, call API to get current server
+    return 'your-server.com:5100';
+  }
+  
+  void _notifyConnectionStatus(bool connected, String message) {
+    // Notify UI about connection status changes
+    // You can use streams, callbacks, or state management solutions
+  }
+  
+  void _notifyKickedOffline() {
+    // Notify UI that user was kicked offline
+  }
+  
+  void dispose() {
+    WKIM.shared.connectionManager.removeOnConnectionStatus('connection_manager');
+  }
+}
+```
+
+## Connection Status Types
+
+| Status | Description |
+|--------|-------------|
+| `WKConnectStatus.connecting` | Connecting to server |
+| `WKConnectStatus.success` | Connection successful |
+| `WKConnectStatus.noNetwork` | No network available |
+| `WKConnectStatus.syncMsg` | Syncing messages |
+| `WKConnectStatus.kicked` | Kicked offline by another device |
+| `WKConnectStatus.fail` | Connection failed |
+| `WKConnectStatus.syncCompleted` | Message sync completed |
+
+## Best Practices
+
+### 1. Application Lifecycle Management
+
+```dart
+class AppLifecycleManager extends WidgetsBindingObserver {
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    
+    switch (state) {
+      case AppLifecycleState.resumed:
+        // App came to foreground
+        _onAppResumed();
+        break;
+      case AppLifecycleState.paused:
+        // App went to background
+        _onAppPaused();
+        break;
+      case AppLifecycleState.detached:
+        // App is being terminated
+        _onAppDetached();
+        break;
+      default:
+        break;
+    }
+  }
+  
+  void _onAppResumed() {
+    // Reconnect if needed
+    if (!ConnectionManager().isConnected) {
+      ConnectionManager().connect();
+    }
+  }
+  
+  void _onAppPaused() {
+    // Optionally disconnect to save battery
+    // ConnectionManager().disconnect(logout: false);
+  }
+  
+  void _onAppDetached() {
+    // Clean up resources
+    ConnectionManager().dispose();
+  }
+}
+```
+
+### 2. Network State Monitoring
+
+```dart
+import 'package:connectivity_plus/connectivity_plus.dart';
+
+class NetworkMonitor {
+  late StreamSubscription<ConnectivityResult> _connectivitySubscription;
+  
+  void startMonitoring() {
+    _connectivitySubscription = Connectivity().onConnectivityChanged.listen((result) {
+      _handleConnectivityChange(result);
+    });
+  }
+  
+  void _handleConnectivityChange(ConnectivityResult result) {
+    switch (result) {
+      case ConnectivityResult.wifi:
+      case ConnectivityResult.mobile:
+        print('Network available - attempting to connect');
+        if (!ConnectionManager().isConnected) {
+          ConnectionManager().connect();
+        }
+        break;
+      case ConnectivityResult.none:
+        print('Network unavailable');
+        break;
+    }
+  }
+  
+  void dispose() {
+    _connectivitySubscription.cancel();
+  }
+}
+```
+
+### 3. Error Handling and Retry Logic
+
+```dart
+class ConnectionRetryManager {
+  int _retryCount = 0;
+  int _maxRetries = 5;
+  Timer? _retryTimer;
+  
+  void handleConnectionFailure(String reason) {
+    if (_retryCount < _maxRetries) {
+      _retryCount++;
+      final delay = Duration(seconds: _getRetryDelay());
+      
+      print('Connection failed, retrying in ${delay.inSeconds} seconds (attempt $_retryCount/$_maxRetries)');
+      
+      _retryTimer = Timer(delay, () {
+        ConnectionManager().connect();
+      });
+    } else {
+      print('Max retry attempts reached, giving up');
+      _handleMaxRetriesReached();
+    }
+  }
+  
+  void onConnectionSuccess() {
+    _retryCount = 0;
+    _retryTimer?.cancel();
+  }
+  
+  int _getRetryDelay() {
+    // Exponential backoff: 2, 4, 8, 16, 32 seconds
+    return math.min(math.pow(2, _retryCount).toInt(), 32);
+  }
+  
+  void _handleMaxRetriesReached() {
+    // Show error message to user
+    // Maybe redirect to offline mode or login page
+  }
+  
+  void dispose() {
+    _retryTimer?.cancel();
+  }
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Message Management"
+    icon="message-circle"
+    href="/en/sdk/wukongim/flutter/message"
+  >
+    Learn how to handle message sending and receiving
+  </Card>
+  <Card
+    title="Channel Management"
+    icon="hash"
+    href="/en/sdk/wukongim/flutter/channel"
+  >
+    Manage channels and groups
+  </Card>
+  <Card
+    title="Conversation Management"
+    icon="users"
+    href="/en/sdk/wukongim/flutter/conversation"
+  >
+    Handle conversation lists
+  </Card>
+  <Card
+    title="Advanced Features"
+    icon="cog"
+    href="/en/sdk/wukongim/flutter/advance"
+  >
+    Explore advanced features and configuration
+  </Card>
+</CardGroup>

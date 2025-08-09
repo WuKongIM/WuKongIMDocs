@@ -1,0 +1,658 @@
+---
+title: "多媒体管理"
+description: "WuKongIM iOS SDK 多媒体管理功能，包括文件上传下载和进度管理"
+icon: "image"
+---
+
+多媒体管理器负责消息中的文件、图片、视频、语音等多媒体资源的管理，包括上传、下载等操作。
+
+<Note>
+消息里的文件、图片、视频、语音等多媒体资源都是通过多媒体管理器来管理的
+</Note>
+
+文档只介绍核心方法，更多内容查看代码的 `[WKSDK shared].mediaManager` 接口。
+
+## 自定义上传
+
+### 创建上传任务
+
+继承 `WKMessageFileUploadTask` 并实现必要的方法：
+
+<CodeGroup>
+```objc Objective-C
+// 继承WKMessageFileUploadTask
+@interface WKFileUploadTask : WKMessageFileUploadTask
+
+@end
+```
+
+```swift Swift
+// 继承WKMessageFileUploadTask
+class WKFileUploadTask: WKMessageFileUploadTask {
+    
+}
+```
+</CodeGroup>
+
+### 实现上传任务
+
+<CodeGroup>
+```objc Objective-C
+// 实现四个方法: initWithMessage, resume, cancel, suspend
+@implementation WKFileUploadTask
+
+- (instancetype)initWithMessage:(WKMessage *)message {
+    self = [super initWithMessage:message];
+    if(self) {
+        [self initTask];
+    }
+    return self;
+}
+
+- (void)initTask {
+    WKMediaContent *mediaContent = (WKMediaContent*)self.message.content;
+    
+    NSString *fileLocalPath = mediaContent.localPath;  // 附件本地路径
+    
+    // 以下为上传伪代码
+    NSURLSessionDataTask *task = [serverAPI upload:fileLocalPath].progress(^(progress){
+        self.progress = progress; // 内部方法 更新任务进度
+        self.status = WKTaskStatusProgressing; // 内部方法 更新任务状态
+        [self update]; // 内部方法 通知更新
+    }).success(^{
+        self.status = WKTaskStatusSuccess; // 内部方法 更新任务状态
+        [self update]; // 内部方法 通知更新
+    }).catch(^(NSError *error){
+        self.status = WKTaskStatusError;  // 内部方法 更新任务状态
+        self.error = error;  // 内部方法 更新错误信息
+        [self update]; // 内部方法 通知更新
+    });
+    self.task = task;
+}
+
+// 任务恢复
+- (void)resume {
+    [self.task resume];
+}
+
+// 任务取消
+- (void)cancel {
+    [self.task cancel];
+}
+
+// 任务挂起
+- (void)suspend {
+    [self.task suspend];
+}
+
+@end
+```
+
+```swift Swift
+// 实现四个方法: initWithMessage, resume, cancel, suspend
+class WKFileUploadTask: WKMessageFileUploadTask {
+    
+    private var task: URLSessionDataTask?
+    
+    override init(message: WKMessage) {
+        super.init(message: message)
+        initTask()
+    }
+    
+    private func initTask() {
+        guard let mediaContent = message.content as? WKMediaContent else { return }
+        
+        let fileLocalPath = mediaContent.localPath  // 附件本地路径
+        
+        // 以下为上传伪代码
+        task = serverAPI.upload(fileLocalPath)
+            .progress { [weak self] progress in
+                self?.progress = progress // 内部方法 更新任务进度
+                self?.status = .progressing // 内部方法 更新任务状态
+                self?.update() // 内部方法 通知更新
+            }
+            .success { [weak self] in
+                self?.status = .success // 内部方法 更新任务状态
+                self?.update() // 内部方法 通知更新
+            }
+            .catch { [weak self] error in
+                self?.status = .error  // 内部方法 更新任务状态
+                self?.error = error  // 内部方法 更新错误信息
+                self?.update() // 内部方法 通知更新
+            }
+    }
+    
+    // 任务恢复
+    override func resume() {
+        task?.resume()
+    }
+    
+    // 任务取消
+    override func cancel() {
+        task?.cancel()
+    }
+    
+    // 任务挂起
+    override func suspend() {
+        task?.suspend()
+    }
+}
+```
+</CodeGroup>
+
+### 注册上传任务
+
+<CodeGroup>
+```objc Objective-C
+[[WKSDK shared].mediaManager setUploadTaskProvider:^id<WKTaskProto> _Nonnull(WKMessage * _Nonnull message) {
+    return [[WKFileUploadTask alloc] initWithMessage:message];
+}];
+```
+
+```swift Swift
+WKSDK.shared().mediaManager.setUploadTaskProvider { message in
+    return WKFileUploadTask(message: message)
+}
+```
+</CodeGroup>
+
+### 完整上传任务实现示例
+
+```objc
+@interface CustomFileUploadTask : WKMessageFileUploadTask
+@property (nonatomic, strong) NSURLSessionUploadTask *uploadTask;
+@property (nonatomic, strong) NSURLSession *session;
+@end
+
+@implementation CustomFileUploadTask
+
+- (instancetype)initWithMessage:(WKMessage *)message {
+    self = [super initWithMessage:message];
+    if (self) {
+        [self setupSession];
+        [self initTask];
+    }
+    return self;
+}
+
+- (void)setupSession {
+    NSURLSessionConfiguration *config = [NSURLSessionConfiguration defaultSessionConfiguration];
+    config.timeoutIntervalForRequest = 30.0;
+    config.timeoutIntervalForResource = 300.0;
+    self.session = [NSURLSession sessionWithConfiguration:config delegate:self delegateQueue:nil];
+}
+
+- (void)initTask {
+    WKMediaContent *mediaContent = (WKMediaContent*)self.message.content;
+    NSString *fileLocalPath = mediaContent.localPath;
+    
+    if (!fileLocalPath || ![[NSFileManager defaultManager] fileExistsAtPath:fileLocalPath]) {
+        self.status = WKTaskStatusError;
+        self.error = [NSError errorWithDomain:@"FileUpload" code:404 userInfo:@{NSLocalizedDescriptionKey: @"文件不存在"}];
+        [self update];
+        return;
+    }
+    
+    // 创建上传请求
+    NSURL *uploadURL = [self getUploadURL];
+    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:uploadURL];
+    request.HTTPMethod = @"POST";
+    [request setValue:@"multipart/form-data" forHTTPHeaderField:@"Content-Type"];
+    
+    // 添加认证头
+    NSString *token = [self getAuthToken];
+    if (token) {
+        [request setValue:[NSString stringWithFormat:@"Bearer %@", token] forHTTPHeaderField:@"Authorization"];
+    }
+    
+    // 创建上传任务
+    NSURL *fileURL = [NSURL fileURLWithPath:fileLocalPath];
+    self.uploadTask = [self.session uploadTaskWithRequest:request fromFile:fileURL];
+    
+    self.status = WKTaskStatusProgressing;
+    [self update];
+}
+
+- (NSURL *)getUploadURL {
+    // 根据消息类型和业务需求生成上传URL
+    WKMediaContent *mediaContent = (WKMediaContent*)self.message.content;
+    NSString *baseURL = @"https://your-upload-server.com";
+    NSString *path = [NSString stringWithFormat:@"/upload/%@/%@", 
+                     self.message.channel.channelID, 
+                     [self generateFileName:mediaContent]];
+    return [NSURL URLWithString:[baseURL stringByAppendingString:path]];
+}
+
+- (NSString *)generateFileName:(WKMediaContent *)content {
+    NSString *extension = [content.localPath pathExtension];
+    NSString *uuid = [[NSUUID UUID] UUIDString];
+    return [NSString stringWithFormat:@"%@.%@", uuid, extension];
+}
+
+- (NSString *)getAuthToken {
+    // 从本地存储获取认证令牌
+    return [[NSUserDefaults standardUserDefaults] stringForKey:@"auth_token"];
+}
+
+- (void)resume {
+    if (self.uploadTask) {
+        [self.uploadTask resume];
+    }
+}
+
+- (void)cancel {
+    if (self.uploadTask) {
+        [self.uploadTask cancel];
+        self.status = WKTaskStatusCancel;
+        [self update];
+    }
+}
+
+- (void)suspend {
+    if (self.uploadTask) {
+        [self.uploadTask suspend];
+        self.status = WKTaskStatusSuspend;
+        [self update];
+    }
+}
+
+#pragma mark - NSURLSessionTaskDelegate
+
+- (void)URLSession:(NSURLSession *)session task:(NSURLSessionTask *)task 
+   didSendBodyData:(int64_t)bytesSent 
+    totalBytesSent:(int64_t)totalBytesSent 
+totalBytesExpectedToSend:(int64_t)totalBytesExpectedToSend {
+    
+    float progress = (float)totalBytesSent / (float)totalBytesExpectedToSend;
+    self.progress = progress;
+    [self update];
+}
+
+- (void)URLSession:(NSURLSession *)session task:(NSURLSessionTask *)task 
+didCompleteWithError:(NSError *)error {
+    if (error) {
+        self.status = WKTaskStatusError;
+        self.error = error;
+    } else {
+        self.status = WKTaskStatusSuccess;
+        // 处理上传成功后的响应
+        [self handleUploadSuccess:task];
+    }
+    [self update];
+}
+
+- (void)handleUploadSuccess:(NSURLSessionTask *)task {
+    // 解析服务器响应，获取文件URL等信息
+    NSHTTPURLResponse *response = (NSHTTPURLResponse *)task.response;
+    if (response.statusCode == 200) {
+        // 更新消息内容的远程URL
+        WKMediaContent *mediaContent = (WKMediaContent*)self.message.content;
+        // mediaContent.remoteUrl = 从响应中解析的URL;
+    }
+}
+
+@end
+```
+
+## 自定义下载
+
+所有带附件消息的下载都会通过此下载任务进行下载。
+
+### 创建下载任务
+
+<CodeGroup>
+```objc Objective-C
+// 继承WKMessageFileDownloadTask
+@interface WKFileDownloadTask : WKMessageFileDownloadTask
+
+@end
+```
+
+```swift Swift
+// 继承WKMessageFileDownloadTask
+class WKFileDownloadTask: WKMessageFileDownloadTask {
+    
+}
+```
+</CodeGroup>
+
+### 实现下载任务
+
+<CodeGroup>
+```objc Objective-C
+// 实现四个方法: initWithMessage, resume, cancel, suspend
+@implementation WKFileDownloadTask
+
+- (instancetype)initWithMessage:(WKMessage *)message {
+    self = [super initWithMessage:message];
+    if(self) {
+        [self initTask];
+    }
+    return self;
+}
+
+- (void)initTask {
+    WKMediaContent *mediaContent = (WKMediaContent*)self.message.content;
+    
+    NSString *downloadURL = mediaContent.remoteUrl;  // 附件下载地址
+    
+    // 以下为下载伪代码
+    NSURLSessionDownloadTask *task = [serverAPI download:downloadURL].progress(^(progress){
+        self.progress = progress; // 内部方法 更新任务进度
+        self.status = WKTaskStatusProgressing; // 内部方法 更新任务状态
+        [self update]; // 内部方法 通知更新
+    }).success(^{
+        self.status = WKTaskStatusSuccess; // 内部方法 更新任务状态
+        [self update]; // 内部方法 通知更新
+    }).catch(^(NSError *error){
+        self.status = WKTaskStatusError;  // 内部方法 更新任务状态
+        self.error = error;  // 内部方法 更新错误信息
+        [self update]; // 内部方法 通知更新
+    });
+    self.task = task;
+}
+
+// 任务恢复
+- (void)resume {
+    [self.task resume];
+}
+
+// 任务取消
+- (void)cancel {
+    [self.task cancel];
+}
+
+// 任务挂起
+- (void)suspend {
+    [self.task suspend];
+}
+
+@end
+```
+
+```swift Swift
+// 实现四个方法: initWithMessage, resume, cancel, suspend
+class WKFileDownloadTask: WKMessageFileDownloadTask {
+    
+    private var task: URLSessionDownloadTask?
+    
+    override init(message: WKMessage) {
+        super.init(message: message)
+        initTask()
+    }
+    
+    private func initTask() {
+        guard let mediaContent = message.content as? WKMediaContent else { return }
+        
+        let downloadURL = mediaContent.remoteUrl  // 附件下载地址
+        
+        // 以下为下载伪代码
+        task = serverAPI.download(downloadURL)
+            .progress { [weak self] progress in
+                self?.progress = progress // 内部方法 更新任务进度
+                self?.status = .progressing // 内部方法 更新任务状态
+                self?.update() // 内部方法 通知更新
+            }
+            .success { [weak self] in
+                self?.status = .success // 内部方法 更新任务状态
+                self?.update() // 内部方法 通知更新
+            }
+            .catch { [weak self] error in
+                self?.status = .error  // 内部方法 更新任务状态
+                self?.error = error  // 内部方法 更新错误信息
+                self?.update() // 内部方法 通知更新
+            }
+    }
+    
+    // 任务恢复
+    override func resume() {
+        task?.resume()
+    }
+    
+    // 任务取消
+    override func cancel() {
+        task?.cancel()
+    }
+    
+    // 任务挂起
+    override func suspend() {
+        task?.suspend()
+    }
+}
+```
+</CodeGroup>
+
+### 注册下载任务
+
+<CodeGroup>
+```objc Objective-C
+[[WKSDK shared].mediaManager setDownloadTaskProvider:^id<WKTaskProto> _Nonnull(WKMessage * _Nonnull message) {
+    return [[WKFileDownloadTask alloc] initWithMessage:message];
+}];
+```
+
+```swift Swift
+WKSDK.shared().mediaManager.setDownloadTaskProvider { message in
+    return WKFileDownloadTask(message: message)
+}
+```
+</CodeGroup>
+
+## 进度管理
+
+### 上传进度
+
+获取指定消息的上传任务，然后获取进度：
+
+<CodeGroup>
+```objc Objective-C
+WKMessageFileUploadTask *uploadTask = [[WKSDK shared] getMessageFileUploadTask:message];
+if(uploadTask) {
+    float progress = uploadTask.progress;
+}
+```
+
+```swift Swift
+if let uploadTask = WKSDK.shared().getMessageFileUploadTask(message) {
+    let progress = uploadTask.progress
+}
+```
+</CodeGroup>
+
+监听上传任务进度：
+
+<CodeGroup>
+```objc Objective-C
+WKMessageFileUploadTask *uploadTask = [[WKSDK shared] getMessageFileUploadTask:message];
+if(uploadTask) {
+    [uploadTask addListener:^{
+        float progress = uploadTask.progress;
+        // 更新UI进度
+    }];
+}
+```
+
+```swift Swift
+if let uploadTask = WKSDK.shared().getMessageFileUploadTask(message) {
+    uploadTask.addListener {
+        let progress = uploadTask.progress
+        // 更新UI进度
+    }
+}
+```
+</CodeGroup>
+
+### 下载进度
+
+下载消息里的附件：
+
+<CodeGroup>
+```objc Objective-C
+WKMessageFileDownloadTask *downloadTask = [[WKSDK shared].mediaManager download:message];
+```
+
+```swift Swift
+let downloadTask = WKSDK.shared().mediaManager.download(message)
+```
+</CodeGroup>
+
+获取指定消息的下载任务，然后获取进度：
+
+<CodeGroup>
+```objc Objective-C
+WKMessageFileDownloadTask *downloadTask = [[WKSDK shared] getMessageFileDownloadTask:message];
+if(downloadTask) {
+    float progress = downloadTask.progress;
+}
+```
+
+```swift Swift
+if let downloadTask = WKSDK.shared().getMessageFileDownloadTask(message) {
+    let progress = downloadTask.progress
+}
+```
+</CodeGroup>
+
+监听下载任务进度：
+
+<CodeGroup>
+```objc Objective-C
+WKMessageFileDownloadTask *downloadTask = [[WKSDK shared] getMessageFileDownloadTask:message];
+if(downloadTask) {
+    [downloadTask addListener:^{
+        float progress = downloadTask.progress;
+        // 更新UI进度
+    }];
+}
+```
+
+```swift Swift
+if let downloadTask = WKSDK.shared().getMessageFileDownloadTask(message) {
+    downloadTask.addListener {
+        let progress = downloadTask.progress
+        // 更新UI进度
+    }
+}
+```
+</CodeGroup>
+
+### 完整进度管理示例
+
+```objc
+@interface MediaProgressManager : NSObject
+@property (nonatomic, strong) NSMutableDictionary<NSString *, NSNumber *> *uploadProgress;
+@property (nonatomic, strong) NSMutableDictionary<NSString *, NSNumber *> *downloadProgress;
+@end
+
+@implementation MediaProgressManager
+
+- (instancetype)init {
+    self = [super init];
+    if (self) {
+        _uploadProgress = [NSMutableDictionary dictionary];
+        _downloadProgress = [NSMutableDictionary dictionary];
+    }
+    return self;
+}
+
+// 开始监听上传进度
+- (void)startMonitoringUploadProgress:(WKMessage *)message {
+    WKMessageFileUploadTask *uploadTask = [[WKSDK shared] getMessageFileUploadTask:message];
+    if (uploadTask) {
+        __weak typeof(self) weakSelf = self;
+        [uploadTask addListener:^{
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (strongSelf) {
+                [strongSelf.uploadProgress setObject:@(uploadTask.progress) forKey:message.clientMsgNO];
+                [strongSelf notifyUploadProgressChanged:message progress:uploadTask.progress];
+            }
+        }];
+    }
+}
+
+// 开始监听下载进度
+- (void)startMonitoringDownloadProgress:(WKMessage *)message {
+    WKMessageFileDownloadTask *downloadTask = [[WKSDK shared] getMessageFileDownloadTask:message];
+    if (downloadTask) {
+        __weak typeof(self) weakSelf = self;
+        [downloadTask addListener:^{
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (strongSelf) {
+                [strongSelf.downloadProgress setObject:@(downloadTask.progress) forKey:message.messageID];
+                [strongSelf notifyDownloadProgressChanged:message progress:downloadTask.progress];
+            }
+        }];
+    }
+}
+
+// 获取上传进度
+- (float)getUploadProgress:(WKMessage *)message {
+    NSNumber *progress = [self.uploadProgress objectForKey:message.clientMsgNO];
+    return progress ? progress.floatValue : 0.0f;
+}
+
+// 获取下载进度
+- (float)getDownloadProgress:(WKMessage *)message {
+    NSNumber *progress = [self.downloadProgress objectForKey:message.messageID];
+    return progress ? progress.floatValue : 0.0f;
+}
+
+// 通知上传进度变化
+- (void)notifyUploadProgressChanged:(WKMessage *)message progress:(float)progress {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [[NSNotificationCenter defaultCenter] postNotificationName:@"UploadProgressChanged" 
+                                                            object:nil 
+                                                          userInfo:@{@"message": message, @"progress": @(progress)}];
+    });
+}
+
+// 通知下载进度变化
+- (void)notifyDownloadProgressChanged:(WKMessage *)message progress:(float)progress {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [[NSNotificationCenter defaultCenter] postNotificationName:@"DownloadProgressChanged" 
+                                                            object:nil 
+                                                          userInfo:@{@"message": message, @"progress": @(progress)}];
+    });
+}
+
+// 清理进度记录
+- (void)cleanupProgress:(WKMessage *)message {
+    [self.uploadProgress removeObjectForKey:message.clientMsgNO];
+    [self.downloadProgress removeObjectForKey:message.messageID];
+}
+
+@end
+```
+
+## 下一步
+
+<CardGroup cols={2}>
+  <Card
+    title="高级功能"
+    icon="cog"
+    href="/zh/sdk/wukongim/ios/advanced"
+  >
+    探索高级功能和自定义消息
+  </Card>
+  <Card
+    title="会话管理"
+    icon="users"
+    href="/zh/sdk/wukongim/ios/conversation"
+  >
+    回到会话管理功能
+  </Card>
+  <Card
+    title="频道管理"
+    icon="hash"
+    href="/zh/sdk/wukongim/ios/channel"
+  >
+    回到频道管理功能
+  </Card>
+  <Card
+    title="聊天管理"
+    icon="message-circle"
+    href="/zh/sdk/wukongim/ios/chat"
+  >
+    回到聊天管理功能
+  </Card>
+</CardGroup>

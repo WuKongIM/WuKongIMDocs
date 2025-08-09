@@ -1,0 +1,361 @@
+---
+title: "用户消息搜索"
+description: "搜索属于当前用户的所有消息，支持多维度搜索和中文分词"
+api: "POST /plugins/wk.plugin.search/usersearch"
+---
+
+## 概述
+
+搜索属于当前用户的所有消息，支持多维度搜索和中文分词功能。
+
+<Note>
+- 需要 WuKongIM v2.1.3-20250210 或以上版本
+- 需要安装 `wk.plugin.search` 插件
+- 插件使用文档：[插件使用指南](/zh/getting-started/learning/plugin-development)
+</Note>
+
+## 请求体
+
+<ParamField body="uid" type="string" required>
+当前用户 UID（限制搜索指定用户的消息）
+</ParamField>
+
+<ParamField body="payload" type="object">
+消息 payload，支持搜索自定义字段
+<Expandable title="payload 字段">
+<ParamField body="payload.content" type="string">
+消息内容搜索关键词
+</ParamField>
+</Expandable>
+</ParamField>
+
+<ParamField body="payload_types" type="array">
+消息类型搜索
+<ParamField body="payload_types[]" type="integer">
+消息类型值
+</ParamField>
+</ParamField>
+
+<ParamField body="from_uid" type="string">
+发送者 UID
+</ParamField>
+
+<ParamField body="channel_id" type="string">
+频道 ID，指定频道后只搜索此频道内的消息
+</ParamField>
+
+<ParamField body="channel_type" type="integer">
+频道类型
+- `1` - 个人频道
+- `2` - 群组频道
+</ParamField>
+
+<ParamField body="topic" type="string">
+根据 topic 搜索
+</ParamField>
+
+<ParamField body="limit" type="integer">
+查询限制数量，默认 10
+</ParamField>
+
+<ParamField body="page" type="integer">
+页码，分页使用，默认为 1
+</ParamField>
+
+<ParamField body="start_time" type="integer">
+消息时间（开始），Unix 时间戳
+</ParamField>
+
+<ParamField body="end_time" type="integer">
+消息时间（结束，结果包含 end_time），Unix 时间戳
+</ParamField>
+
+<ParamField body="highlights" type="array">
+需要高亮显示的关键字字段
+<ParamField body="highlights[]" type="string">
+字段名，如 "payload.content"
+</ParamField>
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "http://localhost:5001/plugins/wk.plugin.search/usersearch" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "uid": "user123",
+    "payload": {
+      "content": "北京"
+    },
+    "payload_types": [1, 2],
+    "channel_type": 2,
+    "limit": 10,
+    "page": 1,
+    "highlights": ["payload.content"]
+  }'
+```
+
+```javascript JavaScript
+const searchParams = {
+  uid: "user123",
+  payload: {
+    content: "北京"
+  },
+  payload_types: [1, 2],
+  channel_type: 2,
+  limit: 10,
+  page: 1,
+  highlights: ["payload.content"]
+};
+
+const response = await fetch('http://localhost:5001/plugins/wk.plugin.search/usersearch', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify(searchParams)
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+
+search_params = {
+    "uid": "user123",
+    "payload": {
+        "content": "北京"
+    },
+    "payload_types": [1, 2],
+    "channel_type": 2,
+    "limit": 10,
+    "page": 1,
+    "highlights": ["payload.content"]
+}
+
+response = requests.post(
+    'http://localhost:5001/plugins/wk.plugin.search/usersearch',
+    json=search_params
+)
+result = response.json()
+print(result)
+```
+
+```go Go
+package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    searchParams := map[string]interface{}{
+        "uid": "user123",
+        "payload": map[string]interface{}{
+            "content": "北京",
+        },
+        "payload_types": []int{1, 2},
+        "channel_type":  2,
+        "limit":         10,
+        "page":          1,
+        "highlights":    []string{"payload.content"},
+    }
+    
+    jsonData, _ := json.Marshal(searchParams)
+    
+    resp, err := http.Post(
+        "http://localhost:5001/plugins/wk.plugin.search/usersearch",
+        "application/json",
+        bytes.NewBuffer(jsonData),
+    )
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    var result map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Printf("%+v\n", result)
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json 成功响应
+{
+  "total": 25,
+  "limit": 10,
+  "page": 1,
+  "messages": [
+    {
+      "message_id": 1234,
+      "message_idstr": "1234",
+      "message_seq": 1,
+      "client_msg_no": "djzdfdfdf",
+      "from_uid": "u1",
+      "channel_id": "g1",
+      "channel_type": 2,
+      "payload": {
+        "type": 1,
+        "content": "你是<mark>北京</mark>大学的吗"
+      },
+      "topic": "",
+      "timestamp": 762834
+    },
+    {
+      "message_id": 1235,
+      "message_idstr": "1235",
+      "message_seq": 2,
+      "client_msg_no": "djzdfdfde",
+      "from_uid": "u2",
+      "channel_id": "g1",
+      "channel_type": 2,
+      "payload": {
+        "type": 1,
+        "content": "我在<mark>北京</mark>工作"
+      },
+      "topic": "",
+      "timestamp": 762835
+    }
+  ]
+}
+```
+</ResponseExample>
+
+## 响应字段
+
+<ResponseField name="total" type="integer" required>
+消息总数量
+</ResponseField>
+
+<ResponseField name="limit" type="integer" required>
+查询数量限制
+</ResponseField>
+
+<ResponseField name="page" type="integer" required>
+当前页码
+</ResponseField>
+
+<ResponseField name="messages" type="array" required>
+消息列表
+<Expandable title="消息对象字段">
+<ResponseField name="messages[].message_id" type="integer" required>
+消息唯一 ID
+</ResponseField>
+
+<ResponseField name="messages[].message_idstr" type="string" required>
+消息唯一 ID（字符串形式）
+</ResponseField>
+
+<ResponseField name="messages[].message_seq" type="integer" required>
+消息序号
+</ResponseField>
+
+<ResponseField name="messages[].client_msg_no" type="string" required>
+客户端消息唯一编号
+</ResponseField>
+
+<ResponseField name="messages[].from_uid" type="string" required>
+发送者 UID
+</ResponseField>
+
+<ResponseField name="messages[].channel_id" type="string" required>
+频道 ID
+</ResponseField>
+
+<ResponseField name="messages[].channel_type" type="integer" required>
+频道类型
+</ResponseField>
+
+<ResponseField name="messages[].payload" type="object" required>
+消息内容对象
+<Expandable title="payload 字段">
+<ResponseField name="messages[].payload.type" type="integer">
+消息类型
+</ResponseField>
+<ResponseField name="messages[].payload.content" type="string">
+消息内容（可能包含高亮标签）
+</ResponseField>
+</Expandable>
+</ResponseField>
+
+<ResponseField name="messages[].topic" type="string">
+消息 topic
+</ResponseField>
+
+<ResponseField name="messages[].timestamp" type="integer" required>
+消息时间戳（10位到秒）
+</ResponseField>
+</Expandable>
+</ResponseField>
+
+## 状态码
+
+| 状态码 | 说明 |
+|--------|------|
+| 200 | 搜索成功 |
+| 400 | 请求参数错误 |
+| 403 | 没有搜索权限 |
+| 500 | 服务器内部错误 |
+
+## 搜索功能特性
+
+### 中文分词搜索
+
+支持中文分词，能够智能识别中文词汇进行搜索。
+
+**示例**：
+- 搜索 "北京大学" 可以匹配包含 "北京" 或 "大学" 的消息
+- 支持模糊匹配和精确匹配
+
+### 多维度搜索
+
+支持多个维度的组合搜索：
+
+1. **内容搜索**：通过 `payload.content` 搜索消息内容
+2. **类型搜索**：通过 `payload_types` 限制消息类型
+3. **用户搜索**：通过 `from_uid` 搜索特定用户的消息
+4. **频道搜索**：通过 `channel_id` 搜索特定频道的消息
+5. **时间搜索**：通过 `start_time` 和 `end_time` 限制时间范围
+6. **主题搜索**：通过 `topic` 搜索特定主题的消息
+
+### 高亮显示
+
+通过 `highlights` 参数可以指定需要高亮显示的字段，搜索结果中匹配的关键词会被 `<mark>` 标签包围。
+
+**示例**：
+```json
+{
+  "payload": {
+    "content": "北京"
+  },
+  "highlights": ["payload.content"]
+}
+```
+
+返回结果：
+```json
+{
+  "payload": {
+    "content": "你是<mark>北京</mark>大学的吗"
+  }
+}
+```
+
+## 使用场景
+
+### 聊天记录搜索
+
+- **关键词搜索**：用户搜索聊天记录中的关键词
+- **用户消息**：搜索特定用户发送的消息
+- **群组消息**：在特定群组中搜索消息
+
+### 内容管理
+
+- **消息审核**：搜索包含特定内容的消息
+- **数据分析**：分析用户消息内容和行为
+- **合规检查**：检查是否包含敏感内容

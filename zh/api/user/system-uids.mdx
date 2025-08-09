@@ -1,0 +1,80 @@
+---
+title: "获取系统用户 ID"
+description: "获取系统用户 ID 列表"
+api: "GET /user/systemuids"
+---
+
+## 概述
+
+获取系统用户 ID 列表，用于识别系统内置的特殊用户账号。
+
+<RequestExample>
+```bash cURL
+curl -X GET "http://localhost:5001/user/systemuids"
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5001/user/systemuids');
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+
+response = requests.get('http://localhost:5001/user/systemuids')
+data = response.json()
+print(data)
+```
+
+```go Go
+package main
+
+import (
+    "encoding/json"
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    resp, err := http.Get("http://localhost:5001/user/systemuids")
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    var result []string
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Printf("%+v\n", result)
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json 成功响应
+[
+  "system",
+  "admin",
+  "bot",
+  "notification",
+  "webhook"
+]
+```
+</ResponseExample>
+
+## 响应字段
+
+<ResponseField name="uids" type="array" required>
+系统用户 ID 列表
+<ResponseField name="uids[]" type="string">
+系统用户 ID
+</ResponseField>
+</ResponseField>
+
+## 状态码
+
+| 状态码 | 说明 |
+|--------|------|
+| 200 | 成功获取系统用户 ID 列表 |
+| 500 | 服务器内部错误 |
+
