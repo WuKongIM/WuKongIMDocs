@@ -1,0 +1,44 @@
+# WuKongIM 文档项目 Docker Compose 配置
+version: '3.8'
+
+services:
+  wukongim-docs:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - BUILD_DATE=${BUILD_DATE:-$(date -u +'%Y-%m-%dT%H:%M:%SZ')}
+        - VCS_REF=${VCS_REF:-$(git rev-parse --short HEAD)}
+    image: wukongim-docs:latest
+    container_name: wukongim-docs
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    environment:
+      - TZ=Asia/Shanghai
+    volumes:
+      # 如果需要挂载日志目录
+      - ./logs:/var/log/nginx
+    networks:
+      - wukongim-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.wukongim-docs.rule=Host(`docs.wukongim.com`)"
+      - "traefik.http.routers.wukongim-docs.entrypoints=websecure"
+      - "traefik.http.routers.wukongim-docs.tls.certresolver=letsencrypt"
+      - "traefik.http.services.wukongim-docs.loadbalancer.server.port=80"
+
+networks:
+  wukongim-network:
+    driver: bridge
+    name: wukongim-network
+
+volumes:
+  logs:
+    driver: local

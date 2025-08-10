@@ -1,0 +1,1972 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WuKongIM - 高性能分布式即时通讯服务</title>
+    <meta name="description" content="简如 Redis，快如 Kafka，稳如 MySQL 的分布式即时通讯服务">
+    <script src="./tailwind.min.js"></script>
+    <style>
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+
+        /* Canvas Animation Styles */
+        #wukongim-canvas {
+            background: linear-gradient(135deg, rgba(223, 103, 70, 0.02), rgba(232, 149, 111, 0.02));
+            border-radius: 1.5rem;
+        }
+
+        /* Channel Indicator Animation */
+        @keyframes channelSwitch {
+            0%, 25% {
+                background: linear-gradient(to right, #DF6746, #E8956F);
+            }
+            25%, 50% {
+                background: linear-gradient(to right, #10B981, #059669);
+            }
+            50%, 75% {
+                background: linear-gradient(to right, #F59E0B, #D97706);
+            }
+            75%, 100% {
+                background: linear-gradient(to right, #8B5CF6, #7C3AED);
+            }
+        }
+
+        #channel-indicator {
+            animation: channelSwitch 6s infinite;
+        }
+
+        /* Device Status Animations */
+        @keyframes devicePing {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.2);
+                opacity: 0.7;
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .animate-ping {
+            animation: devicePing 1s ease-in-out infinite;
+        }
+
+        /* Performance indicator pulse */
+        @keyframes performancePulse {
+            0%, 100% {
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4);
+            }
+            50% {
+                transform: scale(1.05);
+                box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
+            }
+        }
+
+        .animate-pulse {
+            animation: performancePulse 2s ease-in-out infinite;
+        }
+
+        /* Responsive canvas */
+        @media (max-width: 768px) {
+            #wukongim-canvas {
+                height: 300px;
+            }
+        }
+
+        @media (max-width: 640px) {
+            #wukongim-canvas {
+                height: 250px;
+            }
+        }
+    </style>
+</head>
+<body class="bg-white text-gray-900 font-sans">
+    <!-- Navigation -->
+    <nav id="navbar" class="fixed top-0 w-full z-50 border-b border-gray-200 transition-all duration-300 ease-in-out">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-3">
+                    <img src="logo-dark.png" alt="WuKongIM Logo" class="w-8 h-8 object-contain">
+                    <span class="text-xl font-bold" style="background: linear-gradient(to right, #DF6746, #E8956F); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">WuKongIM</span>
+                </div>
+                <div class="hidden md:flex items-center space-x-8">
+                    <a href="#features" class="flex items-center space-x-2 text-gray-600 transition-colors" style="color: #6B7280;" onmouseover="this.style.color='#DF6746'" onmouseout="this.style.color='#6B7280'">
+                        <img src="icons/zap.svg" alt="Features" class="w-4 h-4">
+                        <span>特性</span>
+                    </a>
+                    <a href="#architecture" class="flex items-center space-x-2 text-gray-600 transition-colors" style="color: #6B7280;" onmouseover="this.style.color='#DF6746'" onmouseout="this.style.color='#6B7280'">
+                        <img src="icons/layers.svg" alt="Architecture" class="w-4 h-4">
+                        <span>架构</span>
+                    </a>
+                    <a href="#use-cases" class="flex items-center space-x-2 text-gray-600 transition-colors" style="color: #6B7280;" onmouseover="this.style.color='#DF6746'" onmouseout="this.style.color='#6B7280'">
+                        <img src="icons/layout-grid.svg" alt="Use Cases" class="w-4 h-4">
+                        <span>应用场景</span>
+                    </a>
+                    <a href="https://docs.githubim.com/zh/" class="flex items-center space-x-2 text-white px-4 py-2 rounded-lg transition-colors" style="background-color: #DF6746;" onmouseover="this.style.backgroundColor='#C55A3E'" onmouseout="this.style.backgroundColor='#DF6746'">
+                        <img src="icons/book-open.svg" alt="Documentation" class="w-4 h-4" style="filter: brightness(0) invert(1);">
+                        <span>查看文档</span>
+                    </a>
+                </div>
+                <button class="md:hidden p-2">
+                    <img src="icons/menu.svg" alt="Menu" class="w-6 h-6 text-gray-600">
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Banner Section -->
+    <section class="relative min-h-screen flex items-center overflow-hidden" style="background-image: url('./banner.jpg'); background-size: cover; background-position: center;">
+        <div class="absolute inset-0 bg-white/70"></div>
+        <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+            <div class="grid lg:grid-cols-2 gap-16 lg:gap-20 items-center">
+                <!-- Left Content -->
+                <div class="space-y-8">
+                    <div class="space-y-4">
+                        <h1 class="text-5xl lg:text-6xl font-bold leading-tight">
+                            <span style="background: linear-gradient(to right, #DF6746, #E8956F); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">WuKongIM</span>
+                        </h1>
+                        <h2 class="text-2xl lg:text-3xl font-semibold text-gray-800">高性能分布式即时通讯服务</h2>
+                        <p class="text-xl text-gray-600 leading-relaxed">
+                            简如 Redis，快如 Kafka，稳如 MySQL
+                        </p>
+                    </div>
+                    
+                    <div class="flex flex-col sm:flex-row gap-4">
+                        <a href="https://docs.githubim.com/zh/getting-started" class="inline-flex items-center justify-center px-8 py-4 text-white font-semibold rounded-xl transition-all transform hover:scale-105 shadow-lg" style="background: linear-gradient(to right, #DF6746, #E8956F);" onmouseover="this.style.background='linear-gradient(to right, #C55A3E, #D6845F)'" onmouseout="this.style.background='linear-gradient(to right, #DF6746, #E8956F)'">
+                            <img src="icons/rocket.svg" alt="Rocket" class="w-5 h-5 mr-2" style="filter: brightness(0) invert(1);">
+                            快速开始
+                        </a>
+                        <a href="https://docs.githubim.com/zh/installation/overview" class="inline-flex items-center justify-center px-8 py-4 border-2 border-gray-300 text-gray-700 font-semibold rounded-xl transition-all" style="border-color: #D1D5DB; color: #374151;" onmouseover="this.style.borderColor='#DF6746'; this.style.color='#DF6746'" onmouseout="this.style.borderColor='#D1D5DB'; this.style.color='#374151'">
+                            <img src="icons/download.svg" alt="Download" class="w-5 h-5 mr-2">
+                            安装部署
+                        </a>
+                    </div>
+
+                    <div class="flex items-center space-x-6 text-sm text-gray-500">
+                        <div class="flex items-center space-x-2">
+                            <img src="icons/check-circle.svg" alt="Check" class="w-4 h-4" style="color: #DF6746;">
+                            <span>零依赖</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <img src="icons/check-circle.svg" alt="Check" class="w-4 h-4" style="color: #DF6746;">
+                            <span>高性能</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <img src="icons/check-circle.svg" alt="Check" class="w-4 h-4" style="color: #DF6746;">
+                            <span>易扩展</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Animation - WuKongIM Message Flow Canvas -->
+                <div class="relative">
+                    <div class="relative w-full max-w-2xl mx-auto">
+                        <!-- Canvas Container -->
+                        <div class="relative bg-gradient-to-br from-gray-50 to-white rounded-3xl shadow-2xl border border-gray-200 overflow-hidden">
+                            <canvas id="wukongim-canvas" class="w-full h-96 block"></canvas>
+
+                            <!-- Overlay Information -->
+                            <div class="absolute top-4 left-4 bg-white/90 backdrop-blur-sm rounded-xl px-4 py-2 shadow-lg border border-gray-200">
+                                <div class="flex items-center space-x-2">
+                                    <div id="channel-indicator" class="w-3 h-3 rounded-full bg-gradient-to-r from-orange-400 to-red-500 animate-pulse"></div>
+                                    <span id="channel-type" class="text-sm font-semibold text-gray-700">群聊频道</span>
+                                </div>
+                            </div>
+
+                            <!-- Message Counter -->
+                            <div class="absolute bottom-4 right-4 bg-white/90 backdrop-blur-sm rounded-xl px-4 py-2 shadow-lg border border-gray-200">
+                                <div class="text-center">
+                                    <div class="text-lg font-bold text-gray-900" id="message-count">0</div>
+                                    <div class="text-xs text-gray-500">消息已分发</div>
+                                </div>
+                            </div>
+
+                            <!-- Performance Indicators -->
+                            <div class="absolute top-4 right-4 flex space-x-2">
+                                <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center animate-pulse shadow-lg">
+                                    <img src="icons/zap.svg" alt="Performance" class="w-4 h-4" style="filter: brightness(0) invert(1);">
+                                </div>
+                                <div class="w-8 h-8 bg-gradient-to-br from-green-500 to-blue-500 rounded-full flex items-center justify-center animate-pulse shadow-lg" style="animation-delay: 1s;">
+                                    <img src="icons/shield.svg" alt="Security" class="w-4 h-4" style="filter: brightness(0) invert(1);">
+                                </div>
+                            </div>
+
+                            <!-- Device Status Indicators -->
+                            <div class="absolute bottom-4 left-4 space-y-2">
+                                <div class="flex items-center space-x-2 opacity-0 transition-opacity duration-500" id="device-status-1">
+                                    <div class="w-2 h-2 bg-green-500 rounded-full animate-ping"></div>
+                                    <span class="text-xs text-gray-600 bg-white/80 px-2 py-1 rounded-lg">智能手机</span>
+                                </div>
+                                <div class="flex items-center space-x-2 opacity-0 transition-opacity duration-500" id="device-status-2">
+                                    <div class="w-2 h-2 bg-orange-500 rounded-full animate-ping"></div>
+                                    <span class="text-xs text-gray-600 bg-white/80 px-2 py-1 rounded-lg">IoT设备</span>
+                                </div>
+                                <div class="flex items-center space-x-2 opacity-0 transition-opacity duration-500" id="device-status-3">
+                                    <div class="w-2 h-2 bg-purple-500 rounded-full animate-ping"></div>
+                                    <span class="text-xs text-gray-600 bg-white/80 px-2 py-1 rounded-lg">桌面电脑</span>
+                                </div>
+                                <div class="flex items-center space-x-2 opacity-0 transition-opacity duration-500" id="device-status-4">
+                                    <div class="w-2 h-2 bg-red-500 rounded-full animate-ping"></div>
+                                    <span class="text-xs text-gray-600 bg-white/80 px-2 py-1 rounded-lg">智能电视</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Core Features Section -->
+    <section id="features" class="py-20 bg-gray-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl font-bold text-gray-900 mb-4" style="background: linear-gradient(to right, #DF6746, #E8956F); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">核心特性</h2>
+                <p class="text-xl text-gray-600 max-w-3xl mx-auto">为现代应用构建的强大即时通讯解决方案，提供企业级的性能、安全性和可靠性</p>
+            </div>
+            
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Unique Capabilities -->
+                <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-200 hover:shadow-lg transition-shadow">
+                    <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mb-6">
+                        <img src="icons/target.svg" alt="Target" class="w-6 h-6 text-blue-600">
+                    </div>
+                    <h3 class="text-xl font-semibold text-gray-900 mb-4">🎯 独特能力</h3>
+                    <ul class="space-y-3 text-gray-600">
+                        <li class="flex items-center">
+                            <img src="icons/users.svg" alt="Users" class="w-4 h-4 mr-3 text-green-500">
+                            无限群成员 (10万+)
+                        </li>
+                        <li class="flex items-center">
+                            <img src="icons/database.svg" alt="Database" class="w-4 h-4 mr-3 text-green-500">
+                            永久消息存储
+                        </li>
+                        <li class="flex items-center">
+                            <img src="icons/zap.svg" alt="Zap" class="w-4 h-4 mr-3 text-green-500">
+                            自定义二进制协议
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Low Resource -->
+                <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-200 hover:shadow-lg transition-shadow">
+                    <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center mb-6">
+                        <img src="icons/smartphone.svg" alt="Smartphone" class="w-6 h-6 text-green-600">
+                    </div>
+                    <h3 class="text-xl font-semibold text-gray-900 mb-4">📱 低资源消耗</h3>
+                    <ul class="space-y-3 text-gray-600">
+                        <li class="flex items-center">
+                            <img src="icons/wifi.svg" alt="Wifi" class="w-4 h-4 mr-3 text-green-500">
+                            1字节心跳包
+                        </li>
+                        <li class="flex items-center">
+                            <img src="icons/hard-drive.svg" alt="Hard Drive" class="w-4 h-4 mr-3 text-green-500">
+                            优化存储引擎
+                        </li>
+                        <li class="flex items-center">
+                            <img src="icons/cpu.svg" alt="CPU" class="w-4 h-4 mr-3 text-green-500">
+                            智能消息缓存
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Security -->
+                <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-200 hover:shadow-lg transition-shadow">
+                    <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center mb-6">
+                        <img src="icons/shield.svg" alt="Shield" class="w-6 h-6 text-purple-600">
+                    </div>
+                    <h3 class="text-xl font-semibold text-gray-900 mb-4">🔐 安全优先</h3>
+                    <ul class="space-y-3 text-gray-600">
+                        <li class="flex items-center">
+                            <img src="icons/lock.svg" alt="Lock" class="w-4 h-4 mr-3 text-green-500">
+                            端到端加密
+                        </li>
+                        <li class="flex items-center">
+                            <img src="icons/shield-check.svg" alt="Shield Check" class="w-4 h-4 mr-3 text-green-500">
+                            攻击防护
+                        </li>
+                        <li class="flex items-center">
+                            <img src="icons/backup.svg" alt="Backup" class="w-4 h-4 mr-3 text-green-500">
+                            实时数据备份
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- More Features -->
+    <section class="py-20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- High Performance -->
+                <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-200 hover:shadow-lg transition-shadow">
+                    <div class="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center mb-6">
+                        <img src="icons/rocket.svg" alt="Rocket" class="w-6 h-6 text-red-600">
+                    </div>
+                    <h3 class="text-xl font-semibold text-gray-900 mb-4">🚀 高性能</h3>
+                    <ul class="space-y-3 text-gray-600">
+                        <li class="flex items-center">
+                            <img src="icons/database.svg" alt="Database" class="w-4 h-4 mr-3 text-green-500">
+                            基于 PebbleDB
+                        </li>
+                        <li class="flex items-center">
+                            <img src="icons/server.svg" alt="Server" class="w-4 h-4 mr-3 text-green-500">
+                            分布式数据库
+                        </li>
+                        <li class="flex items-center">
+                            <img src="icons/gauge.svg" alt="Gauge" class="w-4 h-4 mr-3 text-green-500">
+                            优化存储层
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- High Availability -->
+                <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-200 hover:shadow-lg transition-shadow">
+                    <div class="w-12 h-12 bg-yellow-100 rounded-xl flex items-center justify-center mb-6">
+                        <img src="icons/activity.svg" alt="Activity" class="w-6 h-6 text-yellow-600">
+                    </div>
+                    <h3 class="text-xl font-semibold text-gray-900 mb-4">🔥 高可用性</h3>
+                    <ul class="space-y-3 text-gray-600">
+                        <li class="flex items-center">
+                            <img src="icons/git-branch.svg" alt="Git Branch" class="w-4 h-4 mr-3 text-green-500">
+                            改进的 Raft 协议
+                        </li>
+                        <li class="flex items-center">
+                            <img src="icons/clock.svg" alt="Clock" class="w-4 h-4 mr-3 text-green-500">
+                            零停机时间
+                        </li>
+                        <li class="flex items-center">
+                            <img src="icons/expand.svg" alt="Expand" class="w-4 h-4 mr-3 text-green-500">
+                            轻松扩展
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Easy to Use -->
+                <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-200 hover:shadow-lg transition-shadow">
+                    <div class="w-12 h-12 bg-pink-100 rounded-xl flex items-center justify-center mb-6">
+                        <img src="icons/smile.svg" alt="Smile" class="w-6 h-6 text-pink-600">
+                    </div>
+                    <h3 class="text-xl font-semibold text-gray-900 mb-4">0️⃣ 易于使用</h3>
+                    <ul class="space-y-3 text-gray-600">
+                        <li class="flex items-center">
+                            <img src="icons/package.svg" alt="Package" class="w-4 h-4 mr-3 text-green-500">
+                            零依赖
+                        </li>
+                        <li class="flex items-center">
+                            <img src="icons/play.svg" alt="Play" class="w-4 h-4 mr-3 text-green-500">
+                            一条命令启动
+                        </li>
+                        <li class="flex items-center">
+                            <img src="icons/book.svg" alt="Book" class="w-4 h-4 mr-3 text-green-500">
+                            全面文档支持
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Architecture Section -->
+    <section id="architecture" class="py-20 bg-gray-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl font-bold text-gray-900 mb-4" style="background: linear-gradient(to right, #DF6746, #E8956F); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">架构概览</h2>
+                <p class="text-xl text-gray-600 max-w-3xl mx-auto">基于频道的分布式架构设计，简单易懂的发布-订阅模型</p>
+            </div>
+
+            <div class="grid lg:grid-cols-2 gap-12 items-center">
+                <div class="space-y-6">
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                        <div class="flex items-center mb-3">
+                            <div class="w-10 h-10 rounded-lg flex items-center justify-center mr-4" style="background-color: rgba(223, 103, 70, 0.1);">
+                                <img src="icons/radio.svg" alt="Radio" class="w-5 h-5" style="color: #DF6746;">
+                            </div>
+                            <h3 class="text-lg font-semibold text-gray-900">频道 (Channel)</h3>
+                        </div>
+                        <p class="text-gray-600">核心通信单元，支持个人频道和群组频道，是所有消息传递的基础</p>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                        <div class="flex items-center mb-3">
+                            <div class="w-10 h-10 rounded-lg flex items-center justify-center mr-4" style="background-color: rgba(223, 103, 70, 0.1);">
+                                <img src="icons/users.svg" alt="Users" class="w-5 h-5" style="color: #DF6746;">
+                            </div>
+                            <h3 class="text-lg font-semibold text-gray-900">用户订阅</h3>
+                        </div>
+                        <p class="text-gray-600">用户订阅感兴趣的频道，实时接收消息推送和更新通知</p>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                        <div class="flex items-center mb-3">
+                            <div class="w-10 h-10 rounded-lg flex items-center justify-center mr-4" style="background-color: rgba(223, 103, 70, 0.1);">
+                                <img src="icons/message-circle.svg" alt="Message Circle" class="w-5 h-5" style="color: #DF6746;">
+                            </div>
+                            <h3 class="text-lg font-semibold text-gray-900">消息传递</h3>
+                        </div>
+                        <p class="text-gray-600">消息发布到频道后，自动传递给所有订阅该频道的用户</p>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                        <div class="flex items-center mb-3">
+                            <div class="w-10 h-10 rounded-lg flex items-center justify-center mr-4" style="background-color: rgba(223, 103, 70, 0.1);">
+                                <img src="icons/server.svg" alt="Server" class="w-5 h-5" style="color: #DF6746;">
+                            </div>
+                            <h3 class="text-lg font-semibold text-gray-900">分布式节点</h3>
+                        </div>
+                        <p class="text-gray-600">多节点协同工作，实现高可用性、负载均衡和自动故障转移</p>
+                    </div>
+                </div>
+
+                <div class="relative">
+                    <img src="architecture-diagram.jpg" alt="Architecture Diagram" class="rounded-2xl shadow-lg w-full">
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent rounded-2xl"></div>
+                    <div class="absolute bottom-6 left-6 right-6 text-white">
+                        <h4 class="text-xl font-semibold mb-2">分布式架构</h4>
+                        <p class="text-sm opacity-90">高可用、可扩展的即时通讯架构设计</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Use Cases -->
+    <section id="use-cases" class="py-20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl font-bold text-gray-900 mb-4" style="background: linear-gradient(to right, #DF6746, #E8956F); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">应用场景</h2>
+                <p class="text-xl text-gray-600 max-w-3xl mx-auto">适用于各种实时通信需求，从简单聊天到复杂企业应用</p>
+            </div>
+
+            <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-lg transition-all group">
+                    <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                        <img src="icons/message-square.svg" alt="Message Square" class="w-6 h-6 text-blue-600">
+                    </div>
+                    <h3 class="text-lg font-semibold text-gray-900 mb-2">聊天应用</h3>
+                    <p class="text-gray-600 text-sm">群聊、私人消息和社交平台</p>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-lg transition-all group">
+                    <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                        <img src="icons/bell.svg" alt="Bell" class="w-6 h-6 text-green-600">
+                    </div>
+                    <h3 class="text-lg font-semibold text-gray-900 mb-2">消息推送</h3>
+                    <p class="text-gray-600 text-sm">通知系统和实时更新</p>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-lg transition-all group">
+                    <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                        <img src="icons/wifi.svg" alt="Wifi" class="w-6 h-6 text-purple-600">
+                    </div>
+                    <h3 class="text-lg font-semibold text-gray-900 mb-2">物联网通信</h3>
+                    <p class="text-gray-600 text-sm">设备间和设备到服务器通信</p>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-lg transition-all group">
+                    <div class="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                        <img src="icons/video.svg" alt="Video" class="w-6 h-6 text-red-600">
+                    </div>
+                    <h3 class="text-lg font-semibold text-gray-900 mb-2">音视频信令</h3>
+                    <p class="text-gray-600 text-sm">WebRTC 信令和媒体协调</p>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-lg transition-all group">
+                    <div class="w-12 h-12 bg-yellow-100 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                        <img src="icons/tv.svg" alt="TV" class="w-6 h-6 text-yellow-600">
+                    </div>
+                    <h3 class="text-lg font-semibold text-gray-900 mb-2">直播</h3>
+                    <p class="text-gray-600 text-sm">直播聊天和互动功能</p>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-lg transition-all group">
+                    <div class="w-12 h-12 bg-pink-100 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                        <img src="icons/headphones.svg" alt="Headphones" class="w-6 h-6 text-pink-600">
+                    </div>
+                    <h3 class="text-lg font-semibold text-gray-900 mb-2">客服系统</h3>
+                    <p class="text-gray-600 text-sm">支持聊天和帮助台解决方案</p>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-lg transition-all group">
+                    <div class="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                        <img src="icons/bot.svg" alt="Bot" class="w-6 h-6 text-indigo-600">
+                    </div>
+                    <h3 class="text-lg font-semibold text-gray-900 mb-2">AI 通信</h3>
+                    <p class="text-gray-600 text-sm">聊天机器人和 AI 驱动消息</p>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-lg transition-all group">
+                    <div class="w-12 h-12 bg-teal-100 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                        <img src="icons/users-2.svg" alt="Users 2" class="w-6 h-6 text-teal-600">
+                    </div>
+                    <h3 class="text-lg font-semibold text-gray-900 mb-2">即时社区</h3>
+                    <p class="text-gray-600 text-sm">实时社区平台和论坛</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Documentation Links -->
+    <section class="py-20 bg-gray-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl font-bold text-gray-900 mb-4" style="background: linear-gradient(to right, #DF6746, #E8956F); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">开始使用</h2>
+                <p class="text-xl text-gray-600 max-w-3xl mx-auto">选择适合您的部署方式和开发平台</p>
+            </div>
+
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Installation -->
+                <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-200 hover:shadow-lg transition-shadow">
+                    <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mb-6">
+                        <img src="icons/download.svg" alt="Download" class="w-6 h-6 text-blue-600">
+                    </div>
+                    <h3 class="text-xl font-semibold text-gray-900 mb-4">安装部署</h3>
+                    <p class="text-gray-600 mb-6">选择 Docker、Linux 或 Kubernetes 部署方式</p>
+                    <a href="https://docs.githubim.com/zh/installation/overview" class="inline-flex items-center font-semibold" style="color: #DF6746;" onmouseover="this.style.color='#C55A3E'" onmouseout="this.style.color='#DF6746'">
+                        查看安装指南
+                        <img src="icons/arrow-right.svg" alt="Arrow Right" class="w-4 h-4 ml-2">
+                    </a>
+                </div>
+
+                <!-- SDK -->
+                <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-200 hover:shadow-lg transition-shadow">
+                    <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center mb-6">
+                        <img src="icons/code.svg" alt="Code" class="w-6 h-6 text-green-600">
+                    </div>
+                    <h3 class="text-xl font-semibold text-gray-900 mb-4">SDK 集成</h3>
+                    <p class="text-gray-600 mb-6">支持 iOS、Android、Web、Flutter 等平台</p>
+                    <a href="https://docs.githubim.com/zh/sdk/overview" class="inline-flex items-center font-semibold" style="color: #DF6746;" onmouseover="this.style.color='#C55A3E'" onmouseout="this.style.color='#DF6746'">
+                        选择 SDK
+                        <img src="icons/arrow-right.svg" alt="Arrow Right" class="w-4 h-4 ml-2">
+                    </a>
+                </div>
+
+                <!-- API -->
+                <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-200 hover:shadow-lg transition-shadow">
+                    <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center mb-6">
+                        <img src="icons/api.svg" alt="API" class="w-6 h-6 text-purple-600">
+                    </div>
+                    <h3 class="text-xl font-semibold text-gray-900 mb-4">API 文档</h3>
+                    <p class="text-gray-600 mb-6">完整的 REST API 接口文档和示例</p>
+                    <a href="https://docs.githubim.com/zh/api/introduction" class="inline-flex items-center font-semibold" style="color: #DF6746;" onmouseover="this.style.color='#C55A3E'" onmouseout="this.style.color='#DF6746'">
+                        查看 API
+                        <img src="icons/arrow-right.svg" alt="Arrow Right" class="w-4 h-4 ml-2">
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-white py-16">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+                <!-- Brand -->
+                <div class="lg:col-span-2">
+                    <div class="flex items-center space-x-3 mb-6">
+                        <img src="logo-light.png" alt="WuKongIM Logo" class="w-10 h-10 object-contain">
+                        <span class="text-2xl font-bold" style="background: linear-gradient(to right, #DF6746, #E8956F); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">WuKongIM</span>
+                    </div>
+                    <p class="text-gray-400 mb-6 max-w-md">
+                        高性能分布式即时通讯服务，简如 Redis，快如 Kafka，稳如 MySQL。
+                    </p>
+                    <div class="flex space-x-4">
+                        <a href="https://github.com/WuKongIM/WuKongIM" class="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center hover:bg-gray-700 transition-colors">
+                            <img src="icons/github.svg" alt="GitHub" class="w-5 h-5">
+                        </a>
+                        <a href="#" class="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center hover:bg-gray-700 transition-colors">
+                            <img src="icons/twitter.svg" alt="Twitter" class="w-5 h-5">
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Documentation -->
+                <div>
+                    <h4 class="text-lg font-semibold mb-6">文档</h4>
+                    <ul class="space-y-3">
+                        <li><a href="https://docs.githubim.com/zh/getting-started" class="text-gray-400 hover:text-white transition-colors">快速开始</a></li>
+                        <li><a href="https://docs.githubim.com/zh/installation/overview" class="text-gray-400 hover:text-white transition-colors">安装部署</a></li>
+                        <li><a href="https://docs.githubim.com/zh/api/introduction" class="text-gray-400 hover:text-white transition-colors">API 文档</a></li>
+                        <li><a href="https://docs.githubim.com/zh/sdk/overview" class="text-gray-400 hover:text-white transition-colors">SDK 概览</a></li>
+                    </ul>
+                </div>
+
+                <!-- Resources -->
+                <div>
+                    <h4 class="text-lg font-semibold mb-6">资源</h4>
+                    <ul class="space-y-3">
+                        <li><a href="https://github.com/WuKongIM/WuKongIM/issues" class="text-gray-400 hover:text-white transition-colors">GitHub Issues</a></li>
+                        <li><a href="https://docs.githubim.com/zh/getting-started/stress-report" class="text-gray-400 hover:text-white transition-colors">性能测试</a></li>
+                        <li><a href="https://docs.githubim.com/zh/getting-started/learning" class="text-gray-400 hover:text-white transition-colors">学习资源</a></li>
+                        <li><a href="https://docs.githubim.com/zh/plugins" class="text-gray-400 hover:text-white transition-colors">插件开发</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="border-t border-gray-800 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center">
+                <p class="text-gray-400 text-sm">
+                    © 2024 WuKongIM. All rights reserved.
+                </p>
+                <div class="flex items-center space-x-6 mt-4 md:mt-0">
+                    <a href="#" class="text-gray-400 hover:text-white text-sm transition-colors">隐私政策</a>
+                    <a href="#" class="text-gray-400 hover:text-white text-sm transition-colors">使用条款</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Enhanced Navigation Script -->
+    <script>
+        // Navigation scroll transparency effect
+        function updateNavbarTransparency() {
+            const navbar = document.getElementById('navbar');
+            const scrollPosition = window.scrollY;
+            const maxScroll = 100; // Distance to scroll for full opacity
+
+            // Calculate opacity based on scroll position (0 to 1)
+            const opacity = Math.min(scrollPosition / maxScroll, 1);
+
+            // Apply background color with calculated opacity
+            if (opacity === 0) {
+                // Completely transparent at the top
+                navbar.style.backgroundColor = 'transparent';
+                navbar.style.borderBottomColor = 'transparent';
+            } else {
+                // Gradually transition to semi-transparent white
+                navbar.style.backgroundColor = `rgba(255, 255, 255, ${0.8 * opacity})`;
+                navbar.style.borderBottomColor = `rgba(229, 231, 235, ${opacity})`; // gray-200 with opacity
+            }
+        }
+
+        // Smooth scrolling for navigation links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Mobile menu toggle
+        const mobileMenuButton = document.querySelector('button.md\\:hidden');
+        if (mobileMenuButton) {
+            mobileMenuButton.addEventListener('click', function() {
+                // Add mobile menu functionality here if needed
+                console.log('Mobile menu clicked');
+            });
+        }
+
+        // Initialize navbar transparency on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            updateNavbarTransparency();
+        });
+
+        // Update navbar transparency on scroll
+        window.addEventListener('scroll', updateNavbarTransparency);
+
+        // Update navbar transparency on resize (in case scroll position changes)
+        window.addEventListener('resize', updateNavbarTransparency);
+
+        // WuKongIM Canvas Animation System
+        class WuKongIMCanvasAnimation {
+            constructor() {
+                this.canvas = null;
+                this.ctx = null;
+                this.animationId = null;
+                this.messageCount = 0;
+                this.particles = [];
+                this.devices = [];
+                this.channelHub = null;
+                this.messageSource = null;
+                this.channelTypes = [
+                    { name: '群聊频道', color: '#DF6746', gradient: ['#DF6746', '#E8956F'] },
+                    { name: '直播频道', color: '#10B981', gradient: ['#10B981', '#059669'] },
+                    { name: '客服频道', color: '#F59E0B', gradient: ['#F59E0B', '#D97706'] },
+                    { name: 'AI Agent', color: '#8B5CF6', gradient: ['#8B5CF6', '#7C3AED'] }
+                ];
+                this.currentChannelIndex = 0;
+                this.lastTime = 0;
+                this.messageTimer = 0;
+                this.channelTimer = 0;
+                this.hoveredDevice = null;
+                this.hoveredSource = false;
+                this.hoveredHub = false;
+                this.maxParticles = 30;
+                this.qualityLevel = 3;
+                this.backgroundPattern = null;
+                this.init();
+            }
+
+            init() {
+                this.setupCanvas();
+                this.setupElements();
+                this.setupEventListeners();
+                this.createBackgroundPattern();
+                this.startAnimation();
+            }
+
+            setupCanvas() {
+                this.canvas = document.getElementById('wukongim-canvas');
+                if (!this.canvas) return;
+
+                this.ctx = this.canvas.getContext('2d');
+                this.resizeCanvas();
+            }
+
+            resizeCanvas() {
+                const rect = this.canvas.getBoundingClientRect();
+                const dpr = window.devicePixelRatio || 1;
+
+                this.canvas.width = rect.width * dpr;
+                this.canvas.height = rect.height * dpr;
+
+                this.ctx.scale(dpr, dpr);
+                this.canvas.style.width = rect.width + 'px';
+                this.canvas.style.height = rect.height + 'px';
+
+                this.width = rect.width;
+                this.height = rect.height;
+            }
+
+            setupElements() {
+                // Message Source (left side)
+                this.messageSource = {
+                    x: this.width * 0.15,
+                    y: this.height * 0.5,
+                    radius: 30,
+                    pulseRadius: 30,
+                    pulsePhase: 0
+                };
+
+                // Channel Hub (center)
+                this.channelHub = {
+                    x: this.width * 0.5,
+                    y: this.height * 0.5,
+                    width: 80,
+                    height: 60,
+                    pulsePhase: 0,
+                    glowIntensity: 0
+                };
+
+                // Target Devices (right side)
+                const deviceColors = ['#10B981', '#F59E0B', '#8B5CF6', '#EF4444'];
+                const deviceNames = ['smartphone', 'wifi', 'laptop', 'tv'];
+
+                for (let i = 0; i < 4; i++) {
+                    this.devices.push({
+                        x: this.width * 0.85,
+                        y: this.height * (0.2 + i * 0.2),
+                        radius: 25,
+                        color: deviceColors[i],
+                        name: deviceNames[i],
+                        pulsePhase: 0,
+                        lastMessageTime: 0,
+                        glowIntensity: 0
+                    });
+                }
+            }
+
+            setupEventListeners() {
+                // Resize handling
+                window.addEventListener('resize', () => {
+                    this.resizeCanvas();
+                    this.setupElements();
+                });
+
+                // Mouse interaction
+                this.canvas.addEventListener('mousemove', (e) => {
+                    this.handleMouseMove(e);
+                });
+
+                this.canvas.addEventListener('click', (e) => {
+                    this.handleMouseClick(e);
+                });
+
+                this.canvas.addEventListener('mouseleave', () => {
+                    this.hoveredDevice = null;
+                    this.canvas.style.cursor = 'default';
+                });
+
+                // Performance monitoring
+                this.setupPerformanceMonitoring();
+            }
+
+            handleMouseMove(e) {
+                const rect = this.canvas.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+
+                // Check device hover
+                let hoveredDevice = null;
+                this.devices.forEach((device, index) => {
+                    const distance = Math.sqrt(
+                        Math.pow(mouseX - device.x, 2) + Math.pow(mouseY - device.y, 2)
+                    );
+                    if (distance <= device.radius + 10) {
+                        hoveredDevice = { device, index };
+                    }
+                });
+
+                // Check source hover
+                const sourceDistance = Math.sqrt(
+                    Math.pow(mouseX - this.messageSource.x, 2) +
+                    Math.pow(mouseY - this.messageSource.y, 2)
+                );
+                if (sourceDistance <= this.messageSource.pulseRadius + 10) {
+                    this.canvas.style.cursor = 'pointer';
+                    this.hoveredSource = true;
+                } else {
+                    this.hoveredSource = false;
+                }
+
+                // Check hub hover
+                const hubDistance = Math.sqrt(
+                    Math.pow(mouseX - this.channelHub.x, 2) +
+                    Math.pow(mouseY - this.channelHub.y, 2)
+                );
+                if (hubDistance <= Math.max(this.channelHub.width, this.channelHub.height) / 2 + 10) {
+                    this.canvas.style.cursor = 'pointer';
+                    this.hoveredHub = true;
+                } else {
+                    this.hoveredHub = false;
+                }
+
+                if (hoveredDevice) {
+                    this.canvas.style.cursor = 'pointer';
+                    this.hoveredDevice = hoveredDevice;
+                } else if (!this.hoveredSource && !this.hoveredHub) {
+                    this.canvas.style.cursor = 'default';
+                    this.hoveredDevice = null;
+                }
+            }
+
+            handleMouseClick(e) {
+                const rect = this.canvas.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+
+                // Click on source to send message
+                const sourceDistance = Math.sqrt(
+                    Math.pow(mouseX - this.messageSource.x, 2) +
+                    Math.pow(mouseY - this.messageSource.y, 2)
+                );
+                if (sourceDistance <= this.messageSource.pulseRadius + 10) {
+                    this.sendMessage(performance.now());
+                    return;
+                }
+
+                // Click on hub to switch channel
+                const hubDistance = Math.sqrt(
+                    Math.pow(mouseX - this.channelHub.x, 2) +
+                    Math.pow(mouseY - this.channelHub.y, 2)
+                );
+                if (hubDistance <= Math.max(this.channelHub.width, this.channelHub.height) / 2 + 10) {
+                    this.switchChannel();
+                    return;
+                }
+
+                // Click on device for special effect
+                this.devices.forEach((device, index) => {
+                    const distance = Math.sqrt(
+                        Math.pow(mouseX - device.x, 2) + Math.pow(mouseY - device.y, 2)
+                    );
+                    if (distance <= device.radius + 10) {
+                        this.triggerDeviceEffect(device, index);
+                    }
+                });
+            }
+
+            triggerDeviceEffect(device, index) {
+                // Create special effect for clicked device
+                device.lastMessageTime = performance.now();
+                this.addDeviceBounceEffect(device);
+                this.showDeviceStatus(index + 1);
+
+                // Create burst effect
+                for (let i = 0; i < 6; i++) {
+                    const angle = (i / 6) * Math.PI * 2;
+                    const distance = 40;
+                    const burstParticle = this.createMessageParticle(
+                        device.x, device.y,
+                        device.x + Math.cos(angle) * distance,
+                        device.y + Math.sin(angle) * distance,
+                        device.color,
+                        'burst'
+                    );
+                    burstParticle.speed = 0.05;
+                    burstParticle.life = 0.8;
+                    this.particles.push(burstParticle);
+                }
+            }
+
+            setupPerformanceMonitoring() {
+                this.frameCount = 0;
+                this.lastFPSUpdate = performance.now();
+                this.currentFPS = 60;
+
+                // Adjust quality based on performance
+                setInterval(() => {
+                    if (this.currentFPS < 30) {
+                        this.reduceQuality();
+                    } else if (this.currentFPS > 55) {
+                        this.increaseQuality();
+                    }
+                }, 2000);
+            }
+
+            reduceQuality() {
+                // Reduce particle count and effects for better performance
+                this.maxParticles = Math.max(10, this.maxParticles - 5);
+                this.qualityLevel = Math.max(1, this.qualityLevel - 1);
+            }
+
+            increaseQuality() {
+                // Increase quality if performance allows
+                this.maxParticles = Math.min(50, this.maxParticles + 2);
+                this.qualityLevel = Math.min(3, this.qualityLevel + 1);
+            }
+
+            createGradient(x1, y1, x2, y2, colors) {
+                const gradient = this.ctx.createLinearGradient(x1, y1, x2, y2);
+                gradient.addColorStop(0, colors[0]);
+                gradient.addColorStop(1, colors[1]);
+                return gradient;
+            }
+
+            drawMessageSource(time) {
+                const source = this.messageSource;
+                source.pulsePhase += 0.05;
+                source.pulseRadius = 30 + Math.sin(source.pulsePhase) * 5;
+
+                // Dynamic light intensity based on message sending
+                const lightIntensity = 0.7 + Math.sin(time * 0.003) * 0.3;
+
+                // Enhanced shadow/depth effect
+                this.ctx.save();
+                this.ctx.shadowColor = 'rgba(79, 70, 229, 0.4)';
+                this.ctx.shadowBlur = 20;
+                this.ctx.shadowOffsetX = 3;
+                this.ctx.shadowOffsetY = 6;
+                this.ctx.beginPath();
+                this.ctx.arc(source.x, source.y, source.pulseRadius, 0, Math.PI * 2);
+                this.ctx.fillStyle = 'rgba(79, 70, 229, 0.1)';
+                this.ctx.fill();
+                this.ctx.restore();
+
+                // Multiple glow layers with dynamic intensity
+                for (let i = 5; i >= 1; i--) {
+                    this.ctx.save();
+                    this.ctx.globalAlpha = (0.08 * i) * lightIntensity;
+                    this.ctx.beginPath();
+                    this.ctx.arc(source.x, source.y, source.pulseRadius + (i * 10), 0, Math.PI * 2);
+                    this.ctx.fillStyle = '#4F46E5';
+                    this.ctx.fill();
+                    this.ctx.restore();
+                }
+
+                // Main circle with enhanced radial gradient
+                this.ctx.save();
+                this.ctx.beginPath();
+                this.ctx.arc(source.x, source.y, source.pulseRadius, 0, Math.PI * 2);
+                const radialGradient = this.ctx.createRadialGradient(
+                    source.x - 10, source.y - 10, 0,
+                    source.x, source.y, source.pulseRadius
+                );
+                radialGradient.addColorStop(0, '#8B5CF6');
+                radialGradient.addColorStop(0.3, '#7C3AED');
+                radialGradient.addColorStop(0.7, '#6366F1');
+                radialGradient.addColorStop(1, '#4F46E5');
+                this.ctx.fillStyle = radialGradient;
+                this.ctx.fill();
+                this.ctx.restore();
+
+                // Animated energy rings
+                for (let i = 0; i < 3; i++) {
+                    const ringPhase = source.pulsePhase + (i * Math.PI * 0.6);
+                    const ringRadius = source.pulseRadius + Math.sin(ringPhase) * 15;
+                    this.ctx.save();
+                    this.ctx.globalAlpha = 0.3 * Math.abs(Math.sin(ringPhase));
+                    this.ctx.strokeStyle = '#8B5CF6';
+                    this.ctx.lineWidth = 2;
+                    this.ctx.beginPath();
+                    this.ctx.arc(source.x, source.y, ringRadius, 0, Math.PI * 2);
+                    this.ctx.stroke();
+                    this.ctx.restore();
+                }
+
+                // Inner highlight with animation
+                this.ctx.save();
+                const highlightIntensity = 0.4 + Math.sin(source.pulsePhase * 2) * 0.2;
+                this.ctx.globalAlpha = highlightIntensity;
+                this.ctx.beginPath();
+                this.ctx.arc(source.x - 8, source.y - 8, source.pulseRadius * 0.4, 0, Math.PI * 2);
+                this.ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                this.ctx.fill();
+                this.ctx.restore();
+
+                // Enhanced device icon (custom drawn instead of emoji)
+                this.drawCustomIcon(source.x, source.y, 'smartphone', 'white', 20);
+
+                // Animated label with glow
+                this.ctx.save();
+                this.ctx.shadowColor = 'rgba(79, 70, 229, 0.5)';
+                this.ctx.shadowBlur = 8;
+                this.ctx.fillStyle = '#4F46E5';
+                this.ctx.font = 'bold 12px Arial';
+                this.ctx.textAlign = 'center';
+                this.ctx.fillText('消息源', source.x, source.y + source.pulseRadius + 25);
+                this.ctx.restore();
+            }
+
+            drawChannelHub(time) {
+                const hub = this.channelHub;
+                hub.pulsePhase += 0.03;
+                const currentChannel = this.channelTypes[this.currentChannelIndex];
+
+                // Enhanced shadow effect
+                this.ctx.save();
+                this.ctx.shadowColor = `${currentChannel.color}60`;
+                this.ctx.shadowBlur = 25;
+                this.ctx.shadowOffsetX = 4;
+                this.ctx.shadowOffsetY = 8;
+                this.ctx.beginPath();
+                this.ctx.roundRect(hub.x - hub.width/2, hub.y - hub.height/2,
+                                 hub.width, hub.height, 12);
+                this.ctx.fillStyle = `${currentChannel.color}20`;
+                this.ctx.fill();
+                this.ctx.restore();
+
+                // Enhanced multi-layer glow effect with color transition
+                hub.glowIntensity = 0.6 + Math.sin(hub.pulsePhase) * 0.4;
+                for (let i = 6; i >= 1; i--) {
+                    this.ctx.save();
+                    this.ctx.globalAlpha = (hub.glowIntensity * 0.12) / i;
+                    this.ctx.beginPath();
+                    this.ctx.roundRect(
+                        hub.x - hub.width/2 - (i * 8),
+                        hub.y - hub.height/2 - (i * 8),
+                        hub.width + (i * 16),
+                        hub.height + (i * 16),
+                        15 + i * 2
+                    );
+                    this.ctx.fillStyle = currentChannel.color;
+                    this.ctx.fill();
+                    this.ctx.restore();
+                }
+
+                // Main rectangle with enhanced 3D gradient
+                this.ctx.save();
+                this.ctx.beginPath();
+                this.ctx.roundRect(hub.x - hub.width/2, hub.y - hub.height/2,
+                                 hub.width, hub.height, 12);
+
+                const radialGradient = this.ctx.createRadialGradient(
+                    hub.x - 15, hub.y - 15, 0,
+                    hub.x, hub.y, Math.max(hub.width, hub.height)
+                );
+                radialGradient.addColorStop(0, this.lightenColor(currentChannel.gradient[0], 20));
+                radialGradient.addColorStop(0.5, currentChannel.gradient[0]);
+                radialGradient.addColorStop(1, currentChannel.gradient[1]);
+
+                this.ctx.fillStyle = radialGradient;
+                this.ctx.fill();
+
+                // Inner border highlight with animation
+                this.ctx.strokeStyle = `rgba(255, 255, 255, ${0.4 + Math.sin(hub.pulsePhase) * 0.2})`;
+                this.ctx.lineWidth = 2;
+                this.ctx.stroke();
+                this.ctx.restore();
+
+                // Data flow visualization - flowing lines
+                this.ctx.save();
+                for (let i = 0; i < 4; i++) {
+                    const flowPhase = time * 0.005 + i * Math.PI * 0.5;
+                    const flowIntensity = 0.3 + Math.sin(flowPhase) * 0.2;
+                    this.ctx.globalAlpha = flowIntensity;
+                    this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+                    this.ctx.lineWidth = 2;
+                    this.ctx.lineCap = 'round';
+
+                    const startX = hub.x - hub.width/4 + (i % 2) * hub.width/2;
+                    const startY = hub.y - hub.height/4 + Math.floor(i / 2) * hub.height/2;
+                    const endX = hub.x;
+                    const endY = hub.y;
+
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(startX, startY);
+                    this.ctx.lineTo(endX, endY);
+                    this.ctx.stroke();
+                }
+                this.ctx.restore();
+
+                // Animated center core with multiple layers
+                this.ctx.save();
+                const coreRadius = 4 + Math.sin(hub.pulsePhase * 3) * 2;
+
+                // Core glow
+                this.ctx.globalAlpha = 0.6;
+                this.ctx.beginPath();
+                this.ctx.arc(hub.x, hub.y, coreRadius * 2, 0, Math.PI * 2);
+                this.ctx.fillStyle = 'white';
+                this.ctx.fill();
+
+                // Core center
+                this.ctx.globalAlpha = 1;
+                this.ctx.beginPath();
+                this.ctx.arc(hub.x, hub.y, coreRadius, 0, Math.PI * 2);
+                this.ctx.fillStyle = 'white';
+                this.ctx.fill();
+                this.ctx.restore();
+
+                // Processing indicators - small animated dots around the core
+                for (let i = 0; i < 6; i++) {
+                    const angle = (time * 0.002) + (i * Math.PI * 2 / 6);
+                    const radius = 15;
+                    const dotX = hub.x + Math.cos(angle) * radius;
+                    const dotY = hub.y + Math.sin(angle) * radius;
+
+                    this.ctx.save();
+                    this.ctx.globalAlpha = 0.7 + Math.sin(time * 0.01 + i) * 0.3;
+                    this.ctx.beginPath();
+                    this.ctx.arc(dotX, dotY, 2, 0, Math.PI * 2);
+                    this.ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                    this.ctx.fill();
+                    this.ctx.restore();
+                }
+
+                // Custom hub icon
+                this.drawCustomIcon(hub.x, hub.y - 8, 'hub', 'white', 16);
+
+                // Enhanced label with glow effect
+                this.ctx.save();
+                this.ctx.shadowColor = currentChannel.color;
+                this.ctx.shadowBlur = 10;
+                this.ctx.fillStyle = currentChannel.color;
+                this.ctx.font = 'bold 12px Arial';
+                this.ctx.textAlign = 'center';
+                this.ctx.fillText('分发中心', hub.x, hub.y + hub.height/2 + 25);
+                this.ctx.restore();
+            }
+
+            drawDevices(time) {
+                const deviceLabels = ['智能手机', 'IoT设备', '桌面电脑', '智能电视'];
+                const deviceTypes = ['smartphone', 'wifi', 'laptop', 'tv'];
+
+                this.devices.forEach((device, index) => {
+                    device.pulsePhase += 0.04;
+
+                    // Calculate glow intensity when receiving message with bounce effect
+                    if (time - device.lastMessageTime < 2000) {
+                        const elapsed = time - device.lastMessageTime;
+                        const normalizedTime = elapsed / 2000;
+                        device.glowIntensity = Math.max(0, this.easeOutBounce(1 - normalizedTime));
+                    } else {
+                        device.glowIntensity = 0;
+                    }
+
+                    // Enhanced shadow effect
+                    this.ctx.save();
+                    this.ctx.shadowColor = `${device.color}40`;
+                    this.ctx.shadowBlur = 15;
+                    this.ctx.shadowOffsetX = 2;
+                    this.ctx.shadowOffsetY = 4;
+                    this.ctx.beginPath();
+                    this.ctx.arc(device.x, device.y, device.radius, 0, Math.PI * 2);
+                    this.ctx.fillStyle = `${device.color}20`;
+                    this.ctx.fill();
+                    this.ctx.restore();
+
+                    // Multi-layer glow effect when active with enhanced intensity
+                    if (device.glowIntensity > 0) {
+                        for (let i = 5; i >= 1; i--) {
+                            this.ctx.save();
+                            this.ctx.globalAlpha = (device.glowIntensity * 0.25) / i;
+                            this.ctx.beginPath();
+                            this.ctx.arc(device.x, device.y, device.radius + (i * 10), 0, Math.PI * 2);
+                            this.ctx.fillStyle = device.color;
+                            this.ctx.fill();
+                            this.ctx.restore();
+                        }
+                    }
+
+                    // Connection line to hub when active
+                    if (device.glowIntensity > 0) {
+                        this.ctx.save();
+                        this.ctx.globalAlpha = device.glowIntensity * 0.6;
+                        this.ctx.strokeStyle = device.color;
+                        this.ctx.lineWidth = 3;
+                        this.ctx.lineCap = 'round';
+
+                        // Create gradient line
+                        const gradient = this.ctx.createLinearGradient(
+                            this.channelHub.x, this.channelHub.y,
+                            device.x, device.y
+                        );
+                        gradient.addColorStop(0, `${device.color}80`);
+                        gradient.addColorStop(1, device.color);
+                        this.ctx.strokeStyle = gradient;
+
+                        this.ctx.beginPath();
+                        this.ctx.moveTo(this.channelHub.x, this.channelHub.y);
+                        this.ctx.lineTo(device.x, device.y);
+                        this.ctx.stroke();
+                        this.ctx.restore();
+                    }
+
+                    // Device circle with enhanced 3D gradient
+                    this.ctx.save();
+                    this.ctx.beginPath();
+                    this.ctx.arc(device.x, device.y, device.radius, 0, Math.PI * 2);
+
+                    // Create enhanced radial gradient for 3D effect
+                    const radialGradient = this.ctx.createRadialGradient(
+                        device.x - 10, device.y - 10, 0,
+                        device.x, device.y, device.radius
+                    );
+                    radialGradient.addColorStop(0, this.lightenColor(device.color, 30));
+                    radialGradient.addColorStop(0.3, this.lightenColor(device.color, 15));
+                    radialGradient.addColorStop(0.7, device.color);
+                    radialGradient.addColorStop(1, this.darkenColor(device.color, 20));
+
+                    this.ctx.fillStyle = radialGradient;
+                    this.ctx.fill();
+
+                    // Enhanced border with glow
+                    const borderIntensity = 0.4 + Math.sin(device.pulsePhase) * 0.2;
+                    this.ctx.strokeStyle = `rgba(255, 255, 255, ${borderIntensity})`;
+                    this.ctx.lineWidth = 2;
+                    this.ctx.stroke();
+                    this.ctx.restore();
+
+                    // Custom device icon
+                    this.drawCustomIcon(device.x, device.y, deviceTypes[index], 'white', 18);
+
+                    // Data transfer indicator
+                    if (device.glowIntensity > 0) {
+                        const indicatorRadius = 6;
+                        const indicatorX = device.x + device.radius - indicatorRadius;
+                        const indicatorY = device.y - device.radius + indicatorRadius;
+
+                        this.ctx.save();
+                        this.ctx.globalAlpha = device.glowIntensity;
+
+                        // Indicator background
+                        this.ctx.beginPath();
+                        this.ctx.arc(indicatorX, indicatorY, indicatorRadius, 0, Math.PI * 2);
+                        this.ctx.fillStyle = '#10B981';
+                        this.ctx.fill();
+
+                        // Indicator pulse
+                        this.ctx.globalAlpha = device.glowIntensity * 0.5;
+                        this.ctx.beginPath();
+                        this.ctx.arc(indicatorX, indicatorY, indicatorRadius * 1.5, 0, Math.PI * 2);
+                        this.ctx.fillStyle = '#10B981';
+                        this.ctx.fill();
+
+                        // Checkmark or data symbol
+                        this.ctx.globalAlpha = 1;
+                        this.ctx.strokeStyle = 'white';
+                        this.ctx.lineWidth = 2;
+                        this.ctx.lineCap = 'round';
+                        this.ctx.beginPath();
+                        this.ctx.moveTo(indicatorX - 2, indicatorY);
+                        this.ctx.lineTo(indicatorX, indicatorY + 2);
+                        this.ctx.lineTo(indicatorX + 3, indicatorY - 2);
+                        this.ctx.stroke();
+
+                        this.ctx.restore();
+                    }
+
+                    // Enhanced device label with background
+                    this.ctx.save();
+                    const labelY = device.y + device.radius + 20;
+                    const labelWidth = this.ctx.measureText(deviceLabels[index]).width + 8;
+
+                    // Label background
+                    this.ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                    this.ctx.beginPath();
+                    this.ctx.roundRect(device.x - labelWidth/2, labelY - 8, labelWidth, 16, 8);
+                    this.ctx.fill();
+
+                    // Label text
+                    this.ctx.fillStyle = device.color;
+                    this.ctx.font = 'bold 10px Arial';
+                    this.ctx.textAlign = 'center';
+                    this.ctx.fillText(deviceLabels[index], device.x, labelY);
+                    this.ctx.restore();
+
+                    // Activity indicator - small pulsing dot
+                    const activityIntensity = 0.3 + Math.sin(time * 0.01 + index) * 0.2;
+                    this.ctx.save();
+                    this.ctx.globalAlpha = activityIntensity;
+                    this.ctx.beginPath();
+                    this.ctx.arc(device.x - device.radius + 5, device.y + device.radius - 5, 3, 0, Math.PI * 2);
+                    this.ctx.fillStyle = device.color;
+                    this.ctx.fill();
+                    this.ctx.restore();
+                });
+            }
+
+            // Helper function to lighten colors
+            lightenColor(color, percent) {
+                const num = parseInt(color.replace("#", ""), 16);
+                const amt = Math.round(2.55 * percent);
+                const R = (num >> 16) + amt;
+                const G = (num >> 8 & 0x00FF) + amt;
+                const B = (num & 0x0000FF) + amt;
+                return "#" + (0x1000000 + (R < 255 ? R < 1 ? 0 : R : 255) * 0x10000 +
+                    (G < 255 ? G < 1 ? 0 : G : 255) * 0x100 +
+                    (B < 255 ? B < 1 ? 0 : B : 255)).toString(16).slice(1);
+            }
+
+            createMessageParticle(startX, startY, endX, endY, color = '#DF6746', type = 'normal') {
+                return {
+                    startX, startY, endX, endY,
+                    x: startX, y: startY,
+                    progress: 0,
+                    speed: type === 'toDevice' ? 0.025 : 0.02,
+                    color,
+                    baseSize: type === 'toDevice' ? 3 : 5,
+                    size: type === 'toDevice' ? 3 : 5,
+                    maxSize: type === 'toDevice' ? 6 : 8,
+                    trail: [],
+                    life: 1.0,
+                    rotation: 0,
+                    rotationSpeed: (Math.random() - 0.5) * 0.2,
+                    sparkles: [],
+                    type,
+                    pulsePhase: Math.random() * Math.PI * 2,
+                    explosionParticles: [],
+                    hasExploded: false
+                };
+            }
+
+            updateParticles(time) {
+                this.particles = this.particles.filter(particle => {
+                    particle.progress += particle.speed;
+                    particle.rotation += particle.rotationSpeed;
+                    particle.pulsePhase += 0.1;
+
+                    if (particle.progress <= 1) {
+                        // Update position with easing
+                        const easedProgress = this.easeInOutCubic(particle.progress);
+                        particle.x = particle.startX + (particle.endX - particle.startX) * easedProgress;
+                        particle.y = particle.startY + (particle.endY - particle.startY) * easedProgress;
+
+                        // Dynamic size change during flight
+                        const sizeProgress = Math.sin(particle.progress * Math.PI);
+                        particle.size = particle.baseSize + (particle.maxSize - particle.baseSize) * sizeProgress;
+
+                        // Add sparkle effects
+                        if (Math.random() < 0.3) {
+                            particle.sparkles.push({
+                                x: particle.x + (Math.random() - 0.5) * 10,
+                                y: particle.y + (Math.random() - 0.5) * 10,
+                                life: 1.0,
+                                size: Math.random() * 2 + 1
+                            });
+                        }
+
+                        // Update sparkles
+                        particle.sparkles = particle.sparkles.filter(sparkle => {
+                            sparkle.life -= 0.05;
+                            return sparkle.life > 0;
+                        });
+
+                        // Add to trail with enhanced data
+                        particle.trail.push({
+                            x: particle.x,
+                            y: particle.y,
+                            size: particle.size,
+                            time: time
+                        });
+                        if (particle.trail.length > 12) {
+                            particle.trail.shift();
+                        }
+
+                        return true;
+                    } else if (!particle.hasExploded) {
+                        // Create explosion effect when reaching destination
+                        this.createExplosionEffect(particle.endX, particle.endY, particle.color);
+                        particle.hasExploded = true;
+                        particle.life = 1.0;
+                        return true;
+                    } else {
+                        // Fade out explosion
+                        particle.life -= 0.03;
+
+                        // Update explosion particles
+                        particle.explosionParticles = particle.explosionParticles.filter(ep => {
+                            ep.x += ep.vx;
+                            ep.y += ep.vy;
+                            ep.life -= 0.02;
+                            ep.size *= 0.98;
+                            return ep.life > 0 && ep.size > 0.1;
+                        });
+
+                        return particle.life > 0 || particle.explosionParticles.length > 0;
+                    }
+                });
+            }
+
+            drawParticles() {
+                this.particles.forEach(particle => {
+                    if (particle.progress <= 1) {
+                        // Draw enhanced trail with gradient transparency
+                        if (particle.trail.length > 1) {
+                            this.ctx.save();
+
+                            // Create gradient along trail path
+                            const gradient = this.ctx.createLinearGradient(
+                                particle.trail[0].x, particle.trail[0].y,
+                                particle.trail[particle.trail.length - 1].x,
+                                particle.trail[particle.trail.length - 1].y
+                            );
+                            gradient.addColorStop(0, `${particle.color}00`);
+                            gradient.addColorStop(1, `${particle.color}80`);
+
+                            this.ctx.strokeStyle = gradient;
+                            this.ctx.lineWidth = 3;
+                            this.ctx.lineCap = 'round';
+                            this.ctx.lineJoin = 'round';
+
+                            this.ctx.beginPath();
+                            this.ctx.moveTo(particle.trail[0].x, particle.trail[0].y);
+                            for (let i = 1; i < particle.trail.length; i++) {
+                                this.ctx.lineTo(particle.trail[i].x, particle.trail[i].y);
+                            }
+                            this.ctx.stroke();
+                            this.ctx.restore();
+                        }
+
+                        // Draw trail points with enhanced fading
+                        particle.trail.forEach((point, index) => {
+                            this.ctx.save();
+                            const alpha = Math.pow(index / particle.trail.length, 2) * 0.6 * particle.life;
+                            const size = (point.size || particle.size) * (index / particle.trail.length) * 0.8;
+                            this.ctx.globalAlpha = alpha;
+
+                            // Trail particle glow
+                            this.ctx.beginPath();
+                            this.ctx.arc(point.x, point.y, size * 2, 0, Math.PI * 2);
+                            this.ctx.fillStyle = particle.color;
+                            this.ctx.fill();
+
+                            // Trail particle core
+                            this.ctx.globalAlpha = alpha * 2;
+                            this.ctx.beginPath();
+                            this.ctx.arc(point.x, point.y, size, 0, Math.PI * 2);
+                            this.ctx.fillStyle = particle.color;
+                            this.ctx.fill();
+                            this.ctx.restore();
+                        });
+
+                        // Draw sparkles
+                        particle.sparkles.forEach(sparkle => {
+                            this.ctx.save();
+                            this.ctx.globalAlpha = sparkle.life * 0.8;
+                            this.ctx.fillStyle = 'white';
+                            this.ctx.beginPath();
+                            this.ctx.arc(sparkle.x, sparkle.y, sparkle.size, 0, Math.PI * 2);
+                            this.ctx.fill();
+                            this.ctx.restore();
+                        });
+
+                        // Draw main particle with rotation and pulsing
+                        this.ctx.save();
+                        this.ctx.translate(particle.x, particle.y);
+                        this.ctx.rotate(particle.rotation);
+
+                        // Pulsing outer glow
+                        const pulseIntensity = 0.5 + Math.sin(particle.pulsePhase) * 0.3;
+                        this.ctx.globalAlpha = particle.life * pulseIntensity * 0.3;
+                        this.ctx.beginPath();
+                        this.ctx.arc(0, 0, particle.size * 4, 0, Math.PI * 2);
+                        this.ctx.fillStyle = particle.color;
+                        this.ctx.fill();
+
+                        // Middle glow
+                        this.ctx.globalAlpha = particle.life * 0.6;
+                        this.ctx.beginPath();
+                        this.ctx.arc(0, 0, particle.size * 2.5, 0, Math.PI * 2);
+                        this.ctx.fillStyle = particle.color;
+                        this.ctx.fill();
+
+                        // Main particle with enhanced gradient
+                        this.ctx.globalAlpha = particle.life;
+                        const particleGradient = this.ctx.createRadialGradient(-1, -1, 0, 0, 0, particle.size);
+                        particleGradient.addColorStop(0, 'white');
+                        particleGradient.addColorStop(0.2, this.lightenColor(particle.color, 30));
+                        particleGradient.addColorStop(0.7, particle.color);
+                        particleGradient.addColorStop(1, this.darkenColor(particle.color, 30));
+
+                        this.ctx.beginPath();
+                        this.ctx.arc(0, 0, particle.size, 0, Math.PI * 2);
+                        this.ctx.fillStyle = particleGradient;
+                        this.ctx.fill();
+
+                        // Inner highlight
+                        this.ctx.globalAlpha = particle.life * 0.8;
+                        this.ctx.beginPath();
+                        this.ctx.arc(-particle.size * 0.3, -particle.size * 0.3, particle.size * 0.4, 0, Math.PI * 2);
+                        this.ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+                        this.ctx.fill();
+
+                        this.ctx.restore();
+                    }
+
+                    // Draw explosion particles
+                    particle.explosionParticles.forEach(ep => {
+                        this.ctx.save();
+                        this.ctx.globalAlpha = ep.life;
+
+                        // Explosion particle glow
+                        this.ctx.beginPath();
+                        this.ctx.arc(ep.x, ep.y, ep.size * 2, 0, Math.PI * 2);
+                        this.ctx.fillStyle = ep.color;
+                        this.ctx.fill();
+
+                        // Explosion particle core
+                        this.ctx.globalAlpha = ep.life * 1.5;
+                        this.ctx.beginPath();
+                        this.ctx.arc(ep.x, ep.y, ep.size, 0, Math.PI * 2);
+                        this.ctx.fillStyle = 'white';
+                        this.ctx.fill();
+
+                        this.ctx.restore();
+                    });
+                });
+            }
+
+            // Easing functions for smooth animations
+            easeInOutCubic(t) {
+                return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+            }
+
+            easeOutElastic(t) {
+                const c4 = (2 * Math.PI) / 3;
+                return t === 0 ? 0 : t === 1 ? 1 : Math.pow(2, -10 * t) * Math.sin((t * 10 - 0.75) * c4) + 1;
+            }
+
+            easeOutBounce(t) {
+                const n1 = 7.5625;
+                const d1 = 2.75;
+                if (t < 1 / d1) {
+                    return n1 * t * t;
+                } else if (t < 2 / d1) {
+                    return n1 * (t -= 1.5 / d1) * t + 0.75;
+                } else if (t < 2.5 / d1) {
+                    return n1 * (t -= 2.25 / d1) * t + 0.9375;
+                } else {
+                    return n1 * (t -= 2.625 / d1) * t + 0.984375;
+                }
+            }
+
+            // Create explosion effect when particle reaches destination
+            createExplosionEffect(x, y, color) {
+                const particle = this.particles.find(p => p.endX === x && p.endY === y && !p.hasExploded);
+                if (!particle) return;
+
+                // Create explosion particles
+                for (let i = 0; i < 8; i++) {
+                    const angle = (i / 8) * Math.PI * 2;
+                    const speed = Math.random() * 3 + 2;
+                    particle.explosionParticles.push({
+                        x: x,
+                        y: y,
+                        vx: Math.cos(angle) * speed,
+                        vy: Math.sin(angle) * speed,
+                        life: 1.0,
+                        size: Math.random() * 3 + 2,
+                        color: color
+                    });
+                }
+            }
+
+            // Custom icon drawing function
+            drawCustomIcon(x, y, type, color, size) {
+                this.ctx.save();
+                this.ctx.translate(x, y);
+                this.ctx.fillStyle = color;
+                this.ctx.strokeStyle = color;
+                this.ctx.lineWidth = 2;
+                this.ctx.lineCap = 'round';
+                this.ctx.lineJoin = 'round';
+
+                const scale = size / 20;
+                this.ctx.scale(scale, scale);
+
+                switch (type) {
+                    case 'smartphone':
+                        // Draw smartphone outline
+                        this.ctx.beginPath();
+                        this.ctx.roundRect(-6, -10, 12, 20, 2);
+                        this.ctx.stroke();
+                        // Screen
+                        this.ctx.beginPath();
+                        this.ctx.roundRect(-4, -7, 8, 14, 1);
+                        this.ctx.fill();
+                        // Home button
+                        this.ctx.beginPath();
+                        this.ctx.arc(0, 8, 1, 0, Math.PI * 2);
+                        this.ctx.stroke();
+                        break;
+
+                    case 'laptop':
+                        // Draw laptop
+                        this.ctx.beginPath();
+                        this.ctx.roundRect(-8, -4, 16, 8, 1);
+                        this.ctx.stroke();
+                        // Screen
+                        this.ctx.beginPath();
+                        this.ctx.roundRect(-7, -6, 14, 6, 1);
+                        this.ctx.fill();
+                        break;
+
+                    case 'wifi':
+                        // Draw WiFi/IoT symbol
+                        for (let i = 1; i <= 3; i++) {
+                            this.ctx.beginPath();
+                            this.ctx.arc(0, 0, i * 3, -Math.PI * 0.7, -Math.PI * 0.3);
+                            this.ctx.stroke();
+                        }
+                        this.ctx.beginPath();
+                        this.ctx.arc(0, 0, 1, 0, Math.PI * 2);
+                        this.ctx.fill();
+                        break;
+
+                    case 'tv':
+                        // Draw TV
+                        this.ctx.beginPath();
+                        this.ctx.roundRect(-8, -6, 16, 12, 2);
+                        this.ctx.stroke();
+                        // Screen
+                        this.ctx.beginPath();
+                        this.ctx.roundRect(-6, -4, 12, 8, 1);
+                        this.ctx.fill();
+                        // Stand
+                        this.ctx.beginPath();
+                        this.ctx.moveTo(-3, 6);
+                        this.ctx.lineTo(3, 6);
+                        this.ctx.moveTo(0, 6);
+                        this.ctx.lineTo(0, 8);
+                        this.ctx.stroke();
+                        break;
+
+                    case 'hub':
+                        // Draw network hub
+                        this.ctx.beginPath();
+                        this.ctx.roundRect(-8, -4, 16, 8, 2);
+                        this.ctx.stroke();
+                        // Ports
+                        for (let i = -6; i <= 6; i += 3) {
+                            this.ctx.beginPath();
+                            this.ctx.roundRect(i - 1, -2, 2, 4, 0.5);
+                            this.ctx.fill();
+                        }
+                        break;
+                }
+
+                this.ctx.restore();
+            }
+
+            // Helper function to darken colors
+            darkenColor(color, percent) {
+                const num = parseInt(color.replace("#", ""), 16);
+                const amt = Math.round(2.55 * percent);
+                const R = (num >> 16) - amt;
+                const G = (num >> 8 & 0x00FF) - amt;
+                const B = (num & 0x0000FF) - amt;
+                return "#" + (0x1000000 + (R > 255 ? 255 : R < 0 ? 0 : R) * 0x10000 +
+                    (G > 255 ? 255 : G < 0 ? 0 : G) * 0x100 +
+                    (B > 255 ? 255 : B < 0 ? 0 : B)).toString(16).slice(1);
+            }
+
+            sendMessage(time) {
+                // Create enhanced particle from source to hub
+                const sourceToHub = this.createMessageParticle(
+                    this.messageSource.x, this.messageSource.y,
+                    this.channelHub.x, this.channelHub.y,
+                    '#DF6746',
+                    'toHub'
+                );
+                this.particles.push(sourceToHub);
+
+                // After delay, send to devices with staggered timing
+                setTimeout(() => {
+                    this.devices.forEach((device, index) => {
+                        setTimeout(() => {
+                            const hubToDevice = this.createMessageParticle(
+                                this.channelHub.x, this.channelHub.y,
+                                device.x, device.y,
+                                device.color,
+                                'toDevice'
+                            );
+                            this.particles.push(hubToDevice);
+
+                            // Mark device as receiving message with current time
+                            device.lastMessageTime = performance.now();
+
+                            // Show device status with enhanced timing
+                            this.showDeviceStatus(index + 1);
+
+                            // Add device bounce effect
+                            this.addDeviceBounceEffect(device);
+                        }, index * 200); // Increased delay for better visual separation
+                    });
+                }, 1000); // Increased delay to hub
+
+                this.updateMessageCount();
+            }
+
+            addDeviceBounceEffect(device) {
+                // Store original radius for bounce animation
+                if (!device.originalRadius) {
+                    device.originalRadius = device.radius;
+                }
+
+                // Create bounce animation
+                const startTime = performance.now();
+                const bounceAnimation = () => {
+                    const elapsed = performance.now() - startTime;
+                    const duration = 600;
+
+                    if (elapsed < duration) {
+                        const progress = elapsed / duration;
+                        const bounceValue = this.easeOutElastic(progress);
+                        device.radius = device.originalRadius + (bounceValue * 5);
+                        requestAnimationFrame(bounceAnimation);
+                    } else {
+                        device.radius = device.originalRadius;
+                    }
+                };
+                bounceAnimation();
+            }
+
+            showDeviceStatus(deviceIndex) {
+                const statusElement = document.getElementById(`device-status-${deviceIndex}`);
+                if (statusElement) {
+                    statusElement.style.opacity = '1';
+                    setTimeout(() => {
+                        statusElement.style.opacity = '0';
+                    }, 2000);
+                }
+            }
+
+            updateMessageCount() {
+                this.messageCount += 4; // 4 devices
+                const counter = document.getElementById('message-count');
+                if (counter) {
+                    counter.textContent = this.messageCount.toLocaleString();
+                }
+            }
+
+            switchChannel() {
+                this.currentChannelIndex = (this.currentChannelIndex + 1) % this.channelTypes.length;
+                const channelType = document.getElementById('channel-type');
+                if (channelType) {
+                    channelType.textContent = this.channelTypes[this.currentChannelIndex].name;
+                }
+            }
+
+            createBackgroundPattern() {
+                // Create subtle grid pattern
+                const patternCanvas = document.createElement('canvas');
+                patternCanvas.width = 40;
+                patternCanvas.height = 40;
+                const patternCtx = patternCanvas.getContext('2d');
+
+                // Draw grid
+                patternCtx.strokeStyle = 'rgba(223, 103, 70, 0.05)';
+                patternCtx.lineWidth = 1;
+                patternCtx.beginPath();
+                patternCtx.moveTo(0, 0);
+                patternCtx.lineTo(40, 0);
+                patternCtx.moveTo(0, 0);
+                patternCtx.lineTo(0, 40);
+                patternCtx.stroke();
+
+                this.backgroundPattern = this.ctx.createPattern(patternCanvas, 'repeat');
+            }
+
+            animate(currentTime) {
+                if (!this.ctx) return;
+
+                const deltaTime = currentTime - this.lastTime;
+                this.lastTime = currentTime;
+
+                // Performance monitoring
+                this.frameCount++;
+                if (currentTime - this.lastFPSUpdate > 1000) {
+                    this.currentFPS = this.frameCount;
+                    this.frameCount = 0;
+                    this.lastFPSUpdate = currentTime;
+                }
+
+                // Clear canvas
+                this.ctx.clearRect(0, 0, this.width, this.height);
+
+                // Draw enhanced background
+                this.drawBackground();
+
+                // Update timers with slight randomization for natural feel
+                this.messageTimer += deltaTime;
+                this.channelTimer += deltaTime;
+
+                // Send message every 3-4 seconds (randomized)
+                const messageInterval = 3000 + Math.sin(currentTime * 0.001) * 1000;
+                if (this.messageTimer >= messageInterval) {
+                    this.sendMessage(currentTime);
+                    this.messageTimer = 0;
+                }
+
+                // Switch channel every 6-8 seconds (randomized)
+                const channelInterval = 6000 + Math.sin(currentTime * 0.0005) * 2000;
+                if (this.channelTimer >= channelInterval) {
+                    this.switchChannel();
+                    this.channelTimer = 0;
+                }
+
+                // Limit particle count for performance
+                if (this.particles.length > this.maxParticles) {
+                    this.particles = this.particles.slice(-this.maxParticles);
+                }
+
+                // Update and draw elements
+                this.updateParticles(currentTime);
+                this.drawMessageSource(currentTime);
+                this.drawChannelHub(currentTime);
+                this.drawDevices(currentTime);
+                this.drawParticles();
+
+                // Draw hover effects
+                this.drawHoverEffects();
+
+                this.animationId = requestAnimationFrame((time) => this.animate(time));
+            }
+
+            drawBackground() {
+                // Base gradient
+                const bgGradient = this.createGradient(0, 0, this.width, this.height,
+                    ['rgba(223, 103, 70, 0.02)', 'rgba(232, 149, 111, 0.02)']);
+                this.ctx.fillStyle = bgGradient;
+                this.ctx.fillRect(0, 0, this.width, this.height);
+
+                // Subtle pattern overlay
+                if (this.backgroundPattern && this.qualityLevel > 1) {
+                    this.ctx.save();
+                    this.ctx.globalAlpha = 0.3;
+                    this.ctx.fillStyle = this.backgroundPattern;
+                    this.ctx.fillRect(0, 0, this.width, this.height);
+                    this.ctx.restore();
+                }
+
+                // Ambient light effect
+                if (this.qualityLevel > 2) {
+                    this.ctx.save();
+                    const lightGradient = this.ctx.createRadialGradient(
+                        this.width * 0.5, this.height * 0.5, 0,
+                        this.width * 0.5, this.height * 0.5, Math.max(this.width, this.height) * 0.8
+                    );
+                    lightGradient.addColorStop(0, 'rgba(223, 103, 70, 0.03)');
+                    lightGradient.addColorStop(1, 'rgba(223, 103, 70, 0)');
+                    this.ctx.fillStyle = lightGradient;
+                    this.ctx.fillRect(0, 0, this.width, this.height);
+                    this.ctx.restore();
+                }
+            }
+
+            drawHoverEffects() {
+                // Hover effect for devices
+                if (this.hoveredDevice) {
+                    const device = this.hoveredDevice.device;
+                    this.ctx.save();
+                    this.ctx.globalAlpha = 0.3;
+                    this.ctx.strokeStyle = device.color;
+                    this.ctx.lineWidth = 3;
+                    this.ctx.beginPath();
+                    this.ctx.arc(device.x, device.y, device.radius + 8, 0, Math.PI * 2);
+                    this.ctx.stroke();
+                    this.ctx.restore();
+                }
+
+                // Hover effect for source
+                if (this.hoveredSource) {
+                    this.ctx.save();
+                    this.ctx.globalAlpha = 0.3;
+                    this.ctx.strokeStyle = '#4F46E5';
+                    this.ctx.lineWidth = 3;
+                    this.ctx.beginPath();
+                    this.ctx.arc(this.messageSource.x, this.messageSource.y, this.messageSource.pulseRadius + 8, 0, Math.PI * 2);
+                    this.ctx.stroke();
+                    this.ctx.restore();
+                }
+
+                // Hover effect for hub
+                if (this.hoveredHub) {
+                    const currentChannel = this.channelTypes[this.currentChannelIndex];
+                    this.ctx.save();
+                    this.ctx.globalAlpha = 0.3;
+                    this.ctx.strokeStyle = currentChannel.color;
+                    this.ctx.lineWidth = 3;
+                    this.ctx.beginPath();
+                    this.ctx.roundRect(
+                        this.channelHub.x - this.channelHub.width/2 - 8,
+                        this.channelHub.y - this.channelHub.height/2 - 8,
+                        this.channelHub.width + 16,
+                        this.channelHub.height + 16,
+                        16
+                    );
+                    this.ctx.stroke();
+                    this.ctx.restore();
+                }
+            }
+
+            startAnimation() {
+                if (this.animationId) {
+                    cancelAnimationFrame(this.animationId);
+                }
+                this.lastTime = performance.now();
+                this.animate(this.lastTime);
+            }
+
+            destroy() {
+                if (this.animationId) {
+                    cancelAnimationFrame(this.animationId);
+                }
+            }
+        }
+
+        // Initialize Canvas Animation
+        let canvasAnimation = null;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Small delay to ensure canvas is properly sized
+            setTimeout(() => {
+                canvasAnimation = new WuKongIMCanvasAnimation();
+            }, 100);
+        });
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', function() {
+            if (canvasAnimation) {
+                canvasAnimation.destroy();
+            }
+        });
+    </script>
+</body>
+</html>

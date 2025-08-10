@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WuKongIM Canvas Animation Test</title>
+    <script src="./tailwind.min.js"></script>
+    <style>
+        #wukongim-canvas {
+            background: linear-gradient(135deg, rgba(223, 103, 70, 0.02), rgba(232, 149, 111, 0.02));
+            border-radius: 1.5rem;
+        }
+        
+        @keyframes channelSwitch {
+            0%, 25% { 
+                background: linear-gradient(to right, #DF6746, #E8956F);
+            }
+            25%, 50% { 
+                background: linear-gradient(to right, #10B981, #059669);
+            }
+            50%, 75% { 
+                background: linear-gradient(to right, #F59E0B, #D97706);
+            }
+            75%, 100% { 
+                background: linear-gradient(to right, #8B5CF6, #7C3AED);
+            }
+        }
+        
+        #channel-indicator {
+            animation: channelSwitch 6s infinite;
+        }
+        
+        @keyframes devicePing {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.7; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        .animate-ping {
+            animation: devicePing 1s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-3xl font-bold text-center mb-8 text-gray-900">WuKongIM Canvas 消息流动画测试</h1>
+        
+        <div class="relative">
+            <div class="relative w-full max-w-2xl mx-auto">
+                <!-- Canvas Container -->
+                <div class="relative bg-gradient-to-br from-gray-50 to-white rounded-3xl shadow-2xl border border-gray-200 overflow-hidden">
+                    <canvas id="wukongim-canvas" class="w-full h-96 block"></canvas>
+                    
+                    <!-- Overlay Information -->
+                    <div class="absolute top-4 left-4 bg-white/90 backdrop-blur-sm rounded-xl px-4 py-2 shadow-lg border border-gray-200">
+                        <div class="flex items-center space-x-2">
+                            <div id="channel-indicator" class="w-3 h-3 rounded-full bg-gradient-to-r from-orange-400 to-red-500 animate-pulse"></div>
+                            <span id="channel-type" class="text-sm font-semibold text-gray-700">群聊频道</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Message Counter -->
+                    <div class="absolute bottom-4 right-4 bg-white/90 backdrop-blur-sm rounded-xl px-4 py-2 shadow-lg border border-gray-200">
+                        <div class="text-center">
+                            <div class="text-lg font-bold text-gray-900" id="message-count">0</div>
+                            <div class="text-xs text-gray-500">消息已分发</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Performance Indicators -->
+                    <div class="absolute top-4 right-4 flex space-x-2">
+                        <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center animate-pulse shadow-lg">
+                            <img src="icons/zap.svg" alt="Performance" class="w-4 h-4" style="filter: brightness(0) invert(1);">
+                        </div>
+                        <div class="w-8 h-8 bg-gradient-to-br from-green-500 to-blue-500 rounded-full flex items-center justify-center animate-pulse shadow-lg" style="animation-delay: 1s;">
+                            <img src="icons/shield.svg" alt="Security" class="w-4 h-4" style="filter: brightness(0) invert(1);">
+                        </div>
+                    </div>
+                    
+                    <!-- Device Status Indicators -->
+                    <div class="absolute bottom-4 left-4 space-y-2">
+                        <div class="flex items-center space-x-2 opacity-0 transition-opacity duration-500" id="device-status-1">
+                            <div class="w-2 h-2 bg-green-500 rounded-full animate-ping"></div>
+                            <span class="text-xs text-gray-600 bg-white/80 px-2 py-1 rounded-lg">智能手机</span>
+                        </div>
+                        <div class="flex items-center space-x-2 opacity-0 transition-opacity duration-500" id="device-status-2">
+                            <div class="w-2 h-2 bg-orange-500 rounded-full animate-ping"></div>
+                            <span class="text-xs text-gray-600 bg-white/80 px-2 py-1 rounded-lg">IoT设备</span>
+                        </div>
+                        <div class="flex items-center space-x-2 opacity-0 transition-opacity duration-500" id="device-status-3">
+                            <div class="w-2 h-2 bg-purple-500 rounded-full animate-ping"></div>
+                            <span class="text-xs text-gray-600 bg-white/80 px-2 py-1 rounded-lg">桌面电脑</span>
+                        </div>
+                        <div class="flex items-center space-x-2 opacity-0 transition-opacity duration-500" id="device-status-4">
+                            <div class="w-2 h-2 bg-red-500 rounded-full animate-ping"></div>
+                            <span class="text-xs text-gray-600 bg-white/80 px-2 py-1 rounded-lg">智能电视</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mt-8 text-center space-x-4">
+            <button id="restart-btn" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg transition-colors">
+                重启动画
+            </button>
+            <button id="pause-btn" class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg transition-colors">
+                暂停/播放
+            </button>
+            <button id="send-message-btn" class="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-lg transition-colors">
+                发送消息
+            </button>
+        </div>
+        
+        <div class="mt-8 bg-white rounded-lg p-6 shadow-lg">
+            <h2 class="text-xl font-semibold mb-4">Canvas 动画特性</h2>
+            <div class="grid md:grid-cols-2 gap-4 text-sm text-gray-600">
+                <div>
+                    <h3 class="font-semibold text-gray-800 mb-2">视觉效果</h3>
+                    <ul class="space-y-1">
+                        <li>• 高性能 Canvas 2D 渲染</li>
+                        <li>• 流畅的粒子轨迹动画</li>
+                        <li>• 动态渐变和光效</li>
+                        <li>• 响应式设计适配</li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="font-semibold text-gray-800 mb-2">功能特性</h3>
+                    <ul class="space-y-1">
+                        <li>• 消息源到频道中心传输</li>
+                        <li>• 频道类型动态切换</li>
+                        <li>• 多设备并发分发</li>
+                        <li>• 实时消息计数统计</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Simplified Canvas Animation for Testing
+        class TestCanvasAnimation {
+            constructor() {
+                this.canvas = document.getElementById('wukongim-canvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.animationId = null;
+                this.messageCount = 0;
+                this.particles = [];
+                this.isPaused = false;
+                this.channelTypes = [
+                    { name: '群聊频道', color: '#DF6746' },
+                    { name: '直播频道', color: '#10B981' },
+                    { name: '客服频道', color: '#F59E0B' },
+                    { name: 'AI Agent', color: '#8B5CF6' }
+                ];
+                this.currentChannelIndex = 0;
+                this.lastTime = 0;
+                this.messageTimer = 0;
+                this.channelTimer = 0;
+                
+                this.init();
+            }
+
+            init() {
+                this.resizeCanvas();
+                this.setupEventListeners();
+                this.startAnimation();
+            }
+
+            resizeCanvas() {
+                const rect = this.canvas.getBoundingClientRect();
+                const dpr = window.devicePixelRatio || 1;
+                
+                this.canvas.width = rect.width * dpr;
+                this.canvas.height = rect.height * dpr;
+                
+                this.ctx.scale(dpr, dpr);
+                this.canvas.style.width = rect.width + 'px';
+                this.canvas.style.height = rect.height + 'px';
+                
+                this.width = rect.width;
+                this.height = rect.height;
+            }
+
+            setupEventListeners() {
+                document.getElementById('restart-btn').addEventListener('click', () => {
+                    this.messageCount = 0;
+                    this.particles = [];
+                    this.updateMessageCount();
+                });
+
+                document.getElementById('pause-btn').addEventListener('click', () => {
+                    this.isPaused = !this.isPaused;
+                    if (!this.isPaused && !this.animationId) {
+                        this.startAnimation();
+                    }
+                });
+
+                document.getElementById('send-message-btn').addEventListener('click', () => {
+                    this.sendMessage();
+                });
+
+                window.addEventListener('resize', () => {
+                    this.resizeCanvas();
+                });
+            }
+
+            sendMessage() {
+                // Create particles
+                const sourceX = this.width * 0.15;
+                const sourceY = this.height * 0.5;
+                const hubX = this.width * 0.5;
+                const hubY = this.height * 0.5;
+
+                // Source to hub
+                this.particles.push({
+                    x: sourceX, y: sourceY,
+                    targetX: hubX, targetY: hubY,
+                    progress: 0, speed: 0.02,
+                    color: '#DF6746', size: 6
+                });
+
+                // Hub to devices (delayed)
+                setTimeout(() => {
+                    const deviceColors = ['#10B981', '#F59E0B', '#8B5CF6', '#EF4444'];
+                    for (let i = 0; i < 4; i++) {
+                        setTimeout(() => {
+                            this.particles.push({
+                                x: hubX, y: hubY,
+                                targetX: this.width * 0.85,
+                                targetY: this.height * (0.2 + i * 0.2),
+                                progress: 0, speed: 0.025,
+                                color: deviceColors[i], size: 4
+                            });
+                            this.showDeviceStatus(i + 1);
+                        }, i * 150);
+                    }
+                }, 800);
+
+                this.updateMessageCount();
+            }
+
+            showDeviceStatus(deviceIndex) {
+                const statusElement = document.getElementById(`device-status-${deviceIndex}`);
+                if (statusElement) {
+                    statusElement.style.opacity = '1';
+                    setTimeout(() => {
+                        statusElement.style.opacity = '0';
+                    }, 2000);
+                }
+            }
+
+            updateMessageCount() {
+                this.messageCount += 4;
+                document.getElementById('message-count').textContent = this.messageCount.toLocaleString();
+            }
+
+            switchChannel() {
+                this.currentChannelIndex = (this.currentChannelIndex + 1) % this.channelTypes.length;
+                document.getElementById('channel-type').textContent = this.channelTypes[this.currentChannelIndex].name;
+            }
+
+            animate(currentTime) {
+                if (this.isPaused) return;
+
+                const deltaTime = currentTime - this.lastTime;
+                this.lastTime = currentTime;
+
+                // Clear canvas
+                this.ctx.clearRect(0, 0, this.width, this.height);
+
+                // Draw background
+                const gradient = this.ctx.createLinearGradient(0, 0, this.width, this.height);
+                gradient.addColorStop(0, 'rgba(223, 103, 70, 0.02)');
+                gradient.addColorStop(1, 'rgba(232, 149, 111, 0.02)');
+                this.ctx.fillStyle = gradient;
+                this.ctx.fillRect(0, 0, this.width, this.height);
+
+                // Update timers
+                this.messageTimer += deltaTime;
+                this.channelTimer += deltaTime;
+
+                // Auto send message every 4 seconds
+                if (this.messageTimer >= 4000) {
+                    this.sendMessage();
+                    this.messageTimer = 0;
+                }
+
+                // Switch channel every 6 seconds
+                if (this.channelTimer >= 6000) {
+                    this.switchChannel();
+                    this.channelTimer = 0;
+                }
+
+                // Draw source
+                this.ctx.beginPath();
+                this.ctx.arc(this.width * 0.15, this.height * 0.5, 30, 0, Math.PI * 2);
+                this.ctx.fillStyle = '#4F46E5';
+                this.ctx.fill();
+
+                // Draw hub
+                this.ctx.fillStyle = this.channelTypes[this.currentChannelIndex].color;
+                this.ctx.fillRect(this.width * 0.5 - 40, this.height * 0.5 - 30, 80, 60);
+
+                // Draw devices
+                const deviceColors = ['#10B981', '#F59E0B', '#8B5CF6', '#EF4444'];
+                for (let i = 0; i < 4; i++) {
+                    this.ctx.beginPath();
+                    this.ctx.arc(this.width * 0.85, this.height * (0.2 + i * 0.2), 25, 0, Math.PI * 2);
+                    this.ctx.fillStyle = deviceColors[i];
+                    this.ctx.fill();
+                }
+
+                // Update and draw particles
+                this.particles = this.particles.filter(particle => {
+                    particle.progress += particle.speed;
+                    if (particle.progress <= 1) {
+                        particle.x = particle.x + (particle.targetX - particle.x) * particle.speed;
+                        particle.y = particle.y + (particle.targetY - particle.y) * particle.speed;
+
+                        this.ctx.beginPath();
+                        this.ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+                        this.ctx.fillStyle = particle.color;
+                        this.ctx.fill();
+                        return true;
+                    }
+                    return false;
+                });
+
+                this.animationId = requestAnimationFrame((time) => this.animate(time));
+            }
+
+            startAnimation() {
+                this.lastTime = performance.now();
+                this.animate(this.lastTime);
+            }
+        }
+
+        // Initialize animation when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(() => {
+                new TestCanvasAnimation();
+            }, 100);
+        });
+    </script>
+</body>
+</html>

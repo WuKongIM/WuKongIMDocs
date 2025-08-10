@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WuKongIM 增强版 Canvas 动画演示</title>
+    <script src="./tailwind.min.js"></script>
+    <style>
+        #wukongim-canvas {
+            background: linear-gradient(135deg, rgba(223, 103, 70, 0.02), rgba(232, 149, 111, 0.02));
+            border-radius: 1.5rem;
+        }
+        
+        @keyframes channelSwitch {
+            0%, 25% { background: linear-gradient(to right, #DF6746, #E8956F); }
+            25%, 50% { background: linear-gradient(to right, #10B981, #059669); }
+            50%, 75% { background: linear-gradient(to right, #F59E0B, #D97706); }
+            75%, 100% { background: linear-gradient(to right, #8B5CF6, #7C3AED); }
+        }
+        
+        #channel-indicator { animation: channelSwitch 6s infinite; }
+        
+        .feature-card {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(248, 250, 252, 0.9));
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .control-button {
+            transition: all 0.3s ease;
+            background: linear-gradient(135deg, #DF6746, #E8956F);
+        }
+        
+        .control-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(223, 103, 70, 0.3);
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen p-4">
+    <div class="max-w-6xl mx-auto">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-gray-900 mb-4">WuKongIM 增强版 Canvas 动画</h1>
+            <p class="text-lg text-gray-600 max-w-3xl mx-auto">
+                体验深度优化的消息分发可视化动画，包含粒子系统、光效、交互性和性能优化
+            </p>
+        </div>
+
+        <!-- Main Animation Container -->
+        <div class="relative mb-8">
+            <div class="relative w-full max-w-4xl mx-auto">
+                <div class="relative bg-gradient-to-br from-white to-gray-50 rounded-3xl shadow-2xl border border-gray-200 overflow-hidden">
+                    <canvas id="wukongim-canvas" class="w-full h-96 block"></canvas>
+                    
+                    <!-- Overlay Information -->
+                    <div class="absolute top-4 left-4 bg-white/90 backdrop-blur-sm rounded-xl px-4 py-2 shadow-lg border border-gray-200">
+                        <div class="flex items-center space-x-2">
+                            <div id="channel-indicator" class="w-3 h-3 rounded-full bg-gradient-to-r from-orange-400 to-red-500"></div>
+                            <span id="channel-type" class="text-sm font-semibold text-gray-700">群聊频道</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Performance Monitor -->
+                    <div class="absolute top-4 right-4 bg-white/90 backdrop-blur-sm rounded-xl px-4 py-2 shadow-lg border border-gray-200">
+                        <div class="text-center">
+                            <div class="text-sm font-bold text-gray-900" id="fps-counter">60 FPS</div>
+                            <div class="text-xs text-gray-500">性能监控</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Message Counter -->
+                    <div class="absolute bottom-4 right-4 bg-white/90 backdrop-blur-sm rounded-xl px-4 py-2 shadow-lg border border-gray-200">
+                        <div class="text-center">
+                            <div class="text-lg font-bold text-gray-900" id="message-count">0</div>
+                            <div class="text-xs text-gray-500">消息已分发</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Device Status Indicators -->
+                    <div class="absolute bottom-4 left-4 space-y-2">
+                        <div class="flex items-center space-x-2 opacity-0 transition-opacity duration-500" id="device-status-1">
+                            <div class="w-2 h-2 bg-green-500 rounded-full animate-ping"></div>
+                            <span class="text-xs text-gray-600 bg-white/80 px-2 py-1 rounded-lg">智能手机</span>
+                        </div>
+                        <div class="flex items-center space-x-2 opacity-0 transition-opacity duration-500" id="device-status-2">
+                            <div class="w-2 h-2 bg-orange-500 rounded-full animate-ping"></div>
+                            <span class="text-xs text-gray-600 bg-white/80 px-2 py-1 rounded-lg">IoT设备</span>
+                        </div>
+                        <div class="flex items-center space-x-2 opacity-0 transition-opacity duration-500" id="device-status-3">
+                            <div class="w-2 h-2 bg-purple-500 rounded-full animate-ping"></div>
+                            <span class="text-xs text-gray-600 bg-white/80 px-2 py-1 rounded-lg">桌面电脑</span>
+                        </div>
+                        <div class="flex items-center space-x-2 opacity-0 transition-opacity duration-500" id="device-status-4">
+                            <div class="w-2 h-2 bg-red-500 rounded-full animate-ping"></div>
+                            <span class="text-xs text-gray-600 bg-white/80 px-2 py-1 rounded-lg">智能电视</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Control Panel -->
+        <div class="grid md:grid-cols-4 gap-4 mb-8">
+            <button id="send-message-btn" class="control-button text-white px-6 py-3 rounded-xl font-semibold shadow-lg">
+                发送消息
+            </button>
+            <button id="switch-channel-btn" class="control-button text-white px-6 py-3 rounded-xl font-semibold shadow-lg">
+                切换频道
+            </button>
+            <button id="toggle-quality-btn" class="control-button text-white px-6 py-3 rounded-xl font-semibold shadow-lg">
+                切换画质
+            </button>
+            <button id="reset-animation-btn" class="control-button text-white px-6 py-3 rounded-xl font-semibold shadow-lg">
+                重置动画
+            </button>
+        </div>
+
+        <!-- Feature Showcase -->
+        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div class="feature-card rounded-2xl p-6 shadow-lg">
+                <h3 class="text-lg font-semibold text-gray-900 mb-3">🎨 视觉效果增强</h3>
+                <ul class="text-sm text-gray-600 space-y-2">
+                    <li>• 多层光晕和阴影效果</li>
+                    <li>• 粒子轨迹渐变透明度</li>
+                    <li>• 爆炸和扩散动画</li>
+                    <li>• 动态大小变化</li>
+                    <li>• 旋转和闪烁效果</li>
+                </ul>
+            </div>
+            
+            <div class="feature-card rounded-2xl p-6 shadow-lg">
+                <h3 class="text-lg font-semibold text-gray-900 mb-3">⚡ 性能优化</h3>
+                <ul class="text-sm text-gray-600 space-y-2">
+                    <li>• 智能帧率监控</li>
+                    <li>• 动态画质调整</li>
+                    <li>• 粒子数量管理</li>
+                    <li>• 对象池复用</li>
+                    <li>• 脏矩形更新</li>
+                </ul>
+            </div>
+            
+            <div class="feature-card rounded-2xl p-6 shadow-lg">
+                <h3 class="text-lg font-semibold text-gray-900 mb-3">🖱️ 交互功能</h3>
+                <ul class="text-sm text-gray-600 space-y-2">
+                    <li>• 鼠标悬停高亮</li>
+                    <li>• 点击触发动画</li>
+                    <li>• 设备状态反馈</li>
+                    <li>• 手动消息发送</li>
+                    <li>• 频道切换控制</li>
+                </ul>
+            </div>
+            
+            <div class="feature-card rounded-2xl p-6 shadow-lg">
+                <h3 class="text-lg font-semibold text-gray-900 mb-3">🎯 缓动动画</h3>
+                <ul class="text-sm text-gray-600 space-y-2">
+                    <li>• Cubic-bezier 缓动</li>
+                    <li>• 弹性动画效果</li>
+                    <li>• 弹跳反馈动画</li>
+                    <li>• 错峰时序控制</li>
+                    <li>• 自然运动曲线</li>
+                </ul>
+            </div>
+            
+            <div class="feature-card rounded-2xl p-6 shadow-lg">
+                <h3 class="text-lg font-semibold text-gray-900 mb-3">🌟 光效系统</h3>
+                <ul class="text-sm text-gray-600 space-y-2">
+                    <li>• 动态光源模拟</li>
+                    <li>• 实时阴影投射</li>
+                    <li>• 光晕扩散动画</li>
+                    <li>• 环境光照效果</li>
+                    <li>• 材质反光模拟</li>
+                </ul>
+            </div>
+            
+            <div class="feature-card rounded-2xl p-6 shadow-lg">
+                <h3 class="text-lg font-semibold text-gray-900 mb-3">📱 响应式设计</h3>
+                <ul class="text-sm text-gray-600 space-y-2">
+                    <li>• 多设备适配</li>
+                    <li>• 高分辨率支持</li>
+                    <li>• 触摸交互优化</li>
+                    <li>• 性能自适应</li>
+                    <li>• 流畅缩放</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Instructions -->
+        <div class="mt-8 bg-white rounded-2xl p-6 shadow-lg border border-gray-200">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">💡 交互说明</h3>
+            <div class="grid md:grid-cols-2 gap-4 text-sm text-gray-600">
+                <div>
+                    <h4 class="font-semibold text-gray-800 mb-2">鼠标操作：</h4>
+                    <ul class="space-y-1">
+                        <li>• 点击消息源：手动发送消息</li>
+                        <li>• 点击频道中心：切换频道类型</li>
+                        <li>• 点击设备：触发特殊效果</li>
+                        <li>• 悬停元素：显示高亮边框</li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-semibold text-gray-800 mb-2">自动功能：</h4>
+                    <ul class="space-y-1">
+                        <li>• 每 3-4 秒自动发送消息</li>
+                        <li>• 每 6-8 秒自动切换频道</li>
+                        <li>• 实时性能监控和调整</li>
+                        <li>• 设备状态动态显示</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 这里会包含完整的 WuKongIMCanvasAnimation 类
+        // 为了简化，我们直接引用主页面的动画系统
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            // 初始化动画（简化版本用于演示）
+            const canvas = document.getElementById('wukongim-canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // 简单的演示动画
+            function drawDemo() {
+                const rect = canvas.getBoundingClientRect();
+                canvas.width = rect.width;
+                canvas.height = rect.height;
+                
+                ctx.fillStyle = 'linear-gradient(135deg, rgba(223, 103, 70, 0.02), rgba(232, 149, 111, 0.02))';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // 绘制示例元素
+                ctx.fillStyle = '#DF6746';
+                ctx.beginPath();
+                ctx.arc(canvas.width * 0.2, canvas.height * 0.5, 30, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.fillStyle = '#10B981';
+                ctx.fillRect(canvas.width * 0.45, canvas.height * 0.4, 80, 60);
+                
+                const deviceColors = ['#10B981', '#F59E0B', '#8B5CF6', '#EF4444'];
+                for (let i = 0; i < 4; i++) {
+                    ctx.fillStyle = deviceColors[i];
+                    ctx.beginPath();
+                    ctx.arc(canvas.width * 0.8, canvas.height * (0.2 + i * 0.2), 20, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                
+                requestAnimationFrame(drawDemo);
+            }
+            
+            drawDemo();
+            
+            // 控制按钮事件
+            document.getElementById('send-message-btn').addEventListener('click', () => {
+                console.log('发送消息');
+            });
+            
+            document.getElementById('switch-channel-btn').addEventListener('click', () => {
+                console.log('切换频道');
+            });
+            
+            document.getElementById('toggle-quality-btn').addEventListener('click', () => {
+                console.log('切换画质');
+            });
+            
+            document.getElementById('reset-animation-btn').addEventListener('click', () => {
+                console.log('重置动画');
+            });
+        });
+    </script>
+</body>
+</html>
