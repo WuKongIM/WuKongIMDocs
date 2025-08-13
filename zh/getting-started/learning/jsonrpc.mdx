@@ -272,7 +272,51 @@ WuKongIM 使用 JSON-RPC 2.0 规范进行通信。所有请求、响应和通知
 `recvack` 通常没有特定的响应体，如果需要响应，服务器可能会返回一个空的成功 `result` 或错误。
 </Note>
 
-### 5. 心跳保活 (Ping/Pong)
+### 5. 事件通知 (Event)
+
+#### Event Notification
+
+服务器向客户端推送事件通知，用于传递系统状态变化、用户行为通知等非消息类型的信息。
+
+**参数 (`params`)**
+
+| 字段        | 类型    | 必填 | 描述                                     |
+| :---------- | :------ | :--- | :--------------------------------------- |
+| `type`      | string  | 是   | 事件类型（如：user_online、channel_update等） |
+| `timestamp` | integer | 是   | 事件时间戳（13位毫秒时间戳）             |
+| `payload`   | object  | 是   | 事件数据内容（业务自定义JSON对象）       |
+
+**示例通知**
+
+```json
+{
+  "method": "event",
+  "params": {
+    "type": "user_online",
+    "timestamp": 1678886400000,
+    "payload": {
+      "uid": "user123",
+      "deviceId": "device456",
+      "status": "online"
+    }
+  }
+}
+```
+
+**常见事件类型**
+
+<Tip>
+- **user_online**: 用户上线事件
+- **user_offline**: 用户下线事件
+- **channel_update**: 频道信息更新事件
+- **member_join**: 成员加入频道事件
+- **member_leave**: 成员离开频道事件
+- **typing**: 用户正在输入事件
+- **message_read**: 消息已读事件
+- **channel_delete**: 频道删除事件
+</Tip>
+
+### 6. 心跳保活 (Ping/Pong)
 
 #### Ping Request
 

@@ -1,0 +1,500 @@
+---
+title: "Send Event"
+description: "Send various types of events to channels, including streaming text messages and custom events"
+api: "POST /event"
+---
+
+## Overview
+
+Send various types of events to channels, including streaming text messages and custom events. Supports AG-UI protocol events for real-time streaming communication.
+
+## Query Parameters
+
+<ParamField query="force" type="string" default="0">
+Force end existing streams in the channel before starting a new one
+- `0` - Do not force end
+- `1` - Force end existing streams
+</ParamField>
+
+## Request Body
+
+### Required Parameters
+
+<ParamField body="client_msg_no" type="string" required>
+Client message number - must be unique and not repeated. Used to identify and track the message/stream. For streaming messages, all events in the same stream should use the same client_msg_no. UUID format is recommended.
+</ParamField>
+
+<ParamField body="channel_id" type="string" required>
+Target channel ID where the event will be sent. For person channels, this should be the target user ID. For group channels, this should be the group ID.
+</ParamField>
+
+<ParamField body="channel_type" type="integer" required>
+Channel type
+- `1` - Person channel
+- `2` - Group channel
+</ParamField>
+
+<ParamField body="event" type="object" required>
+Event object
+<Expandable title="event fields">
+<ParamField body="event.type" type="string" required>
+Event type - supports AG-UI protocol events and custom events
+
+**AG-UI Protocol Events:**
+- `___TextMessageStart` - Initiates a streaming text message session
+- `___TextMessageContent` - Sends content chunks during streaming
+- `___TextMessageEnd` - Terminates a streaming text message session
+- `___ToolCallStart` - Begins a tool/function call event
+- `___ToolCallArgs` - Sends arguments for tool calls
+- `___ToolCallEnd` - Ends a tool call event
+- `___ToolCallResult` - Returns results from tool execution
+
+**Custom Events:** Any string not starting with `___` is treated as a custom event type
+</ParamField>
+
+<ParamField body="event.id" type="string">
+Event ID (optional, auto-generated for some event types)
+</ParamField>
+
+<ParamField body="event.timestamp" type="integer">
+Event timestamp (optional, Unix timestamp in milliseconds)
+</ParamField>
+
+<ParamField body="event.data" type="string">
+Event data content. The format depends on the event type:
+
+**For Text Message Events:**
+- `___TextMessageStart` - Initial message content or metadata
+- `___TextMessageContent` - Text chunk for streaming
+- `___TextMessageEnd` - Final content or completion marker
+
+**For Tool Call Events:**
+- `___ToolCallStart` - Tool name or metadata
+- `___ToolCallArgs` - JSON string with function arguments
+- `___ToolCallEnd` - Completion status
+- `___ToolCallResult` - JSON string with execution results
+
+**For Custom Events:** Any string data relevant to your application
+</ParamField>
+</Expandable>
+</ParamField>
+
+### Optional Parameters
+
+<ParamField body="from_uid" type="string">
+Sender user ID. If not provided or empty, defaults to the system UID. This identifies who is sending the event.
+</ParamField>
+
+<RequestExample>
+```bash Start Streaming Text Message
+curl -X POST "http://localhost:5001/event" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "client_msg_no": "msg_001_stream_start",
+    "channel_id": "group_ai_chat",
+    "channel_type": 2,
+    "from_uid": "ai_assistant",
+    "event": {
+      "type": "___TextMessageStart",
+      "data": "{\"type\":1,\"content\":\"Starting AI response...\"}"
+    }
+  }'
+```
+
+```bash Send Text Content Chunk
+curl -X POST "http://localhost:5001/event" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "client_msg_no": "msg_001_stream_start",
+    "channel_id": "group_ai_chat",
+    "channel_type": 2,
+    "from_uid": "ai_assistant",
+    "event": {
+      "type": "___TextMessageContent",
+      "data": "Hello! How can I help you today?"
+    }
+  }'
+```
+
+```bash End Streaming Text Message
+curl -X POST "http://localhost:5001/event" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "client_msg_no": "msg_001_stream_start",
+    "channel_id": "group_ai_chat",
+    "channel_type": 2,
+    "from_uid": "ai_assistant",
+    "event": {
+      "type": "___TextMessageEnd",
+      "data": ""
+    }
+  }'
+```
+
+```bash Send Custom Event
+curl -X POST "http://localhost:5001/event" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "client_msg_no": "custom_event_001",
+    "channel_id": "user_123",
+    "channel_type": 1,
+    "from_uid": "system",
+    "event": {
+      "type": "user_status_update",
+      "timestamp": 1640995200000,
+      "data": "{\"status\": \"online\", \"last_seen\": 1640995200000}"
+    }
+  }'
+```
+
+```javascript JavaScript
+// Streaming text message example
+const streamId = `stream_${Date.now()}`;
+
+// 1. Start stream
+await fetch('http://localhost:5001/event', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    client_msg_no: streamId,
+    channel_id: 'group_ai_chat',
+    channel_type: 2,
+    from_uid: 'ai_assistant',
+    event: {
+      type: '___TextMessageStart',
+      data: 'Starting AI response...'
+    }
+  })
+});
+
+// 2. Send content
+await fetch('http://localhost:5001/event', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    client_msg_no: streamId,
+    channel_id: 'group_ai_chat',
+    channel_type: 2,
+    from_uid: 'ai_assistant',
+    event: {
+      type: '___TextMessageContent',
+      data: 'Hello! How can I help you today?'
+    }
+  })
+});
+
+// 3. End stream
+await fetch('http://localhost:5001/event', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    client_msg_no: streamId,
+    channel_id: 'group_ai_chat',
+    channel_type: 2,
+    from_uid: 'ai_assistant',
+    event: {
+      type: '___TextMessageEnd',
+      data: ''
+    }
+  })
+});
+```
+
+```python Python
+import requests
+import time
+
+# Streaming text message example
+stream_id = f"stream_{int(time.time() * 1000)}"
+base_url = "http://localhost:5001/event"
+
+# 1. Start stream
+requests.post(base_url, json={
+    "client_msg_no": stream_id,
+    "channel_id": "group_ai_chat",
+    "channel_type": 2,
+    "from_uid": "ai_assistant",
+    "event": {
+        "type": "___TextMessageStart",
+        "data": "Starting AI response..."
+    }
+})
+
+# 2. Send content
+requests.post(base_url, json={
+    "client_msg_no": stream_id,
+    "channel_id": "group_ai_chat",
+    "channel_type": 2,
+    "from_uid": "ai_assistant",
+    "event": {
+        "type": "___TextMessageContent",
+        "data": "Hello! How can I help you today?"
+    }
+})
+
+# 3. End stream
+requests.post(base_url, json={
+    "client_msg_no": stream_id,
+    "channel_id": "group_ai_chat",
+    "channel_type": 2,
+    "from_uid": "ai_assistant",
+    "event": {
+        "type": "___TextMessageEnd",
+        "data": ""
+    }
+})
+```
+
+```go Go
+package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "fmt"
+    "net/http"
+    "time"
+)
+
+type Event struct {
+    Type      string `json:"type"`
+    Data      string `json:"data"`
+    Timestamp int64  `json:"timestamp,omitempty"`
+}
+
+type EventRequest struct {
+    ClientMsgNo string `json:"client_msg_no"`
+    ChannelID   string `json:"channel_id"`
+    ChannelType int    `json:"channel_type"`
+    FromUID     string `json:"from_uid"`
+    Event       Event  `json:"event"`
+}
+
+func sendEvent(req EventRequest) error {
+    jsonData, _ := json.Marshal(req)
+    resp, err := http.Post(
+        "http://localhost:5001/event",
+        "application/json",
+        bytes.NewBuffer(jsonData),
+    )
+    if err != nil {
+        return err
+    }
+    defer resp.Body.Close()
+    return nil
+}
+
+func main() {
+    streamID := fmt.Sprintf("stream_%d", time.Now().UnixMilli())
+    
+    // 1. Start stream
+    sendEvent(EventRequest{
+        ClientMsgNo: streamID,
+        ChannelID:   "group_ai_chat",
+        ChannelType: 2,
+        FromUID:     "ai_assistant",
+        Event: Event{
+            Type: "___TextMessageStart",
+            Data: "Starting AI response...",
+        },
+    })
+    
+    // 2. Send content
+    sendEvent(EventRequest{
+        ClientMsgNo: streamID,
+        ChannelID:   "group_ai_chat",
+        ChannelType: 2,
+        FromUID:     "ai_assistant",
+        Event: Event{
+            Type: "___TextMessageContent",
+            Data: "Hello! How can I help you today?",
+        },
+    })
+    
+    // 3. End stream
+    sendEvent(EventRequest{
+        ClientMsgNo: streamID,
+        ChannelID:   "group_ai_chat",
+        ChannelType: 2,
+        FromUID:     "ai_assistant",
+        Event: Event{
+            Type: "___TextMessageEnd",
+            Data: "",
+        },
+    })
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json Success Response
+{
+  "status": "ok"
+}
+```
+</ResponseExample>
+
+## Response Fields
+
+<ResponseField name="status" type="string" required>
+Operation status, returns `"ok"` on success
+</ResponseField>
+
+## Status Codes
+
+| Status Code | Description |
+|-------------|-------------|
+| 200 | Event sent successfully |
+| 400 | Bad request - invalid parameters or event data |
+| 500 | Internal server error |
+
+## Streaming Message Flow
+
+### Streaming Message Process
+
+1. **Start Stream**: Send `___TextMessageStart` event to initiate a stream
+2. **Send Content**: Send multiple `___TextMessageContent` events with message chunks
+3. **End Stream**: Send `___TextMessageEnd` event to close the stream
+
+### Important Notes
+
+- The same `client_msg_no` must be used for all events in a streaming session
+- Only one stream can be active per channel unless `force=1` is used
+- For person channels, the system automatically handles fake channel ID generation
+- Events are automatically routed to the appropriate cluster node
+
+## Event Types
+
+### AG-UI Protocol Events
+
+AG-UI protocol events enable real-time streaming communication for AI applications:
+
+| Event Type | Purpose | Data Format |
+|------------|---------|-------------|
+| `___TextMessageStart` | Initiates a streaming text message session | Initial content or metadata |
+| `___TextMessageContent` | Sends content chunks during streaming | Text chunk content |
+| `___TextMessageEnd` | Terminates a streaming text message session | Completion marker |
+| `___ToolCallStart` | Begins a tool/function call event | Tool name or metadata |
+| `___ToolCallArgs` | Sends arguments for tool calls | JSON formatted arguments |
+| `___ToolCallEnd` | Ends a tool call event | Completion status |
+| `___ToolCallResult` | Returns results from tool execution | JSON formatted results |
+
+### Custom Events
+
+Any event type not starting with `___` is treated as a custom event, useful for:
+
+- User status updates
+- System notifications
+- Business logic events
+- Application-specific interactions
+
+## Use Cases
+
+### AI Chatbot
+
+```bash
+# Simulate AI typing effect
+curl -X POST "/event" -d '{
+  "client_msg_no": "ai_response_001",
+  "channel_id": "user_123",
+  "channel_type": 1,
+  "from_uid": "ai_bot",
+  "event": {
+    "type": "___TextMessageStart",
+    "data": "Thinking..."
+  }
+}'
+
+# Gradually send response content
+curl -X POST "/event" -d '{
+  "client_msg_no": "ai_response_001",
+  "channel_id": "user_123", 
+  "channel_type": 1,
+  "from_uid": "ai_bot",
+  "event": {
+    "type": "___TextMessageContent",
+    "data": "Based on your question, I recommend..."
+  }
+}'
+```
+
+### Real-time Collaboration
+
+```bash
+# Document editing status
+curl -X POST "/event" -d '{
+  "client_msg_no": "doc_edit_001",
+  "channel_id": "doc_room_456",
+  "channel_type": 2,
+  "from_uid": "user_789",
+  "event": {
+    "type": "document_editing",
+    "data": "{\"action\": \"start_edit\", \"section\": \"paragraph_1\"}"
+  }
+}'
+```
+
+### System Notifications
+
+```bash
+# User online notification
+curl -X POST "/event" -d '{
+  "client_msg_no": "status_update_001",
+  "channel_id": "group_general",
+  "channel_type": 2,
+  "from_uid": "system",
+  "event": {
+    "type": "user_online",
+    "timestamp": 1640995200000,
+    "data": "{\"user_id\": \"user_123\", \"status\": \"online\"}"
+  }
+}'
+```
+
+## Best Practices
+
+1. **Unique Identification**: Use UUID format for `client_msg_no` to ensure uniqueness
+2. **Stream Management**: Close unused streams promptly to avoid resource waste
+3. **Error Handling**: Handle stream conflicts and send failures
+4. **Permission Verification**: Ensure sender has channel send permissions
+5. **Data Format**: Use JSON format strings for complex data
+6. **Performance Optimization**: Control streaming message send frequency reasonably
+
+## Error Handling
+
+### Common Errors
+
+| Error | Cause | Solution |
+|-------|-------|----------|
+| Event type cannot be empty | No event.type provided | Ensure valid event type is provided |
+| Stream already running in channel | Trying to start new stream when one is active | Use `force=1` or wait for existing stream to end |
+| Stream does not exist | Trying to send content to non-existent stream | Check if stream was created correctly |
+| Stream is already closed | Sending content to closed stream | Start a new stream |
+
+### Retry Mechanism
+
+For temporary errors, implement exponential backoff retry mechanism:
+
+```javascript
+async function sendEventWithRetry(eventData, maxRetries = 3) {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      const response = await fetch('/event', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(eventData)
+      });
+      
+      if (response.ok) return await response.json();
+      
+      if (response.status >= 400 && response.status < 500) {
+        // Client error, don't retry
+        throw new Error(`Client error: ${response.status}`);
+      }
+    } catch (error) {
+      if (i === maxRetries - 1) throw error;
+      await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000));
+    }
+  }
+}
+```

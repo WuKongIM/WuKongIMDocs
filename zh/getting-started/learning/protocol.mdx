@@ -51,6 +51,7 @@ WuKongIM 协议定义了10种不同的控制报文类型，每种类型都有特
 | PING | 7 | ping请求 |
 | PONG | 8 | 对ping请求的相应 |
 | DISCONNECT | 9 | 请求断开连接 |
+| EVENT | 10 | 事件通知 |
 
 ### 🏷️ 控制报文标志位
 
@@ -308,6 +309,32 @@ CONNACK 报文由服务端发送，作为对客户端 CONNECT 报文的响应。
 | Remaining Length | ... byte | 报文剩余长度 |
 | ReasonCode | uint8 | 原因代码 |
 | Reason | string | 原因 |
+
+## 📢 EVENT 事件通知
+
+<Note>
+服务端向客户端推送事件通知时使用的报文格式。事件通知用于传递系统状态变化、用户行为通知等非消息类型的信息。
+</Note>
+
+| 参数名 | 类型 | 说明 |
+|--------|------|------|
+| Packet Type | 0.5 byte | 报文类型(10) |
+| Flag | 0.5 byte | 标示位 |
+| Remaining Length | ... byte | 报文剩余长度 |
+| Id | string | 事件ID（事件唯一标识符） |
+| Type | string | 事件类型（如：user_online、user_offline、channel_update等） |
+| Timestamp | int64 | 事件时间戳（13位时间戳，到毫秒） |
+| Payload | ... byte | 事件数据内容 |
+
+<Tip>
+**事件类型示例**：
+- **user_online**: 用户上线事件
+- **user_offline**: 用户下线事件
+- **channel_update**: 频道信息更新事件
+- **member_join**: 成员加入频道事件
+- **member_leave**: 成员离开频道事件
+- **typing**: 用户正在输入事件
+</Tip>
 
 ---
 

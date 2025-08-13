@@ -1,0 +1,301 @@
+---
+title: "移除频道黑名单"
+description: "从频道黑名单中移除指定用户"
+api: "POST /channel/blacklist_remove"
+---
+
+## 概述
+
+从频道黑名单中移除指定用户。被移除的用户将恢复正常权限，可以重新发送和接收频道消息。如果适用，会恢复相关会话。
+
+## 请求体
+
+### 必传参数
+
+<ParamField body="channel_id" type="string" required>
+频道ID，不能为空或包含特殊字符
+</ParamField>
+
+<ParamField body="channel_type" type="integer" required>
+频道类型
+- `1` - 个人频道
+- `2` - 群组频道
+</ParamField>
+
+<ParamField body="uids" type="array" required>
+要从黑名单中移除的用户ID列表
+<ParamField body="uids[]" type="string">
+用户ID
+</ParamField>
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "http://localhost:5001/channel/blacklist_remove" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "channel_id": "group123",
+    "channel_type": 2,
+    "uids": ["user1", "user2"]
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5001/channel/blacklist_remove', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    channel_id: 'group123',
+    channel_type: 2,
+    uids: ['user1', 'user2']
+  })
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+
+data = {
+    "channel_id": "group123",
+    "channel_type": 2,
+    "uids": ["user1", "user2"]
+}
+
+response = requests.post('http://localhost:5001/channel/blacklist_remove', json=data)
+result = response.json()
+print(result)
+```
+
+```go Go
+package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    data := map[string]interface{}{
+        "channel_id":   "group123",
+        "channel_type": 2,
+        "uids":         []string{"user1", "user2"},
+    }
+    
+    jsonData, _ := json.Marshal(data)
+    
+    resp, err := http.Post(
+        "http://localhost:5001/channel/blacklist_remove",
+        "application/json",
+        bytes.NewBuffer(jsonData),
+    )
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    var result map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Printf("%+v\n", result)
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json 成功响应
+{
+  "status": "ok"
+}
+```
+</ResponseExample>
+
+## 响应字段
+
+<ResponseField name="status" type="string" required>
+操作状态，成功时返回 `"ok"`
+</ResponseField>
+
+## 状态码
+
+| 状态码 | 说明 |
+|--------|------|
+| 200 | 用户从黑名单移除成功 |
+| 400 | 请求参数错误 |
+| 403 | 没有管理权限 |
+| 404 | 频道不存在 |
+| 500 | 服务器内部错误 |
+
+## 功能说明
+
+### 移除操作
+
+移除操作会执行以下步骤：
+
+1. **验证用户**：检查指定用户是否在黑名单中
+2. **移除条目**：从频道黑名单中删除指定用户
+3. **恢复权限**：用户重新获得发送和接收消息的权限
+4. **恢复会话**：如果适用，恢复用户的相关会话
+
+### 权限恢复
+
+被移除的用户将恢复：
+
+| 权限 | 说明 | 生效时间 |
+|------|------|----------|
+| 发送消息 | 可以向频道发送消息 | 立即生效 |
+| 接收消息 | 可以接收频道消息 | 立即生效 |
+| 会话访问 | 恢复频道会话（如果适用） | 立即生效 |
+| 正常交互 | 恢复所有正常的频道交互权限 | 立即生效 |
+
+## 特殊情况
+
+### 直播频道
+
+- **不处理会话恢复**：直播频道不会自动恢复会话
+- **权限立即生效**：用户仍可立即恢复发送和接收权限
+
+### 个人频道
+
+- **不支持黑名单**：个人频道不支持黑名单操作
+- **返回错误**：尝试操作会返回相应错误信息
+
+## 使用场景
+
+### 解除误封
+
+```bash
+# 解除误加入黑名单的用户
+curl -X POST "/channel/blacklist_remove" -d '{
+  "channel_id": "group123",
+  "channel_type": 2,
+  "uids": ["innocent_user"]
+}'
+```
+
+### 批量恢复
+
+```bash
+# 批量移除多个用户
+curl -X POST "/channel/blacklist_remove" -d '{
+  "channel_id": "group123",
+  "channel_type": 2,
+  "uids": ["user1", "user2", "user3"]
+}'
+```
+
+### 临时解封
+
+```bash
+# 临时解除用户限制
+curl -X POST "/channel/blacklist_remove" -d '{
+  "channel_id": "group123",
+  "channel_type": 2,
+  "uids": ["temp_banned_user"]
+}'
+```
+
+## 黑名单管理策略
+
+### 操作对比
+
+| 操作 | 功能 | 影响范围 | 适用场景 |
+|------|------|----------|----------|
+| `blacklist_add` | 添加到黑名单 | 新增限制 | 处罚违规用户 |
+| `blacklist_remove` | 从黑名单移除 | 解除限制 | 恢复用户权限 |
+| `blacklist_set` | 替换整个黑名单 | 全面重置 | 批量管理 |
+
+### 管理流程
+
+1. **评估情况**：确认用户是否应该被移除
+2. **执行移除**：调用API移除用户
+3. **验证结果**：确认用户权限已恢复
+4. **记录操作**：记录移除原因和时间
+5. **后续监控**：观察用户后续行为
+
+## 最佳实践
+
+1. **权限验证**：确保操作者有足够的管理权限
+2. **操作记录**：记录所有黑名单变更操作
+3. **通知机制**：通知相关管理员和用户
+4. **渐进式解封**：对于严重违规用户，考虑渐进式恢复权限
+5. **监控机制**：移除后继续监控用户行为
+6. **备份策略**：在大批量操作前备份当前黑名单状态
+
+## 错误处理
+
+### 常见错误
+
+| 错误信息 | 原因 | 解决方案 |
+|----------|------|----------|
+| 频道ID不能为空 | 未提供频道ID | 确保提供有效的频道ID |
+| 频道类型不能为0 | 频道类型无效 | 使用有效的频道类型（1或2） |
+| uids不能为空 | 未提供用户列表 | 提供要移除的用户ID列表 |
+| 移除黑名单失败 | 移除操作失败 | 检查用户是否在黑名单中 |
+| 添加会话失败 | 会话恢复失败 | 检查会话系统状态 |
+
+### 错误恢复
+
+```javascript
+async function removeFromBlacklistWithRetry(channelId, channelType, uids, maxRetries = 3) {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      const response = await fetch('/channel/blacklist_remove', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          channel_id: channelId,
+          channel_type: channelType,
+          uids: uids
+        })
+      });
+      
+      if (response.ok) {
+        return await response.json();
+      }
+      
+      if (response.status >= 400 && response.status < 500) {
+        // 客户端错误，不重试
+        throw new Error(`Client error: ${response.status}`);
+      }
+    } catch (error) {
+      if (i === maxRetries - 1) throw error;
+      await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000));
+    }
+  }
+}
+```
+
+## 监控和审计
+
+### 操作日志
+
+建议记录以下信息：
+
+- 操作时间
+- 操作者ID
+- 频道信息
+- 被移除的用户列表
+- 操作结果
+- 失败原因（如果有）
+
+### 审计报告
+
+定期生成审计报告：
+
+- 黑名单变更统计
+- 用户权限恢复情况
+- 操作频率分析
+- 异常操作检测
+
+## 相关接口
+
+- [添加频道黑名单](/zh/api/channel/blacklist) - 添加用户到黑名单
+- [设置频道黑名单](/zh/api/channel/blacklist-set) - 设置完整黑名单
+- [添加频道白名单](/zh/api/channel/whitelist) - 管理白名单用户
+- [移除频道白名单](/zh/api/channel/whitelist-remove) - 移除白名单用户

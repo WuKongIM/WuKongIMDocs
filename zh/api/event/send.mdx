@@ -1,0 +1,500 @@
+---
+title: "发送事件"
+description: "发送各种类型的事件到频道，包括流式文本消息和自定义事件"
+api: "POST /event"
+---
+
+## 概述
+
+发送各种类型的事件到频道，包括流式文本消息和自定义事件。支持AG-UI协议事件，用于实时流式通信。
+
+## 查询参数
+
+<ParamField query="force" type="string" default="0">
+强制结束频道中现有的流，然后开始新流
+- `0` - 不强制结束
+- `1` - 强制结束现有流
+</ParamField>
+
+## 请求体
+
+### 必传参数
+
+<ParamField body="client_msg_no" type="string" required>
+客户端消息编号，必须唯一且不重复。用于标识和跟踪消息/流。对于流式消息，同一流中的所有事件应使用相同的client_msg_no。建议使用UUID格式。
+</ParamField>
+
+<ParamField body="channel_id" type="string" required>
+目标频道ID，事件将发送到此频道。对于个人频道，这应该是目标用户ID。对于群组频道，这应该是群组ID。
+</ParamField>
+
+<ParamField body="channel_type" type="integer" required>
+频道类型
+- `1` - 个人频道
+- `2` - 群组频道
+</ParamField>
+
+<ParamField body="event" type="object" required>
+事件对象
+<Expandable title="event 字段">
+<ParamField body="event.type" type="string" required>
+事件类型，支持AG-UI协议事件和自定义事件
+
+**AG-UI协议事件：**
+- `___TextMessageStart` - 开始流式文本消息会话
+- `___TextMessageContent` - 发送流式内容块
+- `___TextMessageEnd` - 结束流式文本消息会话
+- `___ToolCallStart` - 开始工具/函数调用事件
+- `___ToolCallArgs` - 发送工具调用参数
+- `___ToolCallEnd` - 结束工具调用事件
+- `___ToolCallResult` - 返回工具执行结果
+
+**自定义事件：** 任何不以 `___` 开头的字符串都被视为自定义事件类型
+</ParamField>
+
+<ParamField body="event.id" type="string">
+事件ID（可选，某些事件类型会自动生成）
+</ParamField>
+
+<ParamField body="event.timestamp" type="integer">
+事件时间戳（可选，Unix时间戳，毫秒）
+</ParamField>
+
+<ParamField body="event.data" type="string">
+事件数据内容。格式取决于事件类型：
+
+**文本消息事件：**
+- `___TextMessageStart` - 初始消息内容或元数据
+- `___TextMessageContent` - 流式文本块
+- `___TextMessageEnd` - 最终内容或完成标记
+
+**工具调用事件：**
+- `___ToolCallStart` - 工具名称或元数据
+- `___ToolCallArgs` - 函数参数的JSON字符串
+- `___ToolCallEnd` - 完成状态
+- `___ToolCallResult` - 执行结果的JSON字符串
+
+**自定义事件：** 与应用程序相关的任何字符串数据
+</ParamField>
+</Expandable>
+</ParamField>
+
+### 可选参数
+
+<ParamField body="from_uid" type="string">
+发送者用户ID。如果未提供或为空，默认为系统UID。用于标识发送事件的用户。
+</ParamField>
+
+<RequestExample>
+```bash 开始流式文本消息
+curl -X POST "http://localhost:5001/event" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "client_msg_no": "msg_001_stream_start",
+    "channel_id": "group_ai_chat",
+    "channel_type": 2,
+    "from_uid": "ai_assistant",
+    "event": {
+      "type": "___TextMessageStart",
+      "data": "开始AI回复..."
+    }
+  }'
+```
+
+```bash 发送文本内容块
+curl -X POST "http://localhost:5001/event" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "client_msg_no": "msg_001_stream_start",
+    "channel_id": "group_ai_chat",
+    "channel_type": 2,
+    "from_uid": "ai_assistant",
+    "event": {
+      "type": "___TextMessageContent",
+      "data": "你好！我可以为你做什么？"
+    }
+  }'
+```
+
+```bash 结束流式文本消息
+curl -X POST "http://localhost:5001/event" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "client_msg_no": "msg_001_stream_start",
+    "channel_id": "group_ai_chat",
+    "channel_type": 2,
+    "from_uid": "ai_assistant",
+    "event": {
+      "type": "___TextMessageEnd",
+      "data": ""
+    }
+  }'
+```
+
+```bash 发送自定义事件
+curl -X POST "http://localhost:5001/event" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "client_msg_no": "custom_event_001",
+    "channel_id": "user_123",
+    "channel_type": 1,
+    "from_uid": "system",
+    "event": {
+      "type": "user_status_update",
+      "timestamp": 1640995200000,
+      "data": "{\"status\": \"online\", \"last_seen\": 1640995200000}"
+    }
+  }'
+```
+
+```javascript JavaScript
+// 流式文本消息示例
+const streamId = `stream_${Date.now()}`;
+
+// 1. 开始流
+await fetch('http://localhost:5001/event', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    client_msg_no: streamId,
+    channel_id: 'group_ai_chat',
+    channel_type: 2,
+    from_uid: 'ai_assistant',
+    event: {
+      type: '___TextMessageStart',
+      data: '开始AI回复...'
+    }
+  })
+});
+
+// 2. 发送内容
+await fetch('http://localhost:5001/event', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    client_msg_no: streamId,
+    channel_id: 'group_ai_chat',
+    channel_type: 2,
+    from_uid: 'ai_assistant',
+    event: {
+      type: '___TextMessageContent',
+      data: '你好！我可以为你做什么？'
+    }
+  })
+});
+
+// 3. 结束流
+await fetch('http://localhost:5001/event', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    client_msg_no: streamId,
+    channel_id: 'group_ai_chat',
+    channel_type: 2,
+    from_uid: 'ai_assistant',
+    event: {
+      type: '___TextMessageEnd',
+      data: ''
+    }
+  })
+});
+```
+
+```python Python
+import requests
+import time
+
+# 流式文本消息示例
+stream_id = f"stream_{int(time.time() * 1000)}"
+base_url = "http://localhost:5001/event"
+
+# 1. 开始流
+requests.post(base_url, json={
+    "client_msg_no": stream_id,
+    "channel_id": "group_ai_chat",
+    "channel_type": 2,
+    "from_uid": "ai_assistant",
+    "event": {
+        "type": "___TextMessageStart",
+        "data": "开始AI回复..."
+    }
+})
+
+# 2. 发送内容
+requests.post(base_url, json={
+    "client_msg_no": stream_id,
+    "channel_id": "group_ai_chat",
+    "channel_type": 2,
+    "from_uid": "ai_assistant",
+    "event": {
+        "type": "___TextMessageContent",
+        "data": "你好！我可以为你做什么？"
+    }
+})
+
+# 3. 结束流
+requests.post(base_url, json={
+    "client_msg_no": stream_id,
+    "channel_id": "group_ai_chat",
+    "channel_type": 2,
+    "from_uid": "ai_assistant",
+    "event": {
+        "type": "___TextMessageEnd",
+        "data": ""
+    }
+})
+```
+
+```go Go
+package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "fmt"
+    "net/http"
+    "time"
+)
+
+type Event struct {
+    Type      string `json:"type"`
+    Data      string `json:"data"`
+    Timestamp int64  `json:"timestamp,omitempty"`
+}
+
+type EventRequest struct {
+    ClientMsgNo string `json:"client_msg_no"`
+    ChannelID   string `json:"channel_id"`
+    ChannelType int    `json:"channel_type"`
+    FromUID     string `json:"from_uid"`
+    Event       Event  `json:"event"`
+}
+
+func sendEvent(req EventRequest) error {
+    jsonData, _ := json.Marshal(req)
+    resp, err := http.Post(
+        "http://localhost:5001/event",
+        "application/json",
+        bytes.NewBuffer(jsonData),
+    )
+    if err != nil {
+        return err
+    }
+    defer resp.Body.Close()
+    return nil
+}
+
+func main() {
+    streamID := fmt.Sprintf("stream_%d", time.Now().UnixMilli())
+    
+    // 1. 开始流
+    sendEvent(EventRequest{
+        ClientMsgNo: streamID,
+        ChannelID:   "group_ai_chat",
+        ChannelType: 2,
+        FromUID:     "ai_assistant",
+        Event: Event{
+            Type: "___TextMessageStart",
+            Data: "开始AI回复...",
+        },
+    })
+    
+    // 2. 发送内容
+    sendEvent(EventRequest{
+        ClientMsgNo: streamID,
+        ChannelID:   "group_ai_chat",
+        ChannelType: 2,
+        FromUID:     "ai_assistant",
+        Event: Event{
+            Type: "___TextMessageContent",
+            Data: "你好！我可以为你做什么？",
+        },
+    })
+    
+    // 3. 结束流
+    sendEvent(EventRequest{
+        ClientMsgNo: streamID,
+        ChannelID:   "group_ai_chat",
+        ChannelType: 2,
+        FromUID:     "ai_assistant",
+        Event: Event{
+            Type: "___TextMessageEnd",
+            Data: "",
+        },
+    })
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json 成功响应
+{
+  "status": "ok"
+}
+```
+</ResponseExample>
+
+## 响应字段
+
+<ResponseField name="status" type="string" required>
+操作状态，成功时返回 `"ok"`
+</ResponseField>
+
+## 状态码
+
+| 状态码 | 说明 |
+|--------|------|
+| 200 | 事件发送成功 |
+| 400 | 请求参数错误或事件数据无效 |
+| 500 | 服务器内部错误 |
+
+## 流式消息机制
+
+### 流式消息流程
+
+1. **开始流**：发送 `___TextMessageStart` 事件启动流
+2. **发送内容**：发送多个 `___TextMessageContent` 事件传输消息块
+3. **结束流**：发送 `___TextMessageEnd` 事件关闭流
+
+### 重要注意事项
+
+- 同一流中的所有事件必须使用相同的 `client_msg_no`
+- 除非使用 `force=1`，否则每个频道只能有一个活跃流
+- 对于个人频道，系统会自动处理虚假频道ID生成
+- 事件会自动路由到适当的集群节点
+
+## 事件类型详解
+
+### AG-UI协议事件
+
+AG-UI协议事件用于实时流式通信，特别适用于AI应用：
+
+| 事件类型 | 用途 | 数据格式 |
+|----------|------|----------|
+| `___TextMessageStart` | 启动流式文本消息会话 | 初始内容或元数据 |
+| `___TextMessageContent` | 发送内容块 | 文本块内容 |
+| `___TextMessageEnd` | 终止流式文本消息会话 | 完成标记 |
+| `___ToolCallStart` | 开始工具调用事件 | 工具名称或元数据 |
+| `___ToolCallArgs` | 发送工具调用参数 | JSON格式的参数 |
+| `___ToolCallEnd` | 结束工具调用事件 | 完成状态 |
+| `___ToolCallResult` | 返回工具执行结果 | JSON格式的结果 |
+
+### 自定义事件
+
+任何不以 `___` 开头的事件类型都被视为自定义事件，可用于：
+
+- 用户状态更新
+- 系统通知
+- 业务逻辑事件
+- 应用特定的交互
+
+## 使用场景
+
+### AI聊天机器人
+
+```bash
+# 模拟AI打字效果
+curl -X POST "/event" -d '{
+  "client_msg_no": "ai_response_001",
+  "channel_id": "user_123",
+  "channel_type": 1,
+  "from_uid": "ai_bot",
+  "event": {
+    "type": "___TextMessageStart",
+    "data": "{\"type\":1,\"content\":\"思考中...\"}"
+  }
+}'
+
+# 逐步发送回复内容
+curl -X POST "/event" -d '{
+  "client_msg_no": "ai_response_001",
+  "channel_id": "user_123", 
+  "channel_type": 1,
+  "from_uid": "ai_bot",
+  "event": {
+    "type": "___TextMessageContent",
+    "data": "根据您的问题，我建议..."
+  }
+}'
+```
+
+### 实时协作
+
+```bash
+# 文档编辑状态
+curl -X POST "/event" -d '{
+  "client_msg_no": "doc_edit_001",
+  "channel_id": "doc_room_456",
+  "channel_type": 2,
+  "from_uid": "user_789",
+  "event": {
+    "type": "document_editing",
+    "data": "{\"action\": \"start_edit\", \"section\": \"paragraph_1\"}"
+  }
+}'
+```
+
+### 系统通知
+
+```bash
+# 用户上线通知
+curl -X POST "/event" -d '{
+  "client_msg_no": "status_update_001",
+  "channel_id": "group_general",
+  "channel_type": 2,
+  "from_uid": "system",
+  "event": {
+    "type": "user_online",
+    "timestamp": 1640995200000,
+    "data": "{\"user_id\": \"user_123\", \"status\": \"online\"}"
+  }
+}'
+```
+
+## 最佳实践
+
+1. **唯一标识**：使用UUID格式的 `client_msg_no` 确保唯一性
+2. **流管理**：及时结束不再使用的流，避免资源浪费
+3. **错误处理**：处理流冲突和发送失败的情况
+4. **权限验证**：确保发送者有频道的发送权限
+5. **数据格式**：对于复杂数据使用JSON格式的字符串
+6. **性能优化**：合理控制流式消息的发送频率
+
+## 错误处理
+
+### 常见错误
+
+| 错误 | 原因 | 解决方案 |
+|------|------|----------|
+| 事件类型不能为空 | 未提供event.type | 确保提供有效的事件类型 |
+| 频道中已有流正在运行 | 尝试在有活跃流的频道开始新流 | 使用 `force=1` 或等待现有流结束 |
+| 流不存在 | 尝试向不存在的流发送内容 | 检查流是否已正确创建 |
+| 流已关闭 | 向已关闭的流发送内容 | 重新开始新的流 |
+
+### 重试机制
+
+对于临时性错误，建议实现指数退避重试机制：
+
+```javascript
+async function sendEventWithRetry(eventData, maxRetries = 3) {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      const response = await fetch('/event', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(eventData)
+      });
+      
+      if (response.ok) return await response.json();
+      
+      if (response.status >= 400 && response.status < 500) {
+        // 客户端错误，不重试
+        throw new Error(`Client error: ${response.status}`);
+      }
+    } catch (error) {
+      if (i === maxRetries - 1) throw error;
+      await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000));
+    }
+  }
+}
+```

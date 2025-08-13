@@ -11,7 +11,7 @@
   "logo": {
     "light": "/images/logo-light.png",
     "dark": "/images/logo-dark.png",
-    "href": "https://docs.githubim.com"
+    "href": "https://githubim.com"
   },
   "favicon": "/images/favicon.png",
   "icons": {
@@ -155,8 +155,13 @@
                   "en/api/channel/remove-subscribers",
                   "en/api/channel/delete",
                   "en/api/channel/blacklist",
+                  "en/api/channel/blacklist-set",
+                  "en/api/channel/blacklist-remove",
                   "en/api/channel/whitelist",
-                  "en/api/channel/get-whitelist"
+                  "en/api/channel/whitelist-set",
+                  "en/api/channel/whitelist-remove",
+                  "en/api/channel/get-whitelist",
+                  "en/api/channel/tmp-subscriber-set"
                 ]
               },
               {
@@ -190,12 +195,10 @@
                 ]
               },
               {
-                "group": "Stream Messages",
+                "group": "Event Management",
                 "icon": "zap",
                 "pages": [
-                  "en/api/stream/open",
-                  "en/api/stream/write",
-                  "en/api/stream/close"
+                  "en/api/event/send"
                 ]
               },
               {
@@ -478,8 +481,13 @@
                   "zh/api/channel/remove-subscribers",
                   "zh/api/channel/delete",
                   "zh/api/channel/blacklist",
+                  "zh/api/channel/blacklist-set",
+                  "zh/api/channel/blacklist-remove",
                   "zh/api/channel/whitelist",
-                  "zh/api/channel/get-whitelist"
+                  "zh/api/channel/whitelist-set",
+                  "zh/api/channel/whitelist-remove",
+                  "zh/api/channel/get-whitelist",
+                  "zh/api/channel/tmp-subscriber-set"
                 ]
               },
               {
@@ -513,11 +521,10 @@
                 ]
               },
               {
-                "group": "流消息",
+                "group": "事件管理",
                 "icon": "zap",
                 "pages": [
-                  "zh/api/stream/open",
-                  "zh/api/stream/write"
+                  "zh/api/event/send"
                 ]
               },
               {
