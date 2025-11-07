@@ -141,7 +141,7 @@ func main() {
     "timestamp": 1640995200,
     "last_msg_seq": 1005,
     "version": 1640995200000000000,
-    "messages": [
+    "recents": [
       {
         "message_id": 123456789,
         "message_seq": 1005,
@@ -159,7 +159,7 @@ func main() {
     "timestamp": 1640995100,
     "last_msg_seq": 502,
     "version": 1640995100000000000,
-    "messages": [
+    "recents": [
       {
         "message_id": 123456788,
         "message_seq": 502,
@@ -208,25 +208,25 @@ Conversation version number (nanosecond timestamp)
 
 ### Message List
 
-<ResponseField name="messages" type="array" required>
+<ResponseField name="recents" type="array" required>
 List of latest messages in the conversation
 <Expandable title="Message object fields">
-<ResponseField name="messages[].message_id" type="integer">
+<ResponseField name="recents[].message_id" type="integer">
 Message ID
 </ResponseField>
-<ResponseField name="messages[].message_seq" type="integer">
+<ResponseField name="recents[].message_seq" type="integer">
 Message sequence number
 </ResponseField>
-<ResponseField name="messages[].client_msg_no" type="string">
+<ResponseField name="recents[].client_msg_no" type="string">
 Client message number
 </ResponseField>
-<ResponseField name="messages[].from_uid" type="string">
+<ResponseField name="recents[].from_uid" type="string">
 Sender user ID
 </ResponseField>
-<ResponseField name="messages[].timestamp" type="integer">
+<ResponseField name="recents[].timestamp" type="integer">
 Message timestamp
 </ResponseField>
-<ResponseField name="messages[].payload" type="string">
+<ResponseField name="recents[].payload" type="string">
 Base64 encoded message content
 </ResponseField>
 </Expandable>

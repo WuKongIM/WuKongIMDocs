@@ -142,7 +142,7 @@ func main() {
     "timestamp": 1640995200,
     "last_msg_seq": 1005,
     "version": 1640995200000000000,
-    "messages": [
+    "recents": [
       {
         "message_id": 123456789,
         "message_seq": 1005,
@@ -160,7 +160,7 @@ func main() {
     "timestamp": 1640995100,
     "last_msg_seq": 502,
     "version": 1640995100000000000,
-    "messages": [
+    "recents": [
       {
         "message_id": 123456788,
         "message_seq": 502,
@@ -209,25 +209,25 @@ func main() {
 
 ### 消息列表
 
-<ResponseField name="messages" type="array" required>
+<ResponseField name="recents" type="array" required>
 会话中的最新消息列表
 <Expandable title="消息对象字段">
-<ResponseField name="messages[].message_id" type="integer">
+<ResponseField name="recents[].message_id" type="integer">
 消息 ID
 </ResponseField>
-<ResponseField name="messages[].message_seq" type="integer">
+<ResponseField name="recents[].message_seq" type="integer">
 消息序列号
 </ResponseField>
-<ResponseField name="messages[].client_msg_no" type="string">
+<ResponseField name="recents[].client_msg_no" type="string">
 客户端消息编号
 </ResponseField>
-<ResponseField name="messages[].from_uid" type="string">
+<ResponseField name="recents[].from_uid" type="string">
 发送者用户 ID
 </ResponseField>
-<ResponseField name="messages[].timestamp" type="integer">
+<ResponseField name="recents[].timestamp" type="integer">
 消息时间戳
 </ResponseField>
-<ResponseField name="messages[].payload" type="string">
+<ResponseField name="recents[].payload" type="string">
 Base64 编码的消息内容
 </ResponseField>
 </Expandable>
