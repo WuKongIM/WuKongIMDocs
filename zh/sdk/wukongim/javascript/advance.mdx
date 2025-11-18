@@ -58,7 +58,7 @@ WKSDK.shared().register(contentTypeGif, () => new GifContent()); // gif动图
 
 #### 第一步继承 MediaMessageContent
 
-注意这里是继承 MediaMessageContent 不是 MessageContent，当发送附件消息的时候，sdk 会调用[上传任务](/sdk/jssdk/datasource.html#文件上传数据源),将本地的文件上传到服务器，然后再进行消息的编码和发送
+注意这里是继承 MediaMessageContent 不是 MessageContent，当发送附件消息的时候，sdk 会调用[上传任务](/zh/sdk/wukongim/javascript/datasource#文件上传数据源),将本地的文件上传到服务器，然后再进行消息的编码和发送
 
 最终传递的消息内容为 ```{"type":3,"url":"xxxx","width":xxx,"height":xxx}```
 
