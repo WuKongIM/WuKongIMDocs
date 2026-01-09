@@ -18,13 +18,17 @@ Channel ID
 Channel type (1=personal channel, 2=group channel)
 </ParamField>
 
+<ParamField query="login_uid" type="string" required>
+Current logged-in user ID
+</ParamField>
+
 <RequestExample>
 ```bash cURL
-curl -X GET "http://localhost:5001/channel/max_message_seq?channel_id=group123&channel_type=2"
+curl -X GET "http://localhost:5001/channel/max_message_seq?channel_id=group123&channel_type=2&login_uid=user123"
 ```
 
 ```javascript JavaScript
-const response = await fetch('http://localhost:5001/channel/max_message_seq?channel_id=group123&channel_type=2');
+const response = await fetch('http://localhost:5001/channel/max_message_seq?channel_id=group123&channel_type=2&login_uid=user123');
 const data = await response.json();
 console.log(data);
 ```
@@ -37,7 +41,7 @@ params = {
     'channel_type': 2
 }
 
-response = requests.get('http://localhost:5001/channel/max_message_seq', params=params)
+response = requests.get('http://localhost:5001/channel/max_message_seq&login_uid=user123', params=params)
 data = response.json()
 print(data)
 ```
@@ -52,7 +56,7 @@ import (
 )
 
 func main() {
-    resp, err := http.Get("http://localhost:5001/channel/max_message_seq?channel_id=group123&channel_type=2")
+    resp, err := http.Get("http://localhost:5001/channel/max_message_seq?channel_id=group123&channel_type=2&login_uid=user123")
     if err != nil {
         panic(err)
     }
@@ -68,20 +72,20 @@ func main() {
 <ResponseExample>
 ```json Success Response
 {
-  "max_message_seq": 1500
+  "message_seq": 1500
 }
 ```
 
 ```json Channel Not Exists
 {
-  "max_message_seq": 0
+  "message_seq": 0
 }
 ```
 </ResponseExample>
 
 ## Response Fields
 
-<ResponseField name="max_message_seq" type="integer" required>
+<ResponseField name="message_seq" type="integer" required>
 Maximum message sequence number for the channel. Returns 0 if channel doesn't exist or has no messages.
 </ResponseField>
 
@@ -103,17 +107,17 @@ Maximum message sequence number for the channel. Returns 0 if channel doesn't ex
 async function checkForNewMessages(channelId, channelType, lastKnownSeq) {
     try {
         const response = await fetch(
-            `/channel/max_message_seq?channel_id=${channelId}&channel_type=${channelType}`
+            `/channel/max_message_seq?channel_id=${channelId}&channel_type=${channelType}&login_uid=user123`
         );
         const data = await response.json();
         
-        const hasNewMessages = data.max_message_seq > lastKnownSeq;
-        const newMessageCount = hasNewMessages ? data.max_message_seq - lastKnownSeq : 0;
+        const hasNewMessages = data.message_seq > lastKnownSeq;
+        const newMessageCount = hasNewMessages ? data.message_seq - lastKnownSeq : 0;
         
         return {
             hasNewMessages,
             newMessageCount,
-            maxSeq: data.max_message_seq
+            maxSeq: data.message_seq
         };
     } catch (error) {
         console.error('Failed to check for new messages:', error);
@@ -152,20 +156,20 @@ class OfflineMessageDetector {
         for (const channel of channels) {
             try {
                 const response = await fetch(
-                    `/channel/max_message_seq?channel_id=${channel.id}&channel_type=${channel.type}`
+                    `/channel/max_message_seq?channel_id=${channel.id}&channel_type=${channel.type}&login_uid=user123`
                 );
                 const data = await response.json();
                 
                 const key = `${channel.id}:${channel.type}`;
                 const lastKnownSeq = this.lastSeqMap.get(key) || 0;
                 
-                if (data.max_message_seq > lastKnownSeq) {
+                if (data.message_seq > lastKnownSeq) {
                     missedMessages.push({
                         channelId: channel.id,
                         channelType: channel.type,
-                        missedCount: data.max_message_seq - lastKnownSeq,
+                        missedCount: data.message_seq - lastKnownSeq,
                         fromSeq: lastKnownSeq + 1,
-                        toSeq: data.max_message_seq
+                        toSeq: data.message_seq
                     });
                 }
             } catch (error) {
@@ -237,12 +241,12 @@ class ChannelActivityMonitor {
         for (const channel of this.channels) {
             try {
                 const response = await fetch(
-                    `/channel/max_message_seq?channel_id=${channel.id}&channel_type=${channel.type}`
+                    `/channel/max_message_seq?channel_id=${channel.id}&channel_type=${channel.type}&login_uid=user123`
                 );
                 const data = await response.json();
                 
                 const key = `${channel.id}:${channel.type}`;
-                this.lastSeqMap.set(key, data.max_message_seq);
+                this.lastSeqMap.set(key, data.message_seq);
             } catch (error) {
                 console.error(`Failed to initialize sequence for ${channel.id}:`, error);
             }
@@ -253,17 +257,17 @@ class ChannelActivityMonitor {
         for (const channel of this.channels) {
             try {
                 const response = await fetch(
-                    `/channel/max_message_seq?channel_id=${channel.id}&channel_type=${channel.type}`
+                    `/channel/max_message_seq?channel_id=${channel.id}&channel_type=${channel.type}&login_uid=user123`
                 );
                 const data = await response.json();
                 
                 const key = `${channel.id}:${channel.type}`;
                 const lastSeq = this.lastSeqMap.get(key) || 0;
                 
-                if (data.max_message_seq > lastSeq) {
-                    const newMessages = data.max_message_seq - lastSeq;
-                    this.onChannelActivity(channel, newMessages, data.max_message_seq);
-                    this.lastSeqMap.set(key, data.max_message_seq);
+                if (data.message_seq > lastSeq) {
+                    const newMessages = data.message_seq - lastSeq;
+                    this.onChannelActivity(channel, newMessages, data.message_seq);
+                    this.lastSeqMap.set(key, data.message_seq);
                 }
             } catch (error) {
                 console.error(`Failed to check activity for ${channel.id}:`, error);
@@ -310,14 +314,14 @@ async function batchCheckMaxSequences(channels) {
     const promises = channels.map(async (channel) => {
         try {
             const response = await fetch(
-                `/channel/max_message_seq?channel_id=${channel.id}&channel_type=${channel.type}`
+                `/channel/max_message_seq?channel_id=${channel.id}&channel_type=${channel.type}&login_uid=user123`
             );
             const data = await response.json();
             
             return {
                 channelId: channel.id,
                 channelType: channel.type,
-                maxSeq: data.max_message_seq,
+                maxSeq: data.message_seq,
                 success: true
             };
         } catch (error) {
