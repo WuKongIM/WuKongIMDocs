@@ -281,6 +281,39 @@ private void refreshMessageInUI(WKMsg updatedMsg) {
 }
 ```
 
+## 消息发送状态码（ReasonCode）
+
+当消息发送后，可以通过监听消息刷新事件获取 `WKMsg` 对象。`WKMsg` 中的 `status`（发送状态）和 `reasonCode`（原因码）指示了消息发送的结果。
+
+| 值 | 名称 | 说明 |
+|----|------|------|
+| 0 | ReasonUnknown | 未知错误 |
+| 1 | ReasonSuccess | 成功 |
+| 2 | ReasonAuthFail | 认证失败 |
+| 3 | ReasonSubscriberNotExist | 订阅者在频道内不存在 |
+| 4 | ReasonInBlacklist | 在黑名单列表里 |
+| 5 | ReasonChannelNotExist | 频道不存在 |
+| 6 | ReasonUserNotOnNode | 用户没在节点上 |
+| 7 | ReasonSenderOffline | 发送者离线，消息发送失败 |
+| 8 | ReasonMsgKeyError | 消息key错误，消息不合法 |
+| 9 | ReasonPayloadDecodeError | payload解码失败 |
+| 10 | ReasonForwardSendPacketError | 转发发送包失败 |
+| 11 | ReasonNotAllowSend | 不允许发送消息 |
+| 12 | ReasonConnectKick | 连接被踢 |
+| 13 | ReasonNotInWhitelist | 没在白名单内 |
+| 14 | ReasonQueryTokenError | 查询用户token错误 |
+| 15 | ReasonSystemError | 系统错误 |
+| 16 | ReasonChannelIDError | 错误的频道ID |
+| 17 | ReasonNodeMatchError | 节点匹配错误 |
+| 18 | ReasonNodeNotMatch | 节点不匹配 |
+| 19 | ReasonBan | 频道被封禁 |
+| 20 | ReasonNotSupportHeader | 不支持的header |
+| 21 | ReasonClientKeyIsEmpty | clientKey 是空的 |
+| 22 | ReasonRateLimit | 速率限制 |
+| 23 | ReasonNotSupportChannelType | 不支持的频道类型 |
+| 24 | ReasonDisband | 频道已解散 |
+| 25 | ReasonSendBan | 发送被封禁 |
+
 ## 查看历史消息
 
 <CodeGroup>

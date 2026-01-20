@@ -139,6 +139,39 @@ Remove listener:
 WKSDK.shared().chatManager.removeMessageStatusListener(listen)
 ```
 
+## Message Send Status Code (ReasonCode)
+
+When a message is sent, the `reasonCode` in the `SendackPacket` returned by the `addMessageStatusListener` indicates the result of the message delivery. Below are the descriptions for each status code:
+
+| Value | Name | Description |
+|-------|------|-------------|
+| 0 | ReasonUnknown | Unknown error |
+| 1 | ReasonSuccess | Success |
+| 2 | ReasonAuthFail | Authentication failed |
+| 3 | ReasonSubscriberNotExist | Subscriber does not exist in the channel |
+| 4 | ReasonInBlacklist | In blacklist |
+| 5 | ReasonChannelNotExist | Channel does not exist |
+| 6 | ReasonUserNotOnNode | User is not on node |
+| 7 | ReasonSenderOffline | Sender is offline, message delivery failed |
+| 8 | ReasonMsgKeyError | Message key error, invalid message |
+| 9 | ReasonPayloadDecodeError | Payload decoding failed |
+| 10 | ReasonForwardSendPacketError | Forwarding send packet failed |
+| 11 | ReasonNotAllowSend | Not allowed to send message |
+| 12 | ReasonConnectKick | Connection kicked |
+| 13 | ReasonNotInWhitelist | Not in whitelist |
+| 14 | ReasonQueryTokenError | Query user token error |
+| 15 | ReasonSystemError | System error |
+| 16 | ReasonChannelIDError | Wrong channel ID |
+| 17 | ReasonNodeMatchError | Node matching error |
+| 18 | ReasonNodeNotMatch | Node not matched |
+| 19 | ReasonBan | Channel is banned |
+| 20 | ReasonNotSupportHeader | Unsupported header |
+| 21 | ReasonClientKeyIsEmpty | clientKey is empty |
+| 22 | ReasonRateLimit | Rate limit exceeded |
+| 23 | ReasonNotSupportChannelType | Unsupported channel type |
+| 24 | ReasonDisband | Channel disbanded |
+| 25 | ReasonSendBan | Sending is banned |
+
 ### Listen for Regular Messages
 
 ```javascript

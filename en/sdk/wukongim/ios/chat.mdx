@@ -80,6 +80,39 @@ WKTextContent *content = [[WKTextContent alloc] initWithContent:@"hello"];
 -(void) onMessageStatusUpdate:(WKMessage*) message;
 ```
 
+## Message Send Status Code (ReasonCode)
+
+When a message is sent, the `reasonCode` in the `WKMessage` object returned by the `onMessageUpdate:` or `onMessageStatusUpdate:` delegate methods indicates the result of the message delivery. Below are the descriptions for each status code:
+
+| Value | Name | Description |
+|-------|------|-------------|
+| 0 | ReasonUnknown | Unknown error |
+| 1 | ReasonSuccess | Success |
+| 2 | ReasonAuthFail | Authentication failed |
+| 3 | ReasonSubscriberNotExist | Subscriber does not exist in the channel |
+| 4 | ReasonInBlacklist | In blacklist |
+| 5 | ReasonChannelNotExist | Channel does not exist |
+| 6 | ReasonUserNotOnNode | User is not on node |
+| 7 | ReasonSenderOffline | Sender is offline, message delivery failed |
+| 8 | ReasonMsgKeyError | Message key error, invalid message |
+| 9 | PayloadDecodeError | Payload decoding failed |
+| 10 | ForwardSendPacketError | Forwarding send packet failed |
+| 11 | NotAllowSend | Not allowed to send message |
+| 12 | ConnectKick | Connection kicked |
+| 13 | NotInWhitelist | Not in whitelist |
+| 14 | QueryTokenError | Query user token error |
+| 15 | SystemError | System error |
+| 16 | ChannelIDError | Wrong channel ID |
+| 17 | NodeMatchError | Node matching error |
+| 18 | NodeNotMatch | Node not matched |
+| 19 | Ban | Channel is banned |
+| 20 | NotSupportHeader | Unsupported header |
+| 21 | ClientKeyIsEmpty | clientKey is empty |
+| 22 | RateLimit | Rate limit exceeded |
+| 23 | NotSupportChannelType | Unsupported channel type |
+| 24 | Disband | Channel disbanded |
+| 25 | SendBan | Sending is banned |
+
 ## Common Message Types
 
 The SDK includes some common message types, such as text messages, image messages, and voice messages.
