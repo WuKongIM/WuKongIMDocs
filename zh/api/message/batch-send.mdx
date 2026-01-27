@@ -1,0 +1,359 @@
+---
+title: "批量发送消息"
+description: "批量发送多条消息"
+api: "POST /message/sendbatch"
+---
+
+## 概述
+
+批量发送多条消息，提高消息发送效率，适用于群发通知、批量推送等场景。
+
+## 请求体
+
+请求体是一个消息对象数组，每个消息对象包含以下字段：
+
+### 必传参数
+
+<ParamField body="[].payload" type="string" required>
+Base64 编码的消息内容
+</ParamField>
+
+<ParamField body="[].from_uid" type="string" required>
+发送者用户 ID
+</ParamField>
+
+<ParamField body="[].channel_id" type="string" required>
+目标频道 ID
+</ParamField>
+
+<ParamField body="[].channel_type" type="integer" required>
+频道类型 (1=个人频道, 2=群组频道)
+</ParamField>
+
+### 可选参数
+
+<ParamField body="[].header" type="object">
+消息头部信息
+<Expandable title="header 字段">
+<ParamField body="[].header.no_persist" type="integer">
+是否不持久化消息 (0=持久化, 1=不持久化)
+</ParamField>
+<ParamField body="[].header.red_dot" type="integer">
+是否显示红点通知 (0=不显示, 1=显示)
+</ParamField>
+<ParamField body="[].header.sync_once" type="integer">
+是否是写扩散，这里一般是0，只有cmd消息才是1
+</ParamField>
+</Expandable>
+</ParamField>
+
+<ParamField body="[].client_msg_no" type="string">
+客户端消息编号
+</ParamField>
+
+<ParamField body="[].stream_no" type="string">
+流消息编号
+</ParamField>
+
+<ParamField body="[].expire" type="integer">
+消息过期时间（秒），0 表示不过期
+</ParamField>
+
+<ParamField body="[].subscribers" type="array">
+指定接收消息的订阅者列表
+<ParamField body="[].subscribers[]" type="string">
+订阅者用户 ID
+</ParamField>
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "http://localhost:5001/message/sendbatch" \
+  -H "Content-Type: application/json" \
+  -d '[
+    {
+      "header": {
+        "no_persist": 0,
+        "red_dot": 1,
+        "sync_once": 0
+      },
+      "client_msg_no": "batch_msg_1",
+      "from_uid": "system",
+      "channel_id": "group123",
+      "channel_type": 2,
+      "expire": 0,
+      "payload": "SGVsbG8gR3JvdXAgMQ==",
+      "tag_key": "notification"
+    },
+    {
+      "header": {
+        "no_persist": 0,
+        "red_dot": 1,
+        "sync_once": 0
+      },
+      "client_msg_no": "batch_msg_2",
+      "from_uid": "system",
+      "channel_id": "group456",
+      "channel_type": 2,
+      "expire": 0,
+      "payload": "SGVsbG8gR3JvdXAgMg==",
+      "tag_key": "notification"
+    }
+  ]'
+```
+
+```javascript JavaScript
+const messages = [
+  {
+    header: {
+      no_persist: 0,
+      red_dot: 1,
+      sync_once: 0
+    },
+    client_msg_no: `batch_msg_${Date.now()}_1`,
+    from_uid: "system",
+    channel_id: "group123",
+    channel_type: 2,
+    expire: 0,
+    payload: btoa(JSON.stringify({
+      type: "text",
+      content: "Hello Group 1"
+    })),
+    tag_key: "notification"
+  },
+  {
+    header: {
+      no_persist: 0,
+      red_dot: 1,
+      sync_once: 0
+    },
+    client_msg_no: `batch_msg_${Date.now()}_2`,
+    from_uid: "system",
+    channel_id: "group456",
+    channel_type: 2,
+    expire: 0,
+    payload: btoa(JSON.stringify({
+      type: "text",
+      content: "Hello Group 2"
+    })),
+    tag_key: "notification"
+  }
+];
+
+const response = await fetch('http://localhost:5001/message/sendbatch', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify(messages)
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+import base64
+import json
+
+messages = [
+    {
+        "header": {
+            "no_persist": 0,
+            "red_dot": 1,
+            "sync_once": 0
+        },
+        "client_msg_no": "batch_msg_1",
+        "from_uid": "system",
+        "channel_id": "group123",
+        "channel_type": 2,
+        "expire": 0,
+        "payload": base64.b64encode(
+            json.dumps({"type": "text", "content": "Hello Group 1"}).encode()
+        ).decode(),
+        "tag_key": "notification"
+    },
+    {
+        "header": {
+            "no_persist": 0,
+            "red_dot": 1,
+            "sync_once": 0
+        },
+        "client_msg_no": "batch_msg_2",
+        "from_uid": "system",
+        "channel_id": "group456",
+        "channel_type": 2,
+        "expire": 0,
+        "payload": base64.b64encode(
+            json.dumps({"type": "text", "content": "Hello Group 2"}).encode()
+        ).decode(),
+        "tag_key": "notification"
+    }
+]
+
+response = requests.post('http://localhost:5001/message/sendbatch', json=messages)
+result = response.json()
+print(result)
+```
+
+```go Go
+package main
+
+import (
+    "bytes"
+    "encoding/base64"
+    "encoding/json"
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    message1Content := map[string]interface{}{
+        "type":    "text",
+        "content": "Hello Group 1",
+    }
+    content1, _ := json.Marshal(message1Content)
+    payload1 := base64.StdEncoding.EncodeToString(content1)
+    
+    message2Content := map[string]interface{}{
+        "type":    "text",
+        "content": "Hello Group 2",
+    }
+    content2, _ := json.Marshal(message2Content)
+    payload2 := base64.StdEncoding.EncodeToString(content2)
+    
+    messages := []map[string]interface{}{
+        {
+            "header": map[string]interface{}{
+                "no_persist": 0,
+                "red_dot":    1,
+                "sync_once":  0,
+            },
+            "client_msg_no": "batch_msg_1",
+            "from_uid":      "system",
+            "channel_id":    "group123",
+            "channel_type":  2,
+            "expire":        0,
+            "payload":       payload1,
+            "tag_key":       "notification",
+        },
+        {
+            "header": map[string]interface{}{
+                "no_persist": 0,
+                "red_dot":    1,
+                "sync_once":  0,
+            },
+            "client_msg_no": "batch_msg_2",
+            "from_uid":      "system",
+            "channel_id":    "group456",
+            "channel_type":  2,
+            "expire":        0,
+            "payload":       payload2,
+            "tag_key":       "notification",
+        },
+    }
+    
+    jsonData, _ := json.Marshal(messages)
+    
+    resp, err := http.Post(
+        "http://localhost:5001/message/sendbatch",
+        "application/json",
+        bytes.NewBuffer(jsonData),
+    )
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    var result []map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Printf("%+v\n", result)
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json 成功响应
+[
+  {
+    "message_id": 123456789,
+    "message_seq": 1001,
+    "client_msg_no": "batch_msg_1"
+  },
+  {
+    "message_id": 123456790,
+    "message_seq": 1002,
+    "client_msg_no": "batch_msg_2"
+  }
+]
+```
+</ResponseExample>
+
+## 响应字段
+
+响应是一个数组，每个元素对应一条发送的消息：
+
+<ResponseField name="message_id" type="integer" required>
+服务器生成的消息 ID
+</ResponseField>
+
+<ResponseField name="message_seq" type="integer" required>
+消息序列号
+</ResponseField>
+
+<ResponseField name="client_msg_no" type="string" required>
+客户端消息编号（回显）
+</ResponseField>
+
+## 状态码
+
+| 状态码 | 说明 |
+|--------|------|
+| 200 | 批量消息发送成功 |
+| 400 | 请求参数错误 |
+| 403 | 没有发送权限 |
+| 500 | 服务器内部错误 |
+
+## 使用场景
+
+### 系统通知
+
+- **公告推送**：向多个群组发送系统公告
+- **活动通知**：批量发送活动提醒消息
+- **维护通知**：系统维护前的批量通知
+
+### 营销推广
+
+- **促销消息**：向目标用户群发送促销信息
+- **新功能介绍**：批量推送新功能使用指南
+- **用户调研**：发送问卷调查消息
+
+### 运营管理
+
+- **数据统计**：批量发送数据报告
+- **任务分配**：向团队成员批量分配任务
+- **会议通知**：批量发送会议邀请
+
+## 性能优化
+
+### 批量大小
+
+- **建议批量**：单次批量发送建议不超过 100 条消息
+- **分批处理**：大量消息可分批发送，避免超时
+- **并发控制**：控制并发批量请求数量
+
+### 消息优化
+
+- **内容压缩**：对于相同内容，可以使用模板减少数据传输
+- **异步处理**：使用异步方式处理批量发送
+- **错误重试**：实现失败消息的重试机制
+
+## 最佳实践
+
+1. **消息去重**：确保每条消息的 client_msg_no 唯一
+2. **错误处理**：处理部分消息发送失败的情况
+3. **权限验证**：验证发送者对所有目标频道的发送权限
+4. **内容审核**：对批量消息内容进行审核
+5. **频率限制**：实施合理的批量发送频率限制
+6. **监控告警**：监控批量发送的成功率和性能

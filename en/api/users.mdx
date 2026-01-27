@@ -1,0 +1,327 @@
+---
+title: "User Management API"
+description: "Manage users, authentication, and online status"
+---
+
+# User Management API
+
+The User Management API allows you to register users, manage authentication tokens, and query user status in WuKongIM.
+
+## Register or Login User
+
+Register user information with WuKongIM. If the user already exists, their information will be updated.
+
+<CodeGroup>
+```bash cURL
+curl -X POST http://localhost:5001/user/token \
+  -H "Content-Type: application/json" \
+  -d '{
+    "uid": "user123",
+    "token": "auth-token-123",
+    "device_flag": 0,
+    "device_level": 1
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5001/user/token', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    uid: 'user123',
+    token: 'auth-token-123',
+    device_flag: 0,
+    device_level: 1
+  })
+});
+```
+
+```python Python
+import requests
+
+response = requests.post('http://localhost:5001/user/token', json={
+    'uid': 'user123',
+    'token': 'auth-token-123',
+    'device_flag': 0,
+    'device_level': 1
+})
+```
+</CodeGroup>
+
+### Request Parameters
+
+<ParamField body="uid" type="string" required>
+  Unique user identifier. Can be a random UUID or your system's user ID. Required by WuKongIM SDK.
+</ParamField>
+
+<ParamField body="token" type="string" required>
+  Authentication token for the user. Can be a random UUID or your system's user token. Required by WuKongIM SDK.
+</ParamField>
+
+<ParamField body="device_flag" type="integer" required>
+  Device type identifier:
+  - `0`: Mobile app
+  - `1`: Web browser
+  
+  Note: Multiple primary devices with the same flag will kick each other off. Secondary devices can coexist.
+</ParamField>
+
+<ParamField body="device_level" type="integer" required>
+  Device priority level:
+  - `0`: Secondary device (can have multiple)
+  - `1`: Primary device (only one allowed per device_flag)
+</ParamField>
+
+### Response
+
+<ResponseField name="status" type="integer">
+  HTTP status code 200 indicates success
+</ResponseField>
+
+## Check User Online Status
+
+Query the online status of multiple users.
+
+<CodeGroup>
+```bash cURL
+curl -X POST http://localhost:5001/user/onlinestatus \
+  -H "Content-Type: application/json" \
+  -d '["user123", "user456", "user789"]'
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5001/user/onlinestatus', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify(['user123', 'user456', 'user789'])
+});
+
+const onlineUsers = await response.json();
+console.log('Online users:', onlineUsers);
+```
+
+```python Python
+import requests
+
+response = requests.post('http://localhost:5001/user/onlinestatus', 
+                        json=['user123', 'user456', 'user789'])
+online_users = response.json()
+print('Online users:', online_users)
+```
+</CodeGroup>
+
+### Request Parameters
+
+<ParamField body="uids" type="array" required>
+  Array of user IDs to check online status for.
+</ParamField>
+
+### Response
+
+<ResponseField name="online_uids" type="array">
+  Array of user IDs that are currently online.
+</ResponseField>
+
+```json Response Example
+["user123", "user456"]
+```
+
+## Add System Account
+
+Add a system account that can be used for system-level operations.
+
+<CodeGroup>
+```bash cURL
+curl -X POST http://localhost:5001/user/systemuid_add \
+  -H "Content-Type: application/json" \
+  -d '{
+    "uids": ["system_bot", "notification_service"]
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5001/user/systemuid_add', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    uids: ['system_bot', 'notification_service']
+  })
+});
+```
+</CodeGroup>
+
+### Request Parameters
+
+<ParamField body="uids" type="array" required>
+  Array of user IDs to add as system accounts.
+</ParamField>
+
+### Response
+
+<ResponseField name="status" type="integer">
+  HTTP status code 200 indicates success
+</ResponseField>
+
+## Remove System Account
+
+Remove system accounts from the system.
+
+<CodeGroup>
+```bash cURL
+curl -X POST http://localhost:5001/user/systemuid_remove \
+  -H "Content-Type: application/json" \
+  -d '{
+    "uids": ["old_system_bot"]
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5001/user/systemuid_remove', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    uids: ['old_system_bot']
+  })
+});
+```
+</CodeGroup>
+
+### Request Parameters
+
+<ParamField body="uids" type="array" required>
+  Array of system user IDs to remove.
+</ParamField>
+
+### Response
+
+<ResponseField name="status" type="integer">
+  HTTP status code 200 indicates success
+</ResponseField>
+
+## Update User Information
+
+Update user profile information such as name, avatar, and other metadata.
+
+<CodeGroup>
+```bash cURL
+curl -X PUT http://localhost:5001/user/user123 \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "John Doe",
+    "avatar": "https://example.com/avatar.jpg",
+    "extra": {
+      "email": "john@example.com",
+      "department": "Engineering"
+    }
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5001/user/user123', {
+  method: 'PUT',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    name: 'John Doe',
+    avatar: 'https://example.com/avatar.jpg',
+    extra: {
+      email: 'john@example.com',
+      department: 'Engineering'
+    }
+  })
+});
+```
+</CodeGroup>
+
+### Request Parameters
+
+<ParamField body="name" type="string">
+  Display name for the user
+</ParamField>
+
+<ParamField body="avatar" type="string">
+  URL to the user's avatar image
+</ParamField>
+
+<ParamField body="extra" type="object">
+  Additional user metadata as key-value pairs
+</ParamField>
+
+## Best Practices
+
+### Token Management
+
+<Callout type="warning">
+  **Security**: Never expose user tokens to client applications. Always generate and validate tokens on your backend server.
+</Callout>
+
+- Use secure, random tokens (UUID v4 recommended)
+- Implement token expiration and refresh mechanisms
+- Store tokens securely in your backend database
+- Validate tokens before allowing WuKongIM connections
+
+### Device Management
+
+- Use consistent `device_flag` values across your application
+- Handle device conflicts gracefully when primary devices kick each other off
+- Consider implementing device registration notifications
+
+### Error Handling
+
+Always check HTTP status codes and handle errors appropriately:
+
+```javascript
+const response = await fetch('/user/token', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(userData)
+});
+
+if (!response.ok) {
+  const error = await response.json();
+  console.error('User registration failed:', error.msg);
+  // Handle error appropriately
+}
+```
+
+## Related APIs
+
+<CardGroup cols={2}>
+  <Card
+    title="Channel Management"
+    icon="hash"
+    href="/api/channels"
+  >
+    Manage channels and subscriptions
+  </Card>
+  <Card
+    title="Message API"
+    icon="message"
+    href="/api/messages"
+  >
+    Send and manage messages
+  </Card>
+  <Card
+    title="Authentication Setup"
+    icon="shield-check"
+    href="/server/configuration/auth"
+  >
+    Configure authentication
+  </Card>
+  <Card
+    title="Webhooks"
+    icon="webhook"
+    href="/api/webhooks"
+  >
+    Real-time event notifications
+  </Card>
+</CardGroup>

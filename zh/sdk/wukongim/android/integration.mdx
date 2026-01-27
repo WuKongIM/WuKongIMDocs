@@ -1,0 +1,84 @@
+---
+title: "集成指南"
+description: "WuKongIM Android SDK 集成和初始化配置指南"
+icon: "rocket"
+---
+
+## 快速入门
+
+**Gradle**
+
+[![](https://jitpack.io/v/WuKongIM/WuKongIMAndroidSDK.svg)](https://jitpack.io/#WuKongIM/WuKongIMAndroidSDK)
+
+```
+implementation implementation 'com.github.WuKongIM:WuKongIMAndroidSDK:version' // 版本号请看上面
+```
+
+jitpack 还需在主程序的`build.gradle`文件中添加：
+
+```
+allprojects {
+    repositories {
+        ...
+        maven { url 'https://jitpack.io' }
+    }
+}
+```
+
+由于 sdk 内使用了 sqlcipher 加密数据库和 curve25519 加密算法，需将库添加到项目中
+
+```
+implementation "net.zetetic:android-database-sqlcipher:4.5.3"
+implementation "androidx.sqlite:sqlite-ktx:2.3.1"
+implementation 'org.whispersystems:curve25519-android:0.5.0'
+implementation 'org.whispersystems:signal-protocol-android:2.8.1'
+```
+
+**混淆**
+
+```
+-dontwarn com.xinbida.wukongim.**
+-keep class com.xinbida.wukongim.**{*;}
+
+#数据库加密
+-keep,includedescriptorclasses class net.sqlcipher.** { *; }
+-keep,includedescriptorclasses interface net.sqlcipher.** { *; }
+
+#--------- 混淆dh curve25519-------
+-keep class org.whispersystems.curve25519.**{*;}
+-keep class org.whispersystems.** { *; }
+-keep class org.thoughtcrime.securesms.** { *; }
+```
+
+## 下一步
+
+<CardGroup cols={2}>
+  <Card
+    title="基础功能"
+    icon="foundation"
+    href="/zh/sdk/wukongim/android/base"
+  >
+    学习 SDK 基础功能使用
+  </Card>
+  <Card
+    title="消息处理"
+    icon="message-circle"
+    href="/zh/sdk/wukongim/android/message"
+  >
+    实现消息收发功能
+  </Card>
+  <Card
+    title="频道管理"
+    icon="hash"
+    href="/zh/sdk/wukongim/android/channel"
+  >
+    管理频道和群组
+  </Card>
+  <Card
+    title="会话管理"
+    icon="users"
+    href="/zh/sdk/wukongim/android/conversation"
+  >
+    处理会话列表
+  </Card>
+</CardGroup>

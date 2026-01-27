@@ -1,0 +1,588 @@
+---
+title: "发送消息"
+description: "向指定频道发送消息"
+api: "POST /message/send"
+---
+
+## 概述
+
+向指定频道发送消息，支持文本、图片、文件等多种消息类型。
+
+## 请求体
+
+### 必传参数
+
+<ParamField body="payload" type="string" required>
+Base64 编码的消息内容
+</ParamField>
+
+<ParamField body="from_uid" type="string" required>
+发送者用户 ID
+</ParamField>
+
+<ParamField body="channel_id" type="string" required>
+目标频道 ID
+</ParamField>
+
+<ParamField body="channel_type" type="integer" required>
+频道类型 (1=个人频道, 2=群组频道)
+</ParamField>
+
+### 可选参数
+
+<ParamField body="header" type="object">
+消息头部信息
+<Expandable title="header 字段">
+<ParamField body="header.no_persist" type="integer">
+是否不持久化消息 (0=持久化, 1=不持久化)
+</ParamField>
+<ParamField body="header.red_dot" type="integer">
+是否显示红点通知 (0=不显示, 1=显示)
+</ParamField>
+<ParamField body="header.sync_once" type="integer">
+是否是写扩散，这里一般是0，只有cmd消息才是1
+</ParamField>
+</Expandable>
+</ParamField>
+
+<ParamField body="client_msg_no" type="string">
+客户端消息编号，用于去重和状态跟踪
+</ParamField>
+
+<ParamField body="stream_no" type="string">
+流消息编号
+</ParamField>
+
+<ParamField body="expire" type="integer">
+消息过期时间（秒），0 表示不过期
+</ParamField>
+
+<ParamField body="subscribers" type="array">
+指定接收消息的订阅者列表（此参数只有CMD消息才有效）
+<ParamField body="subscribers[]" type="string">
+订阅者用户 ID
+</ParamField>
+</ParamField>
+
+
+<RequestExample>
+```bash cURL
+curl -X POST "http://localhost:5001/message/send" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "header": {
+      "no_persist": 0,
+      "red_dot": 1,
+      "sync_once": 0
+    },
+    "client_msg_no": "client_msg_123",
+    "from_uid": "user123",
+    "channel_id": "group123",
+    "channel_type": 2,
+    "expire": 0,
+    "payload": "SGVsbG8gV29ybGQ=",
+    "tag_key": "important"
+  }'
+```
+
+```javascript JavaScript
+// 发送文本消息
+const textMessage = {
+  header: {
+    no_persist: 0,
+    red_dot: 1,
+    sync_once: 0
+  },
+  client_msg_no: `msg_${Date.now()}`,
+  from_uid: "user123",
+  channel_id: "group123",
+  channel_type: 2,
+  expire: 0,
+  payload: btoa(JSON.stringify({
+    type: "text",
+    content: "Hello, World!"
+  })),
+  tag_key: "normal"
+};
+
+const response = await fetch('http://localhost:5001/message/send', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify(textMessage)
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+import base64
+import json
+
+# 发送文本消息
+message_content = {
+    "type": "text",
+    "content": "Hello, World!"
+}
+
+payload = base64.b64encode(
+    json.dumps(message_content).encode('utf-8')
+).decode('utf-8')
+
+data = {
+    "header": {
+        "no_persist": 0,
+        "red_dot": 1,
+        "sync_once": 0
+    },
+    "client_msg_no": f"msg_{int(time.time() * 1000)}",
+    "from_uid": "user123",
+    "channel_id": "group123",
+    "channel_type": 2,
+    "expire": 0,
+    "payload": payload,
+    "tag_key": "normal"
+}
+
+response = requests.post('http://localhost:5001/message/send', json=data)
+result = response.json()
+print(result)
+```
+
+```go Go
+package main
+
+import (
+    "bytes"
+    "encoding/base64"
+    "encoding/json"
+    "fmt"
+    "net/http"
+    "time"
+)
+
+func main() {
+    // 消息内容
+    messageContent := map[string]interface{}{
+        "type":    "text",
+        "content": "Hello, World!",
+    }
+    
+    contentBytes, _ := json.Marshal(messageContent)
+    payload := base64.StdEncoding.EncodeToString(contentBytes)
+    
+    data := map[string]interface{}{
+        "header": map[string]interface{}{
+            "no_persist": 0,
+            "red_dot":    1,
+            "sync_once":  0,
+        },
+        "client_msg_no": fmt.Sprintf("msg_%d", time.Now().UnixMilli()),
+        "from_uid":      "user123",
+        "channel_id":    "group123",
+        "channel_type":  2,
+        "expire":        0,
+        "payload":       payload,
+        "tag_key":       "normal",
+    }
+    
+    jsonData, _ := json.Marshal(data)
+    
+    resp, err := http.Post(
+        "http://localhost:5001/message/send",
+        "application/json",
+        bytes.NewBuffer(jsonData),
+    )
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    var result map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Printf("%+v\n", result)
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json 成功响应
+{
+  "message_id": 123456789,
+  "message_seq": 1001,
+  "client_msg_no": "client_msg_123"
+}
+```
+</ResponseExample>
+
+## 响应字段
+
+<ResponseField name="message_id" type="integer" required>
+服务器生成的消息 ID
+</ResponseField>
+
+<ResponseField name="message_seq" type="integer" required>
+消息序列号
+</ResponseField>
+
+<ResponseField name="client_msg_no" type="string" required>
+客户端消息编号（回显）
+</ResponseField>
+
+## 状态码
+
+| 状态码 | 说明 |
+|--------|------|
+| 200 | 消息发送成功 |
+| 400 | 请求参数错误 |
+| 403 | 没有发送权限 |
+| 500 | 服务器内部错误 |
+
+## 消息类型示例
+
+根据 WuKongIM 协议规范，以下是推荐的 Payload 结构示例：
+
+### 普通消息
+
+#### 文本消息
+
+```json
+{
+    "type": 1,
+    "content": "这是一条文本消息"
+}
+```
+
+#### 文本消息（带@功能）
+
+```json
+{
+    "type": 1,
+    "content": "这是一条文本消息",
+    "mention": {
+        "all": 0,
+        "uids": ["1223", "2323"]
+    }
+}
+```
+
+<Note>
+- `mention.all`: 是否@所有人 (0=@用户, 1=@所有人)
+- `mention.uids`: 如果 all=1，此字段为空
+</Note>
+
+#### 文本消息（带回复）
+
+```json
+{
+    "type": 1,
+    "content": "回复了某某",
+    "reply": {
+        "root_mid": "xxx",
+        "message_id": "xxxx",
+        "message_seq": 123,
+        "from_uid": "xxxx",
+        "from_name": "xxx",
+        "payload": {}
+    }
+}
+```
+
+#### 图片消息
+
+```json
+{
+    "type": 2,
+    "url": "http://xxxxx.com/xxx",
+    "width": 200,
+    "height": 320
+}
+```
+
+#### GIF 消息
+
+```json
+{
+    "type": 3,
+    "url": "http://xxxxx.com/xxx",
+    "width": 72,
+    "height": 72
+}
+```
+
+#### 语音消息
+
+```json
+{
+    "type": 4,
+    "url": "http://xxxxx.com/xxx",
+    "timeTrad": 10
+}
+```
+
+<Note>
+`timeTrad`: 语音时长（秒）
+</Note>
+
+#### 文件消息
+
+```json
+{
+    "type": 8,
+    "url": "http://xxxxx.com/xxx",
+    "name": "xxxx.docx",
+    "size": 238734
+}
+```
+
+<Note>
+`size`: 文件大小，单位为 byte
+</Note>
+
+#### 命令消息
+
+```json
+{
+    "type": 99,
+    "cmd": "groupUpdate",
+    "param": {}
+}
+```
+
+### 系统消息
+
+<Note>
+系统消息的 type 必须大于 1000
+</Note>
+
+#### 创建群聊
+
+消息设置：`NoPersist:0, RedDot:0, SyncOnce:1`
+
+```json
+{
+    "type": 1001,
+    "creator": "xxx",
+    "creator_name": "张三",
+    "content": "{0}邀请{1}、{2}加入群聊",
+    "extra": [
+        {"uid": "xxx", "name": "张三"},
+        {"uid": "xx01", "name": "李四"},
+        {"uid": "xx02", "name": "王五"}
+    ]
+}
+```
+
+#### 添加群成员
+
+消息设置：`NoPersist:0, RedDot:0, SyncOnce:1`
+
+```json
+{
+    "type": 1002,
+    "content": "{0}邀请{1}、{2}加入群聊",
+    "extra": [
+        {"uid": "xxx", "name": "张三"},
+        {"uid": "xx01", "name": "李四"},
+        {"uid": "xx02", "name": "王五"}
+    ]
+}
+```
+
+#### 移除群成员
+
+消息设置：`NoPersist:0, RedDot:0, SyncOnce:1`
+
+```json
+{
+    "type": 1003,
+    "content": "{0}将{1}移除群聊",
+    "extra": [
+        {"uid": "xxx", "name": "张三"},
+        {"uid": "xx01", "name": "李四"}
+    ]
+}
+```
+
+#### 群成员被踢
+
+消息设置：`NoPersist:0, RedDot:1, SyncOnce:0`
+
+```json
+{
+    "type": 1010,
+    "content": "你被{0}移除群聊",
+    "extra": [
+        {"uid": "xxx", "name": "张三"}
+    ]
+}
+```
+
+#### 更新群名称
+
+消息设置：`NoPersist:0, RedDot:0, SyncOnce:1`
+
+```json
+{
+    "type": 1005,
+    "content": "{0}修改群名为\"测试群\"",
+    "extra": [
+        {"uid": "xxx", "name": "张三"}
+    ]
+}
+```
+
+#### 更新群公告
+
+消息设置：`NoPersist:0, RedDot:0, SyncOnce:1`
+
+```json
+{
+    "type": 1005,
+    "content": "{0}修改群公告为\"这是一个群公告\"",
+    "extra": [
+        {"uid": "xxx", "name": "张三"}
+    ]
+}
+```
+
+#### 撤回消息
+
+消息设置：`NoPersist:0, RedDot:0, SyncOnce:1`
+
+```json
+{
+    "type": 1006,
+    "message_id": "234343435",
+    "content": "{0}撤回了一条消息",
+    "extra": [
+        {"uid": "xxx", "name": "张三"}
+    ]
+}
+```
+
+### 命令类消息
+
+#### 基础命令消息
+
+消息设置：`SyncOnce:1`
+
+```json
+{
+    "type": 99,
+    "cmd": "cmd",
+    "param": {}
+}
+```
+
+#### 群成员信息更新
+
+收到此消息客户端应该增量同步群成员信息
+
+```json
+{
+    "type": 99,
+    "cmd": "memberUpdate",
+    "param": {
+        "group_no": "xxxx"
+    }
+}
+```
+
+#### 红点消除
+
+收到此命令客户端应将对应的会话信息的红点消除
+
+```json
+{
+    "type": 99,
+    "cmd": "unreadClear",
+    "param": {
+        "channel_id": "xxxx",
+        "channel_type": 2
+    }
+}
+```
+
+### 使用示例
+
+<CodeGroup>
+
+```javascript JavaScript
+// 发送文本消息
+const textMessage = {
+    type: 1,
+    content: "这是一条文本消息"
+};
+
+const payload = btoa(JSON.stringify(textMessage));
+
+const response = await fetch('/message/send', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+        from_uid: "user123",
+        channel_id: "group123",
+        channel_type: 2,
+        payload: payload
+    })
+});
+```
+
+```python Python
+import base64
+import json
+
+# 发送图片消息
+image_message = {
+    "type": 2,
+    "url": "http://example.com/image.jpg",
+    "width": 200,
+    "height": 320
+}
+
+payload = base64.b64encode(
+    json.dumps(image_message).encode('utf-8')
+).decode('utf-8')
+
+data = {
+    "from_uid": "user123",
+    "channel_id": "group123",
+    "channel_type": 2,
+    "payload": payload
+}
+```
+
+```go Go
+package main
+
+import (
+    "encoding/base64"
+    "encoding/json"
+)
+
+// 发送语音消息
+voiceMessage := map[string]interface{}{
+    "type":     4,
+    "url":      "http://example.com/voice.mp3",
+    "timeTrad": 10,
+}
+
+contentBytes, _ := json.Marshal(voiceMessage)
+payload := base64.StdEncoding.EncodeToString(contentBytes)
+```
+
+</CodeGroup>
+
+## 最佳实践
+
+1. **消息去重**：使用唯一的 client_msg_no 避免重复发送
+3. **消息队列**：对于发送失败的消息，加入重试队列
+4. **内容编码**：确保 payload 正确进行 Base64 编码
+5. **权限检查**：发送前检查用户是否有发送权限
+6. **消息类型**：严格按照协议规范使用正确的消息类型编号
+7. **系统消息**：系统消息类型必须大于 1000，并设置正确的消息标志位
+8. **命令消息**：命令类消息应设置 SyncOnce:1 标志位

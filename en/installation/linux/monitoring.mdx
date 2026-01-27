@@ -1,0 +1,452 @@
+---
+title: "Monitoring Setup"
+description: "Set up monitoring system for WuKongIM Linux deployment"
+icon: "activity"
+---
+
+# Monitoring
+
+Setting up comprehensive monitoring for WuKongIM ensures optimal performance and early detection of issues.
+
+## Prerequisites
+
+Install [Prometheus](https://github.com/prometheus/prometheus) for metrics collection and monitoring.
+
+### Install Prometheus
+
+<CodeGroup>
+```bash Ubuntu/Debian
+# Download Prometheus
+wget https://github.com/prometheus/prometheus/releases/download/v2.45.0/prometheus-2.45.0.linux-amd64.tar.gz
+
+# Extract
+tar xvfz prometheus-2.45.0.linux-amd64.tar.gz
+cd prometheus-2.45.0.linux-amd64
+
+# Create user and directories
+sudo useradd --no-create-home --shell /bin/false prometheus
+sudo mkdir /etc/prometheus
+sudo mkdir /var/lib/prometheus
+sudo chown prometheus:prometheus /etc/prometheus
+sudo chown prometheus:prometheus /var/lib/prometheus
+
+# Copy binaries
+sudo cp prometheus /usr/local/bin/
+sudo cp promtool /usr/local/bin/
+sudo chown prometheus:prometheus /usr/local/bin/prometheus
+sudo chown prometheus:prometheus /usr/local/bin/promtool
+```
+
+```bash CentOS/RHEL
+# Download Prometheus
+wget https://github.com/prometheus/prometheus/releases/download/v2.45.0/prometheus-2.45.0.linux-amd64.tar.gz
+
+# Extract
+tar xvfz prometheus-2.45.0.linux-amd64.tar.gz
+cd prometheus-2.45.0.linux-amd64
+
+# Create user and directories
+sudo useradd --no-create-home --shell /bin/false prometheus
+sudo mkdir /etc/prometheus
+sudo mkdir /var/lib/prometheus
+sudo chown prometheus:prometheus /etc/prometheus
+sudo chown prometheus:prometheus /var/lib/prometheus
+
+# Copy binaries
+sudo cp prometheus /usr/local/bin/
+sudo cp promtool /usr/local/bin/
+sudo chown prometheus:prometheus /usr/local/bin/prometheus
+sudo chown prometheus:prometheus /usr/local/bin/promtool
+```
+</CodeGroup>
+
+## Configure Prometheus
+
+Add WuKongIM monitoring targets under the `scrape_configs` section in your Prometheus configuration.
+
+### Single Node Configuration
+
+For single node deployment, create `/etc/prometheus/prometheus.yml`:
+
+```yaml
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'wukongim-trace-metrics'
+    static_configs:
+      - targets: ['xx.xx.xx.xx:5300']
+        labels:
+          id: "1001"
+          instance: "wukongim-node1"
+```
+
+### Multi-Node Configuration
+
+For multi-node cluster deployment:
+
+```yaml
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'wukongim1-trace-metrics'
+    static_configs:
+      - targets: ['10.206.0.13:5300']
+        labels:
+          id: "1001"
+          instance: "wukongim-node1"
+          
+  - job_name: 'wukongim2-trace-metrics'
+    static_configs:
+      - targets: ['10.206.0.14:5300']
+        labels:
+          id: "1002"
+          instance: "wukongim-node2"
+          
+  - job_name: 'wukongim3-trace-metrics'
+    static_configs:
+      - targets: ['10.206.0.8:5300']
+        labels:
+          id: "1003"
+          instance: "wukongim-node3"
+```
+
+**Configuration Parameters**:
+- `job_name`: Unique job name for each WuKongIM node
+- `targets`: WuKongIM internal IP + port 5300
+- `labels.id`: WuKongIM node ID
+- `labels.instance`: Human-readable instance name
+
+Replace `xx.xx.xx.xx` with the actual internal IP address of your WuKongIM nodes.
+
+## Configure WuKongIM
+
+Add Prometheus configuration to each node's `wk.yaml` file:
+
+```yaml
+mode: "release"
+# ... other configurations ...
+
+trace:
+  prometheusApiUrl: "http://xx.xx.xx.xx:9090"
+```
+
+Replace `xx.xx.xx.xx` with the internal IP address of your Prometheus server.
+
+### Complete WuKongIM Configuration Example
+
+```yaml
+mode: "release"
+rootDir: "./wukongim_data"
+
+# Cluster configuration (for multi-node)
+cluster:
+  nodeId: 1001
+  serverAddr: "10.206.0.13:11110"
+  apiUrl: "http://10.206.0.13:5001"
+  initNodes:
+    - "1001@10.206.0.13:11110"
+    - "1002@10.206.0.14:11110"
+    - "1003@10.206.0.8:11110"
+
+# External configuration
+external:
+  ip: "119.45.229.172"
+  tcpAddr: "119.45.229.172:15100"
+  wsAddr: "ws://119.45.229.172:15200"
+
+# Monitoring configuration
+trace:
+  prometheusApiUrl: "http://10.206.0.13:9090"
+  
+# Logging configuration
+logger:
+  level: "info"
+  dir: "./logs"
+```
+
+## Start Services
+
+### Start Prometheus
+
+Create a systemd service file for Prometheus:
+
+```bash
+sudo nano /etc/systemd/system/prometheus.service
+```
+
+Add the following content:
+
+```ini
+[Unit]
+Description=Prometheus
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+User=prometheus
+Group=prometheus
+Type=simple
+ExecStart=/usr/local/bin/prometheus \
+    --config.file /etc/prometheus/prometheus.yml \
+    --storage.tsdb.path /var/lib/prometheus/ \
+    --web.console.templates=/etc/prometheus/consoles \
+    --web.console.libraries=/etc/prometheus/console_libraries \
+    --web.listen-address=0.0.0.0:9090 \
+    --web.external-url=
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Enable and start Prometheus:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable prometheus
+sudo systemctl start prometheus
+sudo systemctl status prometheus
+```
+
+### Restart WuKongIM
+
+After updating the configuration, restart WuKongIM on all nodes:
+
+```bash
+./wukongim stop
+./wukongim --config wk.yaml -d
+```
+
+## Verification
+
+### Check Prometheus Targets
+
+1. Access Prometheus web interface: `http://prometheus-server-ip:9090`
+2. Go to **Status** → **Targets**
+3. Verify all WuKongIM targets are **UP**
+
+### Check Metrics
+
+Query WuKongIM metrics in Prometheus:
+
+```promql
+# Check if WuKongIM metrics are being collected
+wukongim_connections_total
+
+# Check message throughput
+rate(wukongim_messages_total[5m])
+
+# Check memory usage
+wukongim_memory_usage_bytes
+
+# Check CPU usage
+wukongim_cpu_usage_percent
+```
+
+## Key Metrics to Monitor
+
+### System Metrics
+
+| Metric | Description |
+|--------|-------------|
+| `wukongim_connections_total` | Total number of active connections |
+| `wukongim_messages_total` | Total number of messages processed |
+| `wukongim_memory_usage_bytes` | Memory usage in bytes |
+| `wukongim_cpu_usage_percent` | CPU usage percentage |
+| `wukongim_disk_usage_bytes` | Disk usage in bytes |
+
+### Cluster Metrics (Multi-node)
+
+| Metric | Description |
+|--------|-------------|
+| `wukongim_cluster_nodes_total` | Total number of cluster nodes |
+| `wukongim_cluster_leader_changes_total` | Number of leader changes |
+| `wukongim_cluster_proposals_failed_total` | Failed proposals count |
+| `wukongim_cluster_proposals_committed_total` | Committed proposals count |
+
+### Performance Metrics
+
+| Metric | Description |
+|--------|-------------|
+| `wukongim_message_latency_seconds` | Message processing latency |
+| `wukongim_api_request_duration_seconds` | API request duration |
+| `wukongim_websocket_connections` | WebSocket connections count |
+| `wukongim_tcp_connections` | TCP connections count |
+
+## Alerting Rules
+
+Create alerting rules in `/etc/prometheus/alert_rules.yml`:
+
+```yaml
+groups:
+  - name: wukongim
+    rules:
+      - alert: WuKongIMDown
+        expr: up{job=~"wukongim.*"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "WuKongIM instance is down"
+          description: "WuKongIM instance {{ $labels.instance }} has been down for more than 1 minute."
+
+      - alert: HighMemoryUsage
+        expr: wukongim_memory_usage_bytes / (1024*1024*1024) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage on WuKongIM"
+          description: "WuKongIM instance {{ $labels.instance }} is using more than 2GB of memory."
+
+      - alert: HighCPUUsage
+        expr: wukongim_cpu_usage_percent > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage on WuKongIM"
+          description: "WuKongIM instance {{ $labels.instance }} CPU usage is above 80%."
+
+      - alert: TooManyConnections
+        expr: wukongim_connections_total > 10000
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Too many connections on WuKongIM"
+          description: "WuKongIM instance {{ $labels.instance }} has more than 10,000 active connections."
+```
+
+Update Prometheus configuration to include alert rules:
+
+```yaml
+# Add to prometheus.yml
+rule_files:
+  - "alert_rules.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+```
+
+## Grafana Dashboard
+
+### Install Grafana
+
+```bash
+# Add Grafana repository
+sudo apt-get install -y software-properties-common
+sudo add-apt-repository "deb https://packages.grafana.com/oss/deb stable main"
+wget -q -O - https://packages.grafana.com/gpg.key | sudo apt-key add -
+
+# Install Grafana
+sudo apt-get update
+sudo apt-get install grafana
+
+# Start Grafana
+sudo systemctl enable grafana-server
+sudo systemctl start grafana-server
+```
+
+### Configure Data Source
+
+1. Access Grafana: `http://grafana-server-ip:3000` (admin/admin)
+2. Add Prometheus data source: `http://prometheus-server-ip:9090`
+3. Import WuKongIM dashboard or create custom dashboards
+
+### Sample Dashboard Queries
+
+**Connection Count**:
+```promql
+sum(wukongim_connections_total)
+```
+
+**Message Rate**:
+```promql
+sum(rate(wukongim_messages_total[5m]))
+```
+
+**Memory Usage**:
+```promql
+wukongim_memory_usage_bytes / (1024*1024*1024)
+```
+
+**CPU Usage**:
+```promql
+wukongim_cpu_usage_percent
+```
+
+## Troubleshooting
+
+### Prometheus Not Collecting Metrics
+
+```bash
+# Check if WuKongIM metrics endpoint is accessible
+curl http://wukongim-node-ip:5300/metrics
+
+# Check Prometheus logs
+sudo journalctl -u prometheus -f
+
+# Verify Prometheus configuration
+promtool check config /etc/prometheus/prometheus.yml
+```
+
+### WuKongIM Not Sending Metrics
+
+```bash
+# Check WuKongIM logs
+tail -f ./wukongim_data/logs/wukongim.log
+
+# Verify trace configuration in wk.yaml
+grep -A 5 "trace:" wk.yaml
+
+# Test connectivity to Prometheus
+curl http://prometheus-server-ip:9090/api/v1/targets
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Performance Tuning"
+    icon="gauge"
+    href="/en/server/configuration"
+  >
+    Optimize WuKongIM performance based on monitoring data
+  </Card>
+  <Card
+    title="Backup Strategy"
+    icon="shield"
+    href="/en/server/configuration/backup"
+  >
+    Set up automated backup and recovery
+  </Card>
+  <Card
+    title="Load Testing"
+    icon="chart-line"
+    href="/en/getting-started/stress-report"
+  >
+    Test system performance under load
+  </Card>
+  <Card
+    title="Cluster Management"
+    icon="server"
+    href="/en/installation/linux/multi-node"
+  >
+    Learn about cluster scaling and management
+  </Card>
+</CardGroup>

@@ -1,0 +1,415 @@
+---
+title: "Basic Features"
+description: "WuKongIM JavaScript SDK basic functionality, including configuration, connection management and status monitoring"
+icon: "building"
+---
+
+## Configuration
+
+### Basic Configuration
+
+```javascript
+// For cluster mode, get connection address through this method
+// WKSDK.shared().config.provider.connectAddrCallback = async (callback) => {
+//     const addr = await getServerAddress(); // addr format: ip:port
+//     callback(addr);
+// }
+
+// For single server mode, set address directly
+WKSDK.shared().config.addr = 'ws://IP:PORT'; // Default port is 5200
+
+// Authentication information
+WKSDK.shared().config.uid = 'xxxx'; // User uid (must be registered with WuKong communication end)
+WKSDK.shared().config.token = 'xxxx'; // User token (must be registered with WuKong communication end)
+```
+
+### Advanced Configuration
+
+```javascript
+const sdk = WKSDK.shared();
+
+// Connection settings
+sdk.config.addr = 'ws://your-server.com:5200';
+sdk.config.uid = 'user123';
+sdk.config.token = 'user-auth-token';
+
+// Optional settings
+sdk.config.heartbeatInterval = 30000; // Heartbeat interval (ms)
+sdk.config.reconnectInterval = 5000;  // Reconnect interval (ms)
+sdk.config.maxReconnectAttempts = 10; // Max reconnect attempts
+
+// Debug settings
+sdk.config.debug = true;              // Enable debug mode
+sdk.config.logLevel = 'debug';        // Log level: debug, info, warn, error
+
+// API settings
+sdk.config.apiURL = 'http://your-api-server.com';
+sdk.config.uploadURL = 'http://your-upload-server.com';
+
+// Storage settings
+sdk.config.enableLocalStorage = true; // Enable local storage
+sdk.config.storagePrefix = 'wk_';     // Storage key prefix
+```
+
+### Cluster Mode Configuration
+
+For distributed/cluster deployments:
+
+```javascript
+// Dynamic server address resolution
+WKSDK.shared().config.provider.connectAddrCallback = async (callback) => {
+    try {
+        // Call your load balancer or service discovery
+        const response = await fetch('/api/im/server-address');
+        const data = await response.json();
+        const addr = `${data.ip}:${data.port}`;
+        callback(addr);
+    } catch (error) {
+        console.error('Failed to get server address:', error);
+        // Fallback to default
+        callback('ws://fallback-server.com:5200');
+    }
+};
+```
+
+### Environment-Specific Configuration
+
+```javascript
+// Development environment
+if (process.env.NODE_ENV === 'development') {
+    sdk.config.addr = 'ws://localhost:5200';
+    sdk.config.debug = true;
+    sdk.config.logLevel = 'debug';
+}
+
+// Production environment
+if (process.env.NODE_ENV === 'production') {
+    sdk.config.addr = 'wss://your-production-server.com:5200';
+    sdk.config.debug = false;
+    sdk.config.logLevel = 'error';
+}
+```
+
+For more configuration options, check: `WKSDK.shared().config`
+
+## Connection Management
+
+### Connect
+
+```javascript
+// Connect to server
+WKSDK.shared().connectManager.connect();
+```
+
+### Disconnect
+
+```javascript
+// Disconnect from server
+WKSDK.shared().connectManager.disconnect();
+```
+
+### Check Connection Status
+
+```javascript
+// Check if currently connected
+const isConnected = WKSDK.shared().connectManager.isConnected();
+console.log('Connected:', isConnected);
+
+// Get current connection status
+const status = WKSDK.shared().connectManager.getStatus();
+console.log('Current status:', status);
+```
+
+## Connection Status Monitoring
+
+### Basic Status Listener
+
+```javascript
+// Listen for connection status changes
+WKSDK.shared().connectManager.addConnectStatusListener(
+    (status, reasonCode) => {
+        switch (status) {
+            case ConnectStatus.Connected:
+                console.log('Connection successful');
+                break;
+            case ConnectStatus.Connecting:
+                console.log('Connecting...');
+                break;
+            case ConnectStatus.Disconnected:
+                console.log('Disconnected');
+                break;
+            case ConnectStatus.ConnectFailed:
+                console.log('Connection failed', reasonCode);
+                if (reasonCode === 2) {
+                    console.log('Authentication failed (uid or token error)');
+                }
+                break;
+        }
+    }
+);
+```
+
+### Advanced Status Handling
+
+```javascript
+class ConnectionManager {
+    constructor() {
+        this.setupConnectionListener();
+    }
+    
+    setupConnectionListener() {
+        WKSDK.shared().connectManager.addConnectStatusListener(
+            (status, reasonCode) => {
+                this.handleConnectionStatus(status, reasonCode);
+            }
+        );
+    }
+    
+    handleConnectionStatus(status, reasonCode) {
+        switch (status) {
+            case ConnectStatus.Connected:
+                this.onConnected();
+                break;
+            case ConnectStatus.Connecting:
+                this.onConnecting();
+                break;
+            case ConnectStatus.Disconnected:
+                this.onDisconnected(reasonCode);
+                break;
+            case ConnectStatus.ConnectFailed:
+                this.onConnectFailed(reasonCode);
+                break;
+        }
+    }
+    
+    onConnected() {
+        console.log('✅ Connected to WuKongIM server');
+        // Update UI to show connected state
+        this.updateConnectionUI(true);
+        // Start syncing data
+        this.syncOfflineData();
+    }
+    
+    onConnecting() {
+        console.log('🔄 Connecting to server...');
+        this.updateConnectionUI(false, 'Connecting...');
+    }
+    
+    onDisconnected(reasonCode) {
+        console.log('❌ Disconnected from server', reasonCode);
+        this.updateConnectionUI(false, 'Disconnected');
+        
+        // Handle specific disconnect reasons
+        if (reasonCode === 1) {
+            console.log('Kicked by another device');
+            this.handleKickedOffline();
+        }
+    }
+    
+    onConnectFailed(reasonCode) {
+        console.error('❌ Connection failed', reasonCode);
+        this.updateConnectionUI(false, 'Connection failed');
+        
+        // Handle specific failure reasons
+        switch (reasonCode) {
+            case 2:
+                console.error('Authentication failed - invalid uid or token');
+                this.handleAuthFailure();
+                break;
+            case 3:
+                console.error('Network error');
+                this.handleNetworkError();
+                break;
+            default:
+                console.error('Unknown connection error');
+        }
+    }
+    
+    updateConnectionUI(connected, message = '') {
+        // Update your UI here
+        const statusElement = document.getElementById('connection-status');
+        if (statusElement) {
+            statusElement.textContent = connected ? 'Connected' : message;
+            statusElement.className = connected ? 'connected' : 'disconnected';
+        }
+    }
+    
+    syncOfflineData() {
+        // Sync conversations and messages after connection
+        WKSDK.shared().conversationManager.syncConversations();
+    }
+    
+    handleKickedOffline() {
+        // Redirect to login page or show notification
+        alert('You have been logged in from another device');
+        // window.location.href = '/login';
+    }
+    
+    handleAuthFailure() {
+        // Clear stored credentials and redirect to login
+        localStorage.removeItem('user_token');
+        // window.location.href = '/login';
+    }
+    
+    handleNetworkError() {
+        // Show network error message
+        console.log('Network error - will retry automatically');
+    }
+}
+
+// Initialize connection manager
+const connectionManager = new ConnectionManager();
+```
+
+## Connection Status Types
+
+| Status | Description |
+|--------|-------------|
+| `ConnectStatus.Connected` | Successfully connected to server |
+| `ConnectStatus.Connecting` | Attempting to connect |
+| `ConnectStatus.Disconnected` | Disconnected from server |
+| `ConnectStatus.ConnectFailed` | Connection attempt failed |
+
+## Reason Codes
+
+| Code | Description |
+|------|-------------|
+| `1` | Kicked by another device |
+| `2` | Authentication failed (invalid uid or token) |
+| `3` | Network error |
+| `4` | Server error |
+| `5` | Connection timeout |
+
+## Best Practices
+
+### 1. Automatic Reconnection
+
+```javascript
+class AutoReconnectManager {
+    constructor() {
+        this.reconnectAttempts = 0;
+        this.maxReconnectAttempts = 5;
+        this.reconnectDelay = 1000; // Start with 1 second
+        
+        this.setupConnectionListener();
+    }
+    
+    setupConnectionListener() {
+        WKSDK.shared().connectManager.addConnectStatusListener(
+            (status, reasonCode) => {
+                if (status === ConnectStatus.Connected) {
+                    this.reconnectAttempts = 0;
+                    this.reconnectDelay = 1000;
+                } else if (status === ConnectStatus.ConnectFailed) {
+                    this.handleReconnect(reasonCode);
+                }
+            }
+        );
+    }
+    
+    handleReconnect(reasonCode) {
+        // Don't reconnect on auth failure
+        if (reasonCode === 2) {
+            console.log('Auth failed - not attempting reconnect');
+            return;
+        }
+        
+        if (this.reconnectAttempts < this.maxReconnectAttempts) {
+            this.reconnectAttempts++;
+            console.log(`Reconnect attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts}`);
+            
+            setTimeout(() => {
+                WKSDK.shared().connectManager.connect();
+            }, this.reconnectDelay);
+            
+            // Exponential backoff
+            this.reconnectDelay = Math.min(this.reconnectDelay * 2, 30000);
+        } else {
+            console.log('Max reconnect attempts reached');
+        }
+    }
+}
+```
+
+### 2. Network State Monitoring
+
+```javascript
+// Monitor network connectivity
+window.addEventListener('online', () => {
+    console.log('Network back online - attempting to reconnect');
+    WKSDK.shared().connectManager.connect();
+});
+
+window.addEventListener('offline', () => {
+    console.log('Network went offline');
+});
+
+// For React applications
+useEffect(() => {
+    const handleOnline = () => {
+        WKSDK.shared().connectManager.connect();
+    };
+    
+    const handleOffline = () => {
+        console.log('Network offline');
+    };
+    
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    return () => {
+        window.removeEventListener('online', handleOnline);
+        window.removeEventListener('offline', handleOffline);
+    };
+}, []);
+```
+
+### 3. Page Visibility Handling
+
+```javascript
+// Handle page visibility changes
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+        // Page became visible - reconnect if needed
+        if (!WKSDK.shared().connectManager.isConnected()) {
+            WKSDK.shared().connectManager.connect();
+        }
+    } else {
+        // Page became hidden - optionally disconnect
+        // WKSDK.shared().connectManager.disconnect();
+    }
+});
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Chat Management"
+    icon="message-circle"
+    href="/en/sdk/wukongim/javascript/chat"
+  >
+    Learn how to handle message sending and receiving
+  </Card>
+  <Card
+    title="Channel Management"
+    icon="hash"
+    href="/en/sdk/wukongim/javascript/channel"
+  >
+    Manage channels and groups
+  </Card>
+  <Card
+    title="Conversation Management"
+    icon="users"
+    href="/en/sdk/wukongim/javascript/conversation"
+  >
+    Handle conversation lists
+  </Card>
+  <Card
+    title="Advanced Features"
+    icon="cog"
+    href="/en/sdk/wukongim/javascript/advance"
+  >
+    Explore advanced features and configuration
+  </Card>
+</CardGroup>

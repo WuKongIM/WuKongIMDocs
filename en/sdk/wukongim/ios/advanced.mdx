@@ -1,0 +1,490 @@
+---
+title: "Advanced Features"
+description: "WuKongIM iOS SDK advanced features including custom message types and extension functionality"
+icon: "settings"
+---
+
+Advanced features provide developers with the ability to extend WuKongIM iOS SDK, including custom message types, attachment message handling, and other enterprise-level functionality.
+
+## Custom Messages
+
+### Custom Regular Messages
+
+We'll use creating a custom GIF message as an example to demonstrate how to create custom message types.
+
+#### Step 1: Inherit WKMessageContent and Define Message Structure
+
+<CodeGroup>
+```objc Objective-C
+@interface WKGIFContent : WKMessageContent
+
+// GIF URL
+@property(nonatomic, copy) NSString *url;
+// Width
+@property(nonatomic, assign) NSInteger width;
+// Height
+@property(nonatomic, assign) NSInteger height;
+
+@end
+```
+
+```swift Swift
+class WKGIFContent: WKMessageContent {
+    
+    // GIF URL
+    var url: String?
+    // Width
+    var width: Int = 0
+    // Height
+    var height: Int = 0
+}
+```
+</CodeGroup>
+
+#### Step 2: Encoding and Decoding
+
+The final message content will be `{"type":3,"url":"xxxx","width":xxx,"height":xxx}`
+
+<CodeGroup>
+```objc Objective-C
+@implementation WKGIFContent
+
+// Encode message content to dictionary
+- (NSDictionary *)encodeMsg {
+    NSMutableDictionary *dataDict = [NSMutableDictionary dictionary];
+    if (self.url) {
+        dataDict[@"url"] = self.url;
+    }
+    dataDict[@"width"] = @(self.width);
+    dataDict[@"height"] = @(self.height);
+    return dataDict;
+}
+
+// Decode dictionary to message content
+- (void)decodeMsg:(NSDictionary *)contentDic {
+    self.url = contentDic[@"url"];
+    self.width = [contentDic[@"width"] integerValue];
+    self.height = [contentDic[@"height"] integerValue];
+}
+
+// Message type
+- (WKContentType)contentType {
+    return 3; // Custom type, avoid conflicts with built-in types
+}
+
+@end
+```
+
+```swift Swift
+extension WKGIFContent {
+    
+    // Encode message content to dictionary
+    override func encodeMsg() -> [String : Any] {
+        var dataDict: [String: Any] = [:]
+        if let url = self.url {
+            dataDict["url"] = url
+        }
+        dataDict["width"] = self.width
+        dataDict["height"] = self.height
+        return dataDict
+    }
+    
+    // Decode dictionary to message content
+    override func decodeMsg(_ contentDic: [String : Any]) {
+        self.url = contentDic["url"] as? String
+        self.width = contentDic["width"] as? Int ?? 0
+        self.height = contentDic["height"] as? Int ?? 0
+    }
+    
+    // Message type
+    override func contentType() -> WKContentType {
+        return 3 // Custom type, avoid conflicts with built-in types
+    }
+}
+```
+</CodeGroup>
+
+#### Step 3: Register Custom Message
+
+<CodeGroup>
+```objc Objective-C
+// Register in application initialization
+[[WKSDK shared] registerMessageContent:[WKGIFContent class]];
+```
+
+```swift Swift
+// Register in application initialization
+WKSDK.shared().registerMessageContent(WKGIFContent.self)
+```
+</CodeGroup>
+
+#### Step 4: Send Custom Message
+
+<CodeGroup>
+```objc Objective-C
+WKGIFContent *gifContent = [[WKGIFContent alloc] init];
+gifContent.url = @"https://example.com/sample.gif";
+gifContent.width = 200;
+gifContent.height = 150;
+
+WKChannel *channel = [[WKChannel alloc] initWithChannelID:@"user123" channelType:WKChannelTypePerson];
+
+[[WKSDK shared].chatManager sendMessage:gifContent channel:channel];
+```
+
+```swift Swift
+let gifContent = WKGIFContent()
+gifContent.url = "https://example.com/sample.gif"
+gifContent.width = 200
+gifContent.height = 150
+
+let channel = WKChannel(channelID: "user123", channelType: .person)
+
+WKSDK.shared().chatManager.sendMessage(gifContent, channel: channel)
+```
+</CodeGroup>
+
+### Custom Attachment Messages
+
+For messages that need to upload files (like images, videos, audio), you need to inherit from `WKMediaMessageContent`.
+
+#### Example: Custom Video Message
+
+<CodeGroup>
+```objc Objective-C
+@interface WKCustomVideoContent : WKMediaMessageContent
+
+@property(nonatomic, copy) NSString *videoUrl;
+@property(nonatomic, assign) NSTimeInterval duration;
+@property(nonatomic, copy) NSString *thumbnailUrl;
+
+@end
+
+@implementation WKCustomVideoContent
+
+- (NSDictionary *)encodeMsg {
+    NSMutableDictionary *dataDict = [NSMutableDictionary dictionary];
+    if (self.videoUrl) {
+        dataDict[@"video_url"] = self.videoUrl;
+    }
+    if (self.thumbnailUrl) {
+        dataDict[@"thumbnail_url"] = self.thumbnailUrl;
+    }
+    dataDict[@"duration"] = @(self.duration);
+    return dataDict;
+}
+
+- (void)decodeMsg:(NSDictionary *)contentDic {
+    self.videoUrl = contentDic[@"video_url"];
+    self.thumbnailUrl = contentDic[@"thumbnail_url"];
+    self.duration = [contentDic[@"duration"] doubleValue];
+}
+
+- (WKContentType)contentType {
+    return 4; // Custom video type
+}
+
+@end
+```
+
+```swift Swift
+class WKCustomVideoContent: WKMediaMessageContent {
+    
+    var videoUrl: String?
+    var duration: TimeInterval = 0
+    var thumbnailUrl: String?
+    
+    override func encodeMsg() -> [String : Any] {
+        var dataDict: [String: Any] = [:]
+        if let videoUrl = self.videoUrl {
+            dataDict["video_url"] = videoUrl
+        }
+        if let thumbnailUrl = self.thumbnailUrl {
+            dataDict["thumbnail_url"] = thumbnailUrl
+        }
+        dataDict["duration"] = self.duration
+        return dataDict
+    }
+    
+    override func decodeMsg(_ contentDic: [String : Any]) {
+        self.videoUrl = contentDic["video_url"] as? String
+        self.thumbnailUrl = contentDic["thumbnail_url"] as? String
+        self.duration = contentDic["duration"] as? TimeInterval ?? 0
+    }
+    
+    override func contentType() -> WKContentType {
+        return 4 // Custom video type
+    }
+}
+```
+</CodeGroup>
+
+## Message Extensions
+
+### Message Reactions
+
+Add reaction functionality to messages:
+
+<CodeGroup>
+```objc Objective-C
+// Add reaction to message
+WKMessage *message = // Get message object
+[[WKSDK shared].chatManager addReaction:@"👍" toMessage:message];
+
+// Remove reaction
+[[WKSDK shared].chatManager removeReaction:@"👍" fromMessage:message];
+
+// Listen for reaction updates
+[[NSNotificationCenter defaultCenter] addObserver:self 
+                                         selector:@selector(onMessageReactionUpdate:) 
+                                             name:@"WKMessageReactionUpdateNotification" 
+                                           object:nil];
+
+- (void)onMessageReactionUpdate:(NSNotification *)notification {
+    WKMessage *message = notification.userInfo[@"message"];
+    // Handle reaction update
+}
+```
+
+```swift Swift
+// Add reaction to message
+let message: WKMessage = // Get message object
+WKSDK.shared().chatManager.addReaction("👍", to: message)
+
+// Remove reaction
+WKSDK.shared().chatManager.removeReaction("👍", from: message)
+
+// Listen for reaction updates
+NotificationCenter.default.addObserver(
+    self,
+    selector: #selector(onMessageReactionUpdate(_:)),
+    name: NSNotification.Name("WKMessageReactionUpdateNotification"),
+    object: nil
+)
+
+@objc func onMessageReactionUpdate(_ notification: Notification) {
+    if let message = notification.userInfo?["message"] as? WKMessage {
+        // Handle reaction update
+    }
+}
+```
+</CodeGroup>
+
+### Message Replies
+
+Implement message reply functionality:
+
+<CodeGroup>
+```objc Objective-C
+// Reply to a message
+WKMessage *originalMessage = // Original message
+WKTextContent *replyContent = [[WKTextContent alloc] initWithContent:@"This is a reply"];
+
+// Set reply information
+replyContent.reply = [[WKReply alloc] init];
+replyContent.reply.messageID = originalMessage.messageID;
+replyContent.reply.messageSeq = originalMessage.messageSeq;
+replyContent.reply.fromUID = originalMessage.fromUID;
+replyContent.reply.payload = originalMessage.content;
+
+WKChannel *channel = [[WKChannel alloc] initWithChannelID:@"group123" channelType:WKChannelTypeGroup];
+[[WKSDK shared].chatManager sendMessage:replyContent channel:channel];
+```
+
+```swift Swift
+// Reply to a message
+let originalMessage: WKMessage = // Original message
+let replyContent = WKTextContent(content: "This is a reply")
+
+// Set reply information
+replyContent.reply = WKReply()
+replyContent.reply?.messageID = originalMessage.messageID
+replyContent.reply?.messageSeq = originalMessage.messageSeq
+replyContent.reply?.fromUID = originalMessage.fromUID
+replyContent.reply?.payload = originalMessage.content
+
+let channel = WKChannel(channelID: "group123", channelType: .group)
+WKSDK.shared().chatManager.sendMessage(replyContent, channel: channel)
+```
+</CodeGroup>
+
+## Advanced Configuration
+
+### Message Encryption
+
+Enable end-to-end encryption for messages:
+
+<CodeGroup>
+```objc Objective-C
+// Enable encryption
+WKOptions *options = [WKSDK shared].options;
+options.encryptionEnabled = YES;
+options.encryptionKey = @"your-encryption-key";
+
+// Send encrypted message
+WKTextContent *content = [[WKTextContent alloc] initWithContent:@"Encrypted message"];
+content.encryptionEnabled = YES;
+
+WKChannel *channel = [[WKChannel alloc] initWithChannelID:@"user123" channelType:WKChannelTypePerson];
+[[WKSDK shared].chatManager sendMessage:content channel:channel];
+```
+
+```swift Swift
+// Enable encryption
+let options = WKSDK.shared().options
+options.encryptionEnabled = true
+options.encryptionKey = "your-encryption-key"
+
+// Send encrypted message
+let content = WKTextContent(content: "Encrypted message")
+content.encryptionEnabled = true
+
+let channel = WKChannel(channelID: "user123", channelType: .person)
+WKSDK.shared().chatManager.sendMessage(content, channel: channel)
+```
+</CodeGroup>
+
+### Message Persistence Control
+
+Control message storage behavior:
+
+<CodeGroup>
+```objc Objective-C
+// Send temporary message (not stored)
+WKTextContent *content = [[WKTextContent alloc] initWithContent:@"Temporary message"];
+content.header.noPersist = YES;
+
+WKChannel *channel = [[WKChannel alloc] initWithChannelID:@"user123" channelType:WKChannelTypePerson];
+[[WKSDK shared].chatManager sendMessage:content channel:channel];
+```
+
+```swift Swift
+// Send temporary message (not stored)
+let content = WKTextContent(content: "Temporary message")
+content.header.noPersist = true
+
+let channel = WKChannel(channelID: "user123", channelType: .person)
+WKSDK.shared().chatManager.sendMessage(content, channel: channel)
+```
+</CodeGroup>
+
+## Performance Optimization
+
+### Message Caching
+
+Optimize message loading performance:
+
+<CodeGroup>
+```objc Objective-C
+// Configure message cache
+WKOptions *options = [WKSDK shared].options;
+options.messageCacheCount = 1000; // Cache 1000 messages
+options.messageCacheExpiry = 3600; // Cache for 1 hour
+
+// Preload messages
+WKChannel *channel = [[WKChannel alloc] initWithChannelID:@"group123" channelType:WKChannelTypeGroup];
+[[WKSDK shared].chatManager preloadMessages:channel count:50];
+```
+
+```swift Swift
+// Configure message cache
+let options = WKSDK.shared().options
+options.messageCacheCount = 1000 // Cache 1000 messages
+options.messageCacheExpiry = 3600 // Cache for 1 hour
+
+// Preload messages
+let channel = WKChannel(channelID: "group123", channelType: .group)
+WKSDK.shared().chatManager.preloadMessages(channel, count: 50)
+```
+</CodeGroup>
+
+### Batch Operations
+
+Perform batch operations for better performance:
+
+<CodeGroup>
+```objc Objective-C
+// Batch send messages
+NSArray<WKMessageContent *> *messages = @[
+    [[WKTextContent alloc] initWithContent:@"Message 1"],
+    [[WKTextContent alloc] initWithContent:@"Message 2"],
+    [[WKTextContent alloc] initWithContent:@"Message 3"]
+];
+
+WKChannel *channel = [[WKChannel alloc] initWithChannelID:@"group123" channelType:WKChannelTypeGroup];
+[[WKSDK shared].chatManager batchSendMessages:messages channel:channel];
+```
+
+```swift Swift
+// Batch send messages
+let messages: [WKMessageContent] = [
+    WKTextContent(content: "Message 1"),
+    WKTextContent(content: "Message 2"),
+    WKTextContent(content: "Message 3")
+]
+
+let channel = WKChannel(channelID: "group123", channelType: .group)
+WKSDK.shared().chatManager.batchSendMessages(messages, channel: channel)
+```
+</CodeGroup>
+
+## Error Handling
+
+### Advanced Error Handling
+
+Implement comprehensive error handling:
+
+<CodeGroup>
+```objc Objective-C
+// Set error handler
+[[WKSDK shared].chatManager setErrorHandler:^(WKError *error, WKMessage *message) {
+    switch (error.code) {
+        case WKErrorCodeNetworkUnavailable:
+            // Handle network error
+            [self handleNetworkError:error message:message];
+            break;
+        case WKErrorCodeMessageTooLarge:
+            // Handle message size error
+            [self handleMessageSizeError:error message:message];
+            break;
+        case WKErrorCodePermissionDenied:
+            // Handle permission error
+            [self handlePermissionError:error message:message];
+            break;
+        default:
+            // Handle other errors
+            [self handleGenericError:error message:message];
+            break;
+    }
+}];
+```
+
+```swift Swift
+// Set error handler
+WKSDK.shared().chatManager.setErrorHandler { error, message in
+    switch error.code {
+    case .networkUnavailable:
+        // Handle network error
+        self.handleNetworkError(error, message: message)
+    case .messageTooLarge:
+        // Handle message size error
+        self.handleMessageSizeError(error, message: message)
+    case .permissionDenied:
+        // Handle permission error
+        self.handlePermissionError(error, message: message)
+    default:
+        // Handle other errors
+        self.handleGenericError(error, message: message)
+    }
+}
+```
+</CodeGroup>
+
+## Best Practices
+
+1. **Custom Message Types**: Use unique type IDs to avoid conflicts
+2. **Memory Management**: Properly manage memory for large attachments
+3. **Error Handling**: Implement comprehensive error handling for all operations
+4. **Performance**: Use batch operations for multiple messages
+5. **Security**: Enable encryption for sensitive communications
+6. **Caching**: Configure appropriate cache settings for your use case

@@ -1,0 +1,289 @@
+---
+title: "Health Check"
+description: "Check the health status of WuKongIM server and cluster"
+api: "GET /health"
+---
+
+## Overview
+
+The health check endpoint is used to monitor the operational status of WuKongIM server and cluster, ensuring the system is running normally.
+
+<RequestExample>
+```bash cURL
+curl -X GET "http://localhost:5001/health"
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5001/health');
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+
+response = requests.get('http://localhost:5001/health')
+data = response.json()
+print(data)
+```
+
+```go Go
+package main
+
+import (
+    "fmt"
+    "io"
+    "net/http"
+)
+
+func main() {
+    resp, err := http.Get("http://localhost:5001/health")
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    body, err := io.ReadAll(resp.Body)
+    if err != nil {
+        panic(err)
+    }
+    
+    fmt.Println(string(body))
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json Success Response (200)
+{
+  "status": "ok"
+}
+```
+
+```json Error Response (500)
+{
+  "status": "error",
+  "message": "Cluster status check failed"
+}
+```
+</ResponseExample>
+
+## Response Fields
+
+<ResponseField name="status" type="string" required>
+Health status: `ok` indicates normal, `error` indicates abnormal
+</ResponseField>
+
+<ResponseField name="message" type="string">
+Error message (only appears when status is error)
+</ResponseField>
+
+## Status Codes
+
+| Status Code | Description |
+|-------------|-------------|
+| 200 | Server health status is normal |
+| 500 | Server or cluster status is abnormal |
+
+## Use Cases
+
+### Load Balancer Health Checks
+
+**Nginx Configuration**:
+```nginx
+upstream wukongim_backend {
+    server 192.168.1.10:5001;
+    server 192.168.1.11:5001;
+    server 192.168.1.12:5001;
+}
+
+server {
+    location /health {
+        proxy_pass http://wukongim_backend/health;
+        proxy_connect_timeout 5s;
+        proxy_read_timeout 5s;
+    }
+    
+    location / {
+        proxy_pass http://wukongim_backend;
+        # Health check configuration
+        health_check uri=/health interval=30s fails=3 passes=2;
+    }
+}
+```
+
+**HAProxy Configuration**:
+```haproxy
+backend wukongim_servers
+    balance roundrobin
+    option httpchk GET /health
+    http-check expect status 200
+    server wk1 192.168.1.10:5001 check inter 30s
+    server wk2 192.168.1.11:5001 check inter 30s
+    server wk3 192.168.1.12:5001 check inter 30s
+```
+
+### Container Orchestration
+
+**Docker Compose**:
+```yaml
+version: '3.7'
+services:
+  wukongim:
+    image: registry.cn-shanghai.aliyuncs.com/wukongim/wukongim:v2
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:5001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    ports:
+      - "5001:5001"
+```
+
+**Kubernetes Deployment**:
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wukongim
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: wukongim
+  template:
+    metadata:
+      labels:
+        app: wukongim
+    spec:
+      containers:
+      - name: wukongim
+        image: registry.cn-shanghai.aliyuncs.com/wukongim/wukongim:v2
+        ports:
+        - containerPort: 5001
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 5001
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 5001
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+```
+
+### Monitoring and Alerting
+
+**Prometheus Monitoring**:
+```yaml
+# prometheus.yml
+scrape_configs:
+  - job_name: 'wukongim-health'
+    metrics_path: '/health'
+    static_configs:
+      - targets: ['192.168.1.10:5001', '192.168.1.11:5001', '192.168.1.12:5001']
+    scrape_interval: 30s
+    scrape_timeout: 10s
+```
+
+**Custom Health Check Script**:
+```bash
+#!/bin/bash
+
+SERVERS=("192.168.1.10:5001" "192.168.1.11:5001" "192.168.1.12:5001")
+WEBHOOK_URL="https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK"
+
+for server in "${SERVERS[@]}"; do
+    response=$(curl -s -o /dev/null -w "%{http_code}" "http://$server/health" --max-time 10)
+    
+    if [ "$response" != "200" ]; then
+        # Send alert
+        curl -X POST -H 'Content-type: application/json' \
+            --data "{\"text\":\"🚨 WuKongIM Health Check Failed: $server returned $response\"}" \
+            "$WEBHOOK_URL"
+    fi
+done
+```
+
+### Application Integration
+
+**Service Discovery**:
+```javascript
+class WuKongIMServiceDiscovery {
+    constructor(servers) {
+        this.servers = servers;
+        this.healthyServers = [];
+        this.checkInterval = 30000; // 30 seconds
+        this.startHealthChecks();
+    }
+    
+    async checkServerHealth(server) {
+        try {
+            const response = await fetch(`http://${server}/health`, {
+                timeout: 5000
+            });
+            return response.status === 200;
+        } catch (error) {
+            console.error(`Health check failed for ${server}:`, error);
+            return false;
+        }
+    }
+    
+    async updateHealthyServers() {
+        const healthChecks = this.servers.map(async (server) => {
+            const isHealthy = await this.checkServerHealth(server);
+            return { server, isHealthy };
+        });
+        
+        const results = await Promise.all(healthChecks);
+        this.healthyServers = results
+            .filter(result => result.isHealthy)
+            .map(result => result.server);
+            
+        console.log('Healthy servers:', this.healthyServers);
+    }
+    
+    startHealthChecks() {
+        this.updateHealthyServers();
+        setInterval(() => {
+            this.updateHealthyServers();
+        }, this.checkInterval);
+    }
+    
+    getHealthyServer() {
+        if (this.healthyServers.length === 0) {
+            throw new Error('No healthy WuKongIM servers available');
+        }
+        
+        // Round-robin selection
+        const server = this.healthyServers[Math.floor(Math.random() * this.healthyServers.length)];
+        return server;
+    }
+}
+
+// Usage
+const discovery = new WuKongIMServiceDiscovery([
+    '192.168.1.10:5001',
+    '192.168.1.11:5001', 
+    '192.168.1.12:5001'
+]);
+```
+
+## Best Practices
+
+1. **Monitoring Frequency**: Recommended to check health status every 30-60 seconds
+2. **Timeout Settings**: Set reasonable timeout values to avoid false alarms
+3. **Load Balancing**: Can be used for load balancer health checks
+4. **Container Orchestration**: Suitable for Docker and Kubernetes health check configurations
+5. **Alerting Mechanism**: Integrate with monitoring systems for automated alerting
+6. **Graceful Degradation**: Implement fallback mechanisms when health checks fail
+7. **Circuit Breaker**: Use circuit breaker pattern to handle unhealthy services
+8. **Logging**: Log health check results for troubleshooting and analysis

@@ -1,0 +1,454 @@
+---
+title: "Conversation Management"
+description: "WuKongIM HarmonyOS SDK conversation management functionality, including recent conversation retrieval, listening and operations"
+icon: "messages-square"
+---
+
+Recent conversation management is one of the core functions of WuKongIM HarmonyOS SDK, responsible for managing user conversation lists, unread message statistics, and conversation state changes.
+
+## Get Recent Conversations
+
+### All Recent Conversations
+
+```typescript
+// Query all recent conversations
+let msgs = WKIM.shared.conversationManager().all();
+```
+
+### Complete Conversation Retrieval Example
+
+```typescript
+import { WKIM, WKConversation, WKChannelType } from '@wukong/wkim';
+
+class ConversationManager {
+  
+  // Get all recent conversations
+  static getAllConversations(): WKConversation[] {
+    try {
+      const conversations = WKIM.shared.conversationManager().all();
+      console.log(`Retrieved ${conversations.length} conversations`);
+      return conversations;
+    } catch (error) {
+      console.error('Failed to get conversation list:', error);
+      return [];
+    }
+  }
+  
+  // Get unread conversations
+  static getUnreadConversations(): WKConversation[] {
+    const allConversations = this.getAllConversations();
+    return allConversations.filter(conv => conv.unreadCount > 0);
+  }
+  
+  // Get pinned conversations
+  static getTopConversations(): WKConversation[] {
+    const allConversations = this.getAllConversations();
+    const topConversations: WKConversation[] = [];
+    
+    for (const conv of allConversations) {
+      const channel = WKIM.shared.channelManager().getChannel(conv.channelId, conv.channelType);
+      if (channel && channel.top === 1) {
+        topConversations.push(conv);
+      }
+    }
+    
+    return topConversations;
+  }
+  
+  // Sort conversations by time
+  static sortConversationsByTime(conversations: WKConversation[]): WKConversation[] {
+    return conversations.sort((a, b) => b.lastMsgTimestamp - a.lastMsgTimestamp);
+  }
+  
+  // Get total unread count
+  static getTotalUnreadCount(): number {
+    const conversations = this.getAllConversations();
+    return conversations.reduce((total, conv) => total + conv.unreadCount, 0);
+  }
+  
+  // Search conversations
+  static searchConversations(keyword: string): WKConversation[] {
+    if (!keyword.trim()) {
+      return [];
+    }
+    
+    const allConversations = this.getAllConversations();
+    const results: WKConversation[] = [];
+    
+    for (const conv of allConversations) {
+      const channel = WKIM.shared.channelManager().getChannel(conv.channelId, conv.channelType);
+      if (channel) {
+        const displayName = channel.channelRemark || channel.channelName;
+        if (displayName.toLowerCase().includes(keyword.toLowerCase()) ||
+            channel.channelId.toLowerCase().includes(keyword.toLowerCase())) {
+          results.push(conv);
+        }
+      }
+    }
+    
+    return results;
+  }
+  
+  // Get conversations by type
+  static getConversationsByType(channelType: number): WKConversation[] {
+    const allConversations = this.getAllConversations();
+    return allConversations.filter(conv => conv.channelType === channelType);
+  }
+  
+  // Get personal conversations
+  static getPersonalConversations(): WKConversation[] {
+    return this.getConversationsByType(WKChannelType.personal);
+  }
+  
+  // Get group conversations
+  static getGroupConversations(): WKConversation[] {
+    return this.getConversationsByType(WKChannelType.group);
+  }
+}
+```
+
+## New Message Listening
+
+Only when opening the app for the first time, you need to sync the recent conversation list. Subsequent changes to the recent conversation list are obtained through listening.
+
+```typescript
+// Define listener
+let listener = (list: WKConversation[]) => {
+  // When UI list doesn't have data from list, need to perform add operation
+};
+
+// Listen for new messages
+WKIM.shared.conversationManager().addRefreshListener(listener);
+
+// Remove listener
+WKIM.shared.conversationManager().removeRefreshListener(listener);
+```
+
+## Delete Recent Conversations
+
+```typescript
+// Delete recent conversation
+WKIM.shared.conversationManager().delete(channelId, channelType);
+```
+
+After calling delete recent conversation, it will trigger a delete recent conversation event. The UI can listen for delete recent conversation events and delete the conversation from the UI.
+
+```typescript
+// Define listener
+let listener = (channelId: string, channelType: number) => {
+  // Delete conversation from UI
+};
+
+// Set listener
+WKIM.shared.conversationManager().addDeletedListener(listener);
+
+// Remove listener
+WKIM.shared.conversationManager().removeDeletedListener(listener);
+```
+
+## Complete Conversation Management Example
+
+```typescript
+@Component
+export struct ConversationListComponent {
+  @State private conversations: WKConversation[] = [];
+  @State private loading: boolean = true;
+  @State private totalUnreadCount: number = 0;
+  
+  private refreshListener = (list: WKConversation[]) => {
+    this.handleConversationRefresh(list);
+  }
+  
+  private deletedListener = (channelId: string, channelType: number) => {
+    this.handleConversationDeleted(channelId, channelType);
+  }
+  
+  aboutToAppear(): void {
+    this.loadConversations();
+    this.setupListeners();
+  }
+  
+  aboutToDisappear(): void {
+    this.removeListeners();
+  }
+  
+  private loadConversations(): void {
+    this.loading = true;
+    
+    try {
+      const conversations = ConversationManager.getAllConversations();
+      const sortedConversations = ConversationManager.sortConversationsByTime(conversations);
+      this.conversations = sortedConversations;
+      this.updateUnreadCount();
+    } catch (error) {
+      console.error('Failed to load conversation list:', error);
+    } finally {
+      this.loading = false;
+    }
+  }
+  
+  private setupListeners(): void {
+    WKIM.shared.conversationManager().addRefreshListener(this.refreshListener);
+    WKIM.shared.conversationManager().addDeletedListener(this.deletedListener);
+  }
+  
+  private removeListeners(): void {
+    WKIM.shared.conversationManager().removeRefreshListener(this.refreshListener);
+    WKIM.shared.conversationManager().removeDeletedListener(this.deletedListener);
+  }
+  
+  private handleConversationRefresh(list: WKConversation[]): void {
+    const sortedConversations = ConversationManager.sortConversationsByTime(list);
+    this.conversations = sortedConversations;
+    this.updateUnreadCount();
+  }
+  
+  private handleConversationDeleted(channelId: string, channelType: number): void {
+    this.conversations = this.conversations.filter(conv => 
+      !(conv.channelId === channelId && conv.channelType === channelType)
+    );
+    this.updateUnreadCount();
+  }
+  
+  private updateUnreadCount(): void {
+    this.totalUnreadCount = ConversationManager.getTotalUnreadCount();
+  }
+  
+  // Delete conversation
+  private deleteConversation(conversation: WKConversation): void {
+    try {
+      WKIM.shared.conversationManager().delete(conversation.channelId, conversation.channelType);
+      console.log('Conversation deleted successfully:', conversation.channelId);
+    } catch (error) {
+      console.error('Failed to delete conversation:', error);
+    }
+  }
+  
+  // Get conversation display name
+  private getConversationDisplayName(conversation: WKConversation): string {
+    const channel = WKIM.shared.channelManager().getChannel(conversation.channelId, conversation.channelType);
+    if (channel) {
+      return channel.channelRemark || channel.channelName || conversation.channelId;
+    }
+    return conversation.channelId;
+  }
+  
+  // Get conversation avatar
+  private getConversationAvatar(conversation: WKConversation): string {
+    const channel = WKIM.shared.channelManager().getChannel(conversation.channelId, conversation.channelType);
+    return channel?.avatar || this.getDefaultAvatar(conversation.channelId);
+  }
+  
+  private getDefaultAvatar(channelId: string): string {
+    return `https://ui-avatars.com/api/?name=${channelId}&background=random`;
+  }
+  
+  private formatTime(timestamp: number): string {
+    const date = new Date(timestamp * 1000);
+    const now = new Date();
+    
+    if (date.toDateString() === now.toDateString()) {
+      return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+    } else {
+      return `${date.getMonth() + 1}/${date.getDate()}`;
+    }
+  }
+  
+  private openConversation(conversation: WKConversation): void {
+    // Open chat interface
+    console.log('Opening conversation:', conversation.channelId);
+    // Navigate to chat page
+  }
+  
+  build() {
+    Column() {
+      // Header with unread count
+      Row() {
+        Text('Conversations')
+          .fontSize(20)
+          .fontWeight(FontWeight.Bold)
+        
+        Blank()
+        
+        if (this.totalUnreadCount > 0) {
+          Text(this.totalUnreadCount > 99 ? '99+' : this.totalUnreadCount.toString())
+            .fontSize(12)
+            .fontColor(Color.White)
+            .backgroundColor(Color.Red)
+            .padding({ left: 8, right: 8, top: 4, bottom: 4 })
+            .borderRadius(12)
+        }
+      }
+      .width('100%')
+      .padding({ left: 16, right: 16, top: 16, bottom: 8 })
+      
+      if (this.loading) {
+        Row() {
+          LoadingProgress()
+            .width(20)
+            .height(20)
+          Text('Loading...')
+            .margin({ left: 8 })
+        }
+        .justifyContent(FlexAlign.Center)
+        .padding(16)
+      } else if (this.conversations.length === 0) {
+        Column() {
+          Text('No conversations')
+            .fontSize(16)
+            .fontColor(Color.Grey)
+        }
+        .justifyContent(FlexAlign.Center)
+        .layoutWeight(1)
+      } else {
+        List() {
+          ForEach(this.conversations, (conversation: WKConversation) => {
+            ListItem() {
+              this.buildConversationItem(conversation)
+            }
+            .swipeAction({ 
+              end: this.buildSwipeActions(conversation) 
+            })
+          })
+        }
+        .layoutWeight(1)
+        .onRefresh(() => {
+          this.loadConversations();
+        })
+      }
+    }
+    .width('100%')
+    .height('100%')
+  }
+  
+  @Builder
+  buildConversationItem(conversation: WKConversation) {
+    Row() {
+      // Avatar
+      Image(this.getConversationAvatar(conversation))
+        .width(50)
+        .height(50)
+        .borderRadius(25)
+        .margin({ right: 12 })
+      
+      Column() {
+        Row() {
+          // Conversation name
+          Text(this.getConversationDisplayName(conversation))
+            .fontSize(16)
+            .fontWeight(FontWeight.Medium)
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .layoutWeight(1)
+          
+          // Time
+          Text(this.formatTime(conversation.lastMsgTimestamp))
+            .fontSize(12)
+            .fontColor(Color.Grey)
+        }
+        .width('100%')
+        .margin({ bottom: 4 })
+        
+        Row() {
+          // Last message
+          Text('Latest message...')
+            .fontSize(14)
+            .fontColor(Color.Grey)
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .layoutWeight(1)
+          
+          // Unread count
+          if (conversation.unreadCount > 0) {
+            Text(conversation.unreadCount > 99 ? '99+' : conversation.unreadCount.toString())
+              .fontSize(10)
+              .fontColor(Color.White)
+              .backgroundColor(Color.Red)
+              .padding({ left: 6, right: 6, top: 2, bottom: 2 })
+              .borderRadius(10)
+              .margin({ left: 8 })
+          }
+        }
+        .width('100%')
+      }
+      .alignItems(HorizontalAlign.Start)
+      .layoutWeight(1)
+    }
+    .width('100%')
+    .padding(12)
+    .alignItems(VerticalAlign.Top)
+    .onClick(() => {
+      this.openConversation(conversation);
+    })
+  }
+  
+  @Builder
+  buildSwipeActions(conversation: WKConversation) {
+    Row() {
+      Button('Delete')
+        .backgroundColor(Color.Red)
+        .fontColor(Color.White)
+        .onClick(() => {
+          this.deleteConversation(conversation);
+        })
+    }
+  }
+}
+```
+
+## Data Structure Description
+
+### WKConversation Object
+
+```typescript
+export class WKConversation {
+  channelId: string = ''                          // Channel ID
+  channelType: number = WKChannelType.personal    // Channel type
+  lastClientMsgNo: string = ''                    // Last message sequence number
+  isDeleted: number = 0                           // Is deleted
+  version: number = 0                             // Conversation version
+  unreadCount = 0                                 // Unread message count
+  lastMsgTimestamp = 0                            // Last message timestamp
+  lastMsgSeq = 0                                  // Last message sequence number
+  parentChannelId = ''                            // Parent channel ID
+  parentChannelType = WKChannelType.personal      // Parent channel type
+  localExtra?: Record<string, Object>             // Local extension fields
+  remoteExtra?: WKConversationExtra               // Remote extension fields
+  private reminders?: WKReminder[]                // Reminder items
+  private msg?: WKMsg                             // Last message
+  private channel?: WKChannel                     // Channel information
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Data Source Configuration"
+    icon="database"
+    href="/en/sdk/wukongim/harmonyos/datasource"
+  >
+    Configure conversation data sources and sync logic
+  </Card>
+  <Card
+    title="Advanced Features"
+    icon="cog"
+    href="/en/sdk/wukongim/harmonyos/advance"
+  >
+    Explore custom messages and advanced features
+  </Card>
+  <Card
+    title="Channel Management"
+    icon="hash"
+    href="/en/sdk/wukongim/harmonyos/channel"
+  >
+    Return to channel management functionality
+  </Card>
+  <Card
+    title="Message Management"
+    icon="message-circle"
+    href="/en/sdk/wukongim/harmonyos/message"
+  >
+    Return to message handling functionality
+  </Card>
+</CardGroup>

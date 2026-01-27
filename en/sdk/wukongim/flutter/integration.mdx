@@ -1,0 +1,465 @@
+---
+title: "Integration Guide"
+description: "WuKongIM Flutter SDK integration guide, including installation, configuration and initialization"
+icon: "rocket"
+---
+
+## Quick Start
+
+### Installation
+
+[![pub package](https://img.shields.io/pub/v/wukongimfluttersdk.svg)](https://pub.dartlang.org/packages/wukongimfluttersdk)
+
+```yaml
+dependencies:
+  wukongimfluttersdk: ^version # Check version number above
+```
+
+### Import
+
+```dart
+import 'package:wukongimfluttersdk/wkim.dart';
+```
+
+## Basic Setup
+
+### 1. Initialize SDK
+
+Initialize the SDK in your app's main function or during app startup:
+
+```dart
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize WuKongIM SDK
+  await WKIM.shared.setup(
+    uid: 'your_user_id',
+    token: 'your_auth_token',
+  );
+  
+  runApp(MyApp());
+}
+```
+
+### 2. Configure Connection
+
+Set up connection parameters and server information:
+
+```dart
+class MyApp extends StatefulWidget {
+  @override
+  _MyAppState createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  @override
+  void initState() {
+    super.initState();
+    _initializeWuKongIM();
+  }
+  
+  void _initializeWuKongIM() {
+    // Configure server address
+    WKIM.shared.connectionManager.setServerAddress('your-server.com', 5100);
+    
+    // Set connection options
+    WKIM.shared.connectionManager.setOptions(
+      heartbeatInterval: 30, // Heartbeat interval in seconds
+      reconnectInterval: 5,  // Reconnect interval in seconds
+      maxReconnectAttempts: 10, // Maximum reconnect attempts
+    );
+    
+    // Listen for connection status
+    WKIM.shared.connectionManager.addOnConnectionStatus('main', (status, reason, connInfo) {
+      print('Connection status: $status, reason: $reason');
+      _handleConnectionStatus(status, reason);
+    });
+    
+    // Connect to server
+    WKIM.shared.connectionManager.connect();
+  }
+  
+  void _handleConnectionStatus(int status, String reason) {
+    switch (status) {
+      case WKConnectStatus.success:
+        print('Connected successfully');
+        break;
+      case WKConnectStatus.connecting:
+        print('Connecting...');
+        break;
+      case WKConnectStatus.disconnect:
+        print('Disconnected');
+        break;
+      case WKConnectStatus.kicked:
+        print('Kicked offline');
+        _handleKickedOffline();
+        break;
+    }
+  }
+  
+  void _handleKickedOffline() {
+    // Handle being kicked offline
+    // Redirect to login page or show notification
+  }
+  
+  @override
+  void dispose() {
+    // Clean up listeners
+    WKIM.shared.connectionManager.removeOnConnectionStatus('main');
+    super.dispose();
+  }
+}
+```
+
+## Advanced Configuration
+
+### 1. Custom Configuration Options
+
+```dart
+class WuKongIMConfig {
+  static void configure() {
+    // Set debug mode
+    WKIM.shared.setDebugMode(true);
+    
+    // Configure database options
+    WKIM.shared.setDatabaseOptions(
+      dbName: 'wukongim.db',
+      dbPassword: 'your_db_password', // Optional encryption
+    );
+    
+    // Configure file upload settings
+    WKIM.shared.setFileUploadOptions(
+      maxFileSize: 100 * 1024 * 1024, // 100MB
+      allowedFileTypes: ['jpg', 'png', 'gif', 'mp4', 'mp3'],
+      uploadTimeout: 60, // seconds
+    );
+    
+    // Configure message options
+    WKIM.shared.setMessageOptions(
+      maxMessageLength: 5000,
+      enableMessageReceipt: true,
+      enableTypingIndicator: true,
+    );
+  }
+}
+```
+
+### 2. Environment-Specific Setup
+
+```dart
+class EnvironmentConfig {
+  static void setupForEnvironment() {
+    if (kDebugMode) {
+      // Development environment
+      _setupDevelopment();
+    } else {
+      // Production environment
+      _setupProduction();
+    }
+  }
+  
+  static void _setupDevelopment() {
+    WKIM.shared.setDebugMode(true);
+    WKIM.shared.connectionManager.setServerAddress('dev-server.com', 5100);
+    WKIM.shared.setLogLevel(WKLogLevel.debug);
+  }
+  
+  static void _setupProduction() {
+    WKIM.shared.setDebugMode(false);
+    WKIM.shared.connectionManager.setServerAddress('prod-server.com', 5100);
+    WKIM.shared.setLogLevel(WKLogLevel.error);
+  }
+}
+```
+
+### 3. Permission Setup
+
+Add necessary permissions to your platform-specific configuration files:
+
+#### Android (android/app/src/main/AndroidManifest.xml)
+
+```xml
+<uses-permission android:name="android.permission.INTERNET" />
+<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+<uses-permission android:name="android.permission.RECORD_AUDIO" />
+<uses-permission android:name="android.permission.CAMERA" />
+<uses-permission android:name="android.permission.WAKE_LOCK" />
+```
+
+#### iOS (ios/Runner/Info.plist)
+
+```xml
+<key>NSCameraUsageDescription</key>
+<string>This app needs access to camera to take photos</string>
+<key>NSMicrophoneUsageDescription</key>
+<string>This app needs access to microphone to record audio</string>
+<key>NSPhotoLibraryUsageDescription</key>
+<string>This app needs access to photo library to select images</string>
+```
+
+## Complete Integration Example
+
+```dart
+import 'package:flutter/material.dart';
+import 'package:wukongimfluttersdk/wkim.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize SDK
+  await WuKongIMManager.initialize();
+  
+  runApp(MyApp());
+}
+
+class WuKongIMManager {
+  static Future<void> initialize() async {
+    try {
+      // Setup SDK with user credentials
+      await WKIM.shared.setup(
+        uid: await _getUserId(),
+        token: await _getAuthToken(),
+      );
+      
+      // Configure SDK
+      _configureSDK();
+      
+      // Setup listeners
+      _setupGlobalListeners();
+      
+      print('WuKongIM SDK initialized successfully');
+    } catch (e) {
+      print('Failed to initialize WuKongIM SDK: $e');
+    }
+  }
+  
+  static void _configureSDK() {
+    // Set debug mode based on build mode
+    WKIM.shared.setDebugMode(kDebugMode);
+    
+    // Configure connection
+    WKIM.shared.connectionManager.setServerAddress(
+      _getServerAddress(),
+      _getServerPort(),
+    );
+    
+    // Set connection options
+    WKIM.shared.connectionManager.setOptions(
+      heartbeatInterval: 30,
+      reconnectInterval: 5,
+      maxReconnectAttempts: 10,
+    );
+  }
+  
+  static void _setupGlobalListeners() {
+    // Connection status listener
+    WKIM.shared.connectionManager.addOnConnectionStatus('global', (status, reason, connInfo) {
+      _handleGlobalConnectionStatus(status, reason);
+    });
+    
+    // Global message listener
+    WKIM.shared.messageManager.addOnNewMsgListener('global', (messages) {
+      _handleGlobalNewMessages(messages);
+    });
+    
+    // Global conversation listener
+    WKIM.shared.conversationManager.addOnRefreshMsgListener('global', (conversation, isEnd) {
+      if (isEnd) {
+        _handleConversationUpdate(conversation);
+      }
+    });
+  }
+  
+  static void _handleGlobalConnectionStatus(int status, String reason) {
+    switch (status) {
+      case WKConnectStatus.success:
+        print('Global: Connected successfully');
+        break;
+      case WKConnectStatus.kicked:
+        print('Global: Kicked offline');
+        _handleGlobalKickOff();
+        break;
+      case WKConnectStatus.disconnect:
+        print('Global: Disconnected - $reason');
+        break;
+    }
+  }
+  
+  static void _handleGlobalNewMessages(List<WKMsg> messages) {
+    // Handle new messages globally (notifications, badges, etc.)
+    for (var message in messages) {
+      _showNotificationForMessage(message);
+    }
+  }
+  
+  static void _handleConversationUpdate(WKUIConversationMsg conversation) {
+    // Update app badge count
+    _updateAppBadge();
+  }
+  
+  static void _handleGlobalKickOff() {
+    // Handle being kicked offline
+    // Clear user session and redirect to login
+  }
+  
+  static void _showNotificationForMessage(WKMsg message) {
+    // Show local notification for new message
+  }
+  
+  static void _updateAppBadge() {
+    // Update app icon badge with unread count
+    final unreadCount = WKIM.shared.conversationManager.getAllUnreadCount();
+    // Update badge using platform-specific code
+  }
+  
+  // Helper methods
+  static Future<String> _getUserId() async {
+    // Get user ID from secure storage or preferences
+    return 'user123';
+  }
+  
+  static Future<String> _getAuthToken() async {
+    // Get auth token from secure storage
+    return 'auth_token_here';
+  }
+  
+  static String _getServerAddress() {
+    return kDebugMode ? 'dev-server.com' : 'prod-server.com';
+  }
+  
+  static int _getServerPort() {
+    return 5100;
+  }
+}
+
+class MyApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'WuKongIM Flutter Demo',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+      ),
+      home: HomePage(),
+    );
+  }
+}
+
+class HomePage extends StatefulWidget {
+  @override
+  _HomePageState createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  int _connectionStatus = WKConnectStatus.disconnect;
+  
+  @override
+  void initState() {
+    super.initState();
+    _setupListeners();
+    _connectToServer();
+  }
+  
+  void _setupListeners() {
+    WKIM.shared.connectionManager.addOnConnectionStatus('home', (status, reason, connInfo) {
+      setState(() {
+        _connectionStatus = status;
+      });
+    });
+  }
+  
+  void _connectToServer() {
+    WKIM.shared.connectionManager.connect();
+  }
+  
+  @override
+  void dispose() {
+    WKIM.shared.connectionManager.removeOnConnectionStatus('home');
+    super.dispose();
+  }
+  
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('WuKongIM Demo'),
+        actions: [
+          Icon(
+            _connectionStatus == WKConnectStatus.success
+                ? Icons.wifi
+                : Icons.wifi_off,
+            color: _connectionStatus == WKConnectStatus.success
+                ? Colors.green
+                : Colors.red,
+          ),
+        ],
+      ),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text('Connection Status: ${_getStatusText(_connectionStatus)}'),
+            SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: _connectionStatus == WKConnectStatus.success
+                  ? null
+                  : _connectToServer,
+              child: Text('Connect'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  String _getStatusText(int status) {
+    switch (status) {
+      case WKConnectStatus.success:
+        return 'Connected';
+      case WKConnectStatus.connecting:
+        return 'Connecting';
+      case WKConnectStatus.disconnect:
+        return 'Disconnected';
+      case WKConnectStatus.kicked:
+        return 'Kicked Offline';
+      default:
+        return 'Unknown';
+    }
+  }
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Basic Features"
+    icon="foundation"
+    href="/en/sdk/wukongim/flutter/base"
+  >
+    Learn connection management and basic API usage
+  </Card>
+  <Card
+    title="Message Management"
+    icon="message-circle"
+    href="/en/sdk/wukongim/flutter/message"
+  >
+    Explore message sending and receiving functionality
+  </Card>
+  <Card
+    title="Conversation Management"
+    icon="users"
+    href="/en/sdk/wukongim/flutter/conversation"
+  >
+    Handle conversation lists and unread messages
+  </Card>
+  <Card
+    title="Advanced Features"
+    icon="cog"
+    href="/en/sdk/wukongim/flutter/advance"
+  >
+    Discover custom messages and extension features
+  </Card>
+</CardGroup>

@@ -1,0 +1,291 @@
+---
+title: "Basic Concepts"
+description: "Understanding WuKongIM's core concepts and terminology"
+---
+
+Understanding these core concepts will help you work effectively with WuKongIM.
+
+## Channels
+
+Channels are the fundamental communication units in WuKongIM and serve as the delivery vehicle for messages. Think of them as communication rooms or topics where messages are published and subscribers receive them.
+
+A channel consists of two important fields:
+- **Channel ID**: A unique string identifying the channel
+- **Channel Type**: Defines the behavior and processing logic for the channel
+
+When a message is delivered to a channel, different channel types will have different processing logic. After processing is complete, the channel delivers the message to its subscribers.
+
+### Channel Types
+
+<CardGroup cols={2}>
+  <Card title="Group Channels" icon="users">
+    Multi-user channels for group conversations, supporting unlimited members
+  </Card>
+  <Card title="Peer-to-Peer Channels" icon="user-group">
+    Direct messaging channels between two users
+  </Card>
+  <Card title="Custom Channels" icon="cog">
+    Application-specific channels like bot channels or customer service channels
+  </Card>
+  <Card title="System Channels" icon="bell">
+    Special channels for system notifications and announcements
+  </Card>
+</CardGroup>
+
+### Channel Identifiers
+
+Examples of channel identifiers:
+- `group_123` (Group channel)
+- `user_alice_bob` (Peer-to-peer channel)
+- `system_notifications` (System channel)
+
+## Messages
+
+Messages are the data units transmitted through channels. When content is sent, it gets encoded into a message where the content becomes the message payload.
+
+### Message Structure
+
+Every message contains the following fields:
+- **Message ID**: Unique identifier for the message
+- **Message Sequence**: Sequential number for ordering
+- **Message Type**: Defines the message format and handling
+- **Payload**: The actual message content
+- **From UID**: Sender's user identifier
+- **To**: Message recipient information
+- **Send Time**: When the message was sent
+- **Receive Time**: When the message was received
+
+```json
+{
+  "message_id": "unique_message_id",
+  "channel_id": "target_channel",
+  "channel_type": 1,
+  "from_uid": "sender_user_id",
+  "content": "message_content",
+  "timestamp": 1640995200,
+  "message_type": 1
+}
+```
+
+### Message Types
+
+- **Text Messages**: Plain text content
+- **Media Messages**: Images, videos, audio files
+- **System Messages**: Automated system notifications
+- **Custom Messages**: Application-defined message formats
+
+## Recent Conversations
+
+Recent conversations represent communication sessions between users or between users and groups. They provide a summary view of ongoing communications.
+
+### Conversation Properties
+
+Each conversation includes:
+- **Conversation ID**: Unique identifier for the conversation
+- **Conversation Type**: Type of conversation (user-to-user, group, etc.)
+- **Conversation Name**: Display name for the conversation
+- **Conversation Avatar**: Profile image for the conversation
+- **Last Message**: The most recent message in the conversation
+- **Unread Count**: Number of unread messages
+- **Last Message Time**: Timestamp of the most recent message
+
+This allows applications to display a conversation list showing recent activity and unread message counts.
+
+## Users and Authentication
+
+### User Management
+
+Users in WuKongIM are identified by unique User IDs (UIDs). The system supports:
+- User registration and authentication
+- User presence and status
+- User permissions and access control
+
+### Authentication Flow
+
+1. **Token Generation**: Your backend generates authentication tokens
+2. **Client Connection**: Clients connect using these tokens
+3. **Token Validation**: WuKongIM validates tokens with your auth service
+4. **Session Management**: Active sessions are maintained for connected users
+
+## Subscribers
+
+Users who subscribe to channels are called subscribers. Subscribers can receive messages from the channels they are subscribed to.
+
+Subscribers can be:
+- **Users**: Individual users of your application
+- **Third-party Services**: External services that need to receive messages
+
+### Subscription Types
+
+- **Active Subscriptions**: User explicitly joins a channel
+- **Passive Subscriptions**: System automatically subscribes users
+- **Temporary Subscriptions**: Time-limited channel access
+
+### Subscription Management
+
+```javascript
+// Subscribe to a channel
+client.subscribe({
+  channel_id: "general",
+  channel_type: 1
+});
+
+// Unsubscribe from a channel
+client.unsubscribe({
+  channel_id: "general",
+  channel_type: 1
+});
+```
+
+## Users and Authentication
+
+Users are entities registered in the WuKongIM system by third-party applications, identified by a unique User ID (UID).
+
+### User Properties
+
+Users have two critical fields:
+- **UID**: Unique identifier for the user
+- **Token**: Authentication credential for identity verification
+
+When establishing a long connection to WuKongIM, clients must provide a valid token for authentication.
+
+### Authentication Flow
+
+1. **Token Generation**: Your backend generates authentication tokens
+2. **Client Connection**: Clients connect using these tokens
+3. **Token Validation**: WuKongIM validates tokens with your auth service
+4. **Session Management**: Active sessions are maintained for connected users
+
+## Devices
+
+Clients that connect to WuKongIM are called devices. A single user can have multiple devices connected simultaneously.
+
+### Device Properties
+
+Each device has:
+- **Device ID**: Unique identifier for the device
+- **Device Flag**: Device type identifier
+- **Device Level**: Priority level of the device
+
+### Device Management
+
+- **Primary Device**: Only one primary device allowed per user (multiple primary devices will kick each other off)
+- **Secondary Devices**: Multiple secondary devices allowed (e.g., multiple web browser tabs)
+
+## Message Delivery
+
+WuKongIM ensures reliable message delivery through several mechanisms:
+
+### Delivery Guarantees
+
+<Tabs>
+  <Tab title="At Least Once">
+    Messages are delivered at least once, with possible duplicates
+  </Tab>
+  <Tab title="Exactly Once">
+    Messages are delivered exactly once (premium feature)
+  </Tab>
+  <Tab title="At Most Once">
+    Messages are delivered at most once, with possible loss
+  </Tab>
+</Tabs>
+
+### Offline Message Handling
+
+- Messages sent to offline users are stored
+- Users receive missed messages when they reconnect
+- Configurable retention policies for offline messages
+
+## Clustering and Distribution
+
+### Node Architecture
+
+WuKongIM operates as a distributed system with multiple nodes:
+
+- **Data Nodes**: Store and process messages
+- **Proxy Nodes**: Handle client connections and load balancing
+- **Management Nodes**: Coordinate cluster operations
+
+### Data Distribution
+
+- **Sharding**: Data is distributed across multiple nodes
+- **Replication**: Each shard has multiple replicas for reliability
+- **Consistency**: Modified Raft protocol ensures data consistency
+
+## Storage and Persistence
+
+### Message Storage
+
+- **Permanent Storage**: Messages are stored permanently by default
+- **Partitioned Storage**: Messages are partitioned for efficient retrieval
+- **Compression**: Automatic compression for storage optimization
+
+### Data Retention
+
+Configure retention policies based on:
+- Time-based retention (e.g., 30 days)
+- Size-based retention (e.g., 1GB per channel)
+- Custom retention rules per channel type
+
+## Security Model
+
+### Encryption
+
+- **Transport Encryption**: All connections use TLS/SSL
+- **Message Encryption**: End-to-end encryption for message content
+- **Channel Encryption**: Secure channel communication
+
+### Access Control
+
+- **Channel Permissions**: Fine-grained access control per channel
+- **User Roles**: Role-based access control system
+- **API Security**: Secure API endpoints with authentication
+
+## Performance Characteristics
+
+### Throughput
+
+- **Message Rate**: 160,000+ messages/second on standard hardware
+- **Concurrent Users**: Support for millions of concurrent connections
+- **Channel Capacity**: 10,000+ subscribers per channel
+
+### Latency
+
+- **Message Delivery**: Sub-millisecond message routing
+- **Connection Setup**: Fast connection establishment
+- **Failover Time**: Automatic failover in seconds
+
+## Next Steps
+
+Now that you understand the basic concepts, you can:
+
+<CardGroup cols={2}>
+  <Card
+    title="Try the Quick Start"
+    icon="rocket"
+    href="/getting-started/quickstart"
+  >
+    Get hands-on experience with WuKongIM
+  </Card>
+  <Card
+    title="Explore Use Cases"
+    icon="lightbulb"
+    href="/getting-started/use-cases"
+  >
+    See how WuKongIM fits your application
+  </Card>
+  <Card
+    title="API Documentation"
+    icon="code"
+    href="/api/getting-started"
+  >
+    Learn about the REST API
+  </Card>
+  <Card
+    title="SDK Integration"
+    icon="mobile"
+    href="/sdk/overview"
+  >
+    Integrate with your application
+  </Card>
+</CardGroup>

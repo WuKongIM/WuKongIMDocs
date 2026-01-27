@@ -1,0 +1,422 @@
+---
+title: "Version Upgrade"
+description: "WuKongIM Linux version upgrade guide"
+icon: "arrow-up"
+---
+
+# Upgrade
+
+WuKongIM supports smooth upgrades on Linux systems, ensuring service continuity and data security.
+
+## Description
+
+WuKongIM's version numbering follows the `major.minor.patch` format, for example `1.0.0`. When the patch number increases, it indicates bug fixes or minor feature updates; when the minor version increases, it indicates new features; when the major version increases, it indicates incompatible API changes.
+
+Therefore, as long as you don't upgrade major versions, the upgrade process is smooth.
+
+<Note>
+**Version Compatibility**:
+- **Patch updates** (e.g., 2.0.1 → 2.0.2): Always safe, includes bug fixes and minor improvements
+- **Minor updates** (e.g., 2.0.x → 2.1.x): Generally safe, includes new features with backward compatibility
+- **Major updates** (e.g., 2.x.x → 3.x.x): May include breaking changes, requires careful planning
+</Note>
+
+## Upgrade Steps
+
+### Single Node Upgrade
+
+#### 1. Check Current Version
+
+First, check your current WuKongIM version:
+
+```bash
+# Check running version
+./wukongim version
+
+# Or check via API
+curl http://localhost:5001/version
+```
+
+#### 2. Backup Data (Recommended)
+
+Before upgrading, it's recommended to backup your data:
+
+```bash
+# Stop WuKongIM service
+./wukongim stop
+
+# Create backup
+sudo cp -r ./wukongim_data ./wukongim_data_backup_$(date +%Y%m%d)
+
+# Or create compressed backup
+sudo tar -czf wukongim_backup_$(date +%Y%m%d).tar.gz ./wukongim_data
+```
+
+#### 3. Download New Version
+
+<CodeGroup>
+```bash AMD64
+curl -L -o wukongim_new https://github.com/WuKongIM/WuKongIM/releases/download/latest/wukongim-linux-amd64
+```
+
+```bash ARM64
+curl -L -o wukongim_new https://github.com/WuKongIM/WuKongIM/releases/download/latest/wukongim-linux-arm64
+```
+</CodeGroup>
+
+#### 4. Replace Executable File
+
+```bash
+# Make new executable file executable
+chmod +x wukongim_new
+
+# Backup old executable
+mv wukongim wukongim_old
+
+# Replace with new version
+mv wukongim_new wukongim
+```
+
+#### 5. Start Service
+
+```bash
+# Start with existing configuration
+./wukongim --config wk.yaml -d
+```
+
+#### 6. Verify Upgrade
+
+```bash
+# Check service status
+ps aux | grep wukongim
+
+# Verify version
+./wukongim version
+
+# Check health status
+curl http://localhost:5001/health
+
+# Test API functionality
+curl http://localhost:5001/version
+```
+
+### Multi-Node Cluster Upgrade
+
+For cluster deployments, perform rolling upgrades to maintain service availability:
+
+#### 1. Upgrade One Node at a Time
+
+```bash
+# On node1
+./wukongim stop
+# Replace executable file (same steps as single node)
+./wukongim --config wk.yaml -d
+
+# Wait for node1 to be healthy, then proceed to node2
+# Repeat for each node
+```
+
+#### 2. Verify Cluster Health
+
+```bash
+# Check cluster status
+curl http://load-balancer-ip:15001/cluster/nodes
+
+# Verify all nodes are running the new version
+curl http://node1-ip:5001/version
+curl http://node2-ip:5001/version
+curl http://node3-ip:5001/version
+```
+
+## Advanced Upgrade Strategies
+
+### Blue-Green Deployment
+
+For critical production environments:
+
+1. **Prepare Green Environment**: Set up new servers with the new version
+2. **Data Sync**: Ensure data is synchronized between blue and green environments
+3. **Switch Traffic**: Update load balancer to point to green environment
+4. **Verify**: Confirm everything works correctly
+5. **Cleanup**: Remove blue environment after successful verification
+
+### Rolling Upgrade with Load Balancer
+
+```bash
+# Remove node from load balancer
+# Update nginx configuration to exclude the node
+sudo nano /etc/nginx/nginx.conf
+sudo systemctl reload nginx
+
+# Upgrade the node
+./wukongim stop
+# Replace executable
+./wukongim --config wk.yaml -d
+
+# Add node back to load balancer
+# Update nginx configuration to include the node
+sudo systemctl reload nginx
+
+# Repeat for other nodes
+```
+
+## Rollback Procedures
+
+If issues occur during upgrade, you can rollback:
+
+### 1. Quick Rollback
+
+```bash
+# Stop current version
+./wukongim stop
+
+# Restore old executable
+mv wukongim wukongim_failed
+mv wukongim_old wukongim
+
+# Restart with old version
+./wukongim --config wk.yaml -d
+```
+
+### 2. Data Rollback (if needed)
+
+```bash
+# Stop service
+./wukongim stop
+
+# Restore backup
+sudo rm -rf ./wukongim_data
+sudo cp -r ./wukongim_data_backup_YYYYMMDD ./wukongim_data
+
+# Or restore from compressed backup
+sudo tar -xzf wukongim_backup_YYYYMMDD.tar.gz
+
+# Restart service
+./wukongim --config wk.yaml -d
+```
+
+## Systemd Service Upgrade
+
+If using systemd service:
+
+```bash
+# Stop service
+sudo systemctl stop wukongim
+
+# Replace executable file
+sudo cp wukongim_new /path/to/wukongim
+
+# Start service
+sudo systemctl start wukongim
+
+# Check status
+sudo systemctl status wukongim
+
+# View logs
+sudo journalctl -u wukongim -f
+```
+
+## Upgrade Checklist
+
+### Pre-Upgrade
+
+- [ ] Check current version and target version compatibility
+- [ ] Review release notes for breaking changes
+- [ ] Create data backup
+- [ ] Plan maintenance window
+- [ ] Notify users of potential downtime
+- [ ] Prepare rollback plan
+
+### During Upgrade
+
+- [ ] Monitor system resources
+- [ ] Watch application logs
+- [ ] Verify service health endpoints
+- [ ] Test critical functionality
+- [ ] Monitor cluster status (for multi-node)
+
+### Post-Upgrade
+
+- [ ] Verify version upgrade successful
+- [ ] Test all major features
+- [ ] Monitor performance metrics
+- [ ] Check data integrity
+- [ ] Update documentation
+- [ ] Clean up old backups (after verification period)
+
+## Troubleshooting
+
+### Common Issues
+
+**Service fails to start after upgrade**:
+```bash
+# Check logs
+tail -f ./wukongim_data/logs/wukongim.log
+
+# Check if executable has proper permissions
+ls -la wukongim
+
+# Verify configuration file
+cat wk.yaml
+```
+
+**Configuration compatibility issues**:
+```bash
+# Check configuration syntax
+./wukongim --config wk.yaml --check-config
+
+# Compare with default configuration
+./wukongim --help
+```
+
+**Data migration issues**:
+```bash
+# Check data directory permissions
+ls -la ./wukongim_data
+
+# Verify data integrity
+./wukongim --config wk.yaml --verify-data
+```
+
+### Recovery Steps
+
+1. **Stop services**: `./wukongim stop`
+2. **Restore backup**: Restore from backup created before upgrade
+3. **Revert executable**: Use previous version executable
+4. **Restart**: `./wukongim --config wk.yaml -d`
+5. **Verify**: Confirm system is working correctly
+
+## Automation Scripts
+
+### Automated Upgrade Script
+
+```bash
+#!/bin/bash
+# upgrade-wukongim.sh - Automated upgrade script
+
+set -e
+
+NEW_VERSION="$1"
+BACKUP_DIR="./backups"
+CONFIG_FILE="wk.yaml"
+
+if [ -z "$NEW_VERSION" ]; then
+    echo "Usage: $0 <new_version>"
+    exit 1
+fi
+
+echo "Starting WuKongIM upgrade to version $NEW_VERSION..."
+
+# Create backup
+echo "Creating backup..."
+mkdir -p $BACKUP_DIR
+sudo cp -r ./wukongim_data $BACKUP_DIR/wukongim_data_$(date +%Y%m%d_%H%M%S)
+cp wukongim $BACKUP_DIR/wukongim_$(date +%Y%m%d_%H%M%S)
+
+# Stop service
+echo "Stopping WuKongIM..."
+./wukongim stop
+
+# Download new version
+echo "Downloading new version..."
+curl -L -o wukongim_new https://github.com/WuKongIM/WuKongIM/releases/download/$NEW_VERSION/wukongim-linux-amd64
+
+# Replace executable
+echo "Replacing executable..."
+chmod +x wukongim_new
+mv wukongim wukongim_old
+mv wukongim_new wukongim
+
+# Start service
+echo "Starting WuKongIM..."
+./wukongim --config $CONFIG_FILE -d
+
+# Wait for startup
+sleep 10
+
+# Verify upgrade
+echo "Verifying upgrade..."
+if curl -f http://localhost:5001/health > /dev/null 2>&1; then
+    echo "Upgrade successful! WuKongIM is healthy."
+    echo "New version: $(./wukongim version)"
+else
+    echo "Health check failed! Consider rollback."
+    exit 1
+fi
+
+echo "Upgrade completed successfully!"
+```
+
+Make script executable and use:
+
+```bash
+chmod +x upgrade-wukongim.sh
+./upgrade-wukongim.sh v2.1.0
+```
+
+## Best Practices
+
+### Planning
+
+- **Test in staging**: Always test upgrades in a staging environment first
+- **Read release notes**: Understand what changes are included
+- **Schedule maintenance**: Plan upgrades during low-traffic periods
+- **Communicate**: Inform stakeholders about planned maintenance
+
+### Execution
+
+- **Monitor closely**: Watch logs and metrics during upgrade
+- **Upgrade gradually**: For clusters, upgrade one node at a time
+- **Verify thoroughly**: Test all critical functionality after upgrade
+- **Keep backups**: Maintain backups until upgrade is fully verified
+
+### Monitoring
+
+```bash
+# Monitor system resources during upgrade
+top
+htop
+iostat 1
+
+# Watch WuKongIM logs
+tail -f ./wukongim_data/logs/wukongim.log
+
+# Monitor API health
+while true; do
+  curl -f http://localhost:5001/health && echo " - OK" || echo " - FAIL"
+  sleep 5
+done
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Monitoring Setup"
+    icon="chart-line"
+    href="/en/installation/linux/monitoring"
+  >
+    Set up monitoring for upgraded system
+  </Card>
+  <Card
+    title="Performance Tuning"
+    icon="gauge"
+    href="/en/server/configuration"
+  >
+    Optimize performance after upgrade
+  </Card>
+  <Card
+    title="Cluster Scaling"
+    icon="expand"
+    href="/en/installation/linux/scaling"
+  >
+    Learn about cluster scaling
+  </Card>
+  <Card
+    title="Best Practices"
+    icon="shield"
+    href="/en/examples/best-practices"
+  >
+    Backup strategies and best practices
+  </Card>
+</CardGroup>

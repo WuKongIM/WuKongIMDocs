@@ -1,0 +1,94 @@
+---
+title: "健康检查"
+description: "检查 WuKongIM 服务器和集群的健康状态"
+api: "GET /health"
+---
+
+## 概述
+
+健康检查端点用于监控 WuKongIM 服务器和集群的运行状态，确保系统正常运行。
+
+<RequestExample>
+```bash cURL
+curl -X GET "http://localhost:5001/health"
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5001/health');
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+
+response = requests.get('http://localhost:5001/health')
+data = response.json()
+print(data)
+```
+
+```go Go
+package main
+
+import (
+    "fmt"
+    "io"
+    "net/http"
+)
+
+func main() {
+    resp, err := http.Get("http://localhost:5001/health")
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    body, err := io.ReadAll(resp.Body)
+    if err != nil {
+        panic(err)
+    }
+    
+    fmt.Println(string(body))
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json 成功响应 (200)
+{
+  "status": "ok"
+}
+```
+
+```json 错误响应 (500)
+{
+  "status": "error",
+  "message": "Cluster status check failed"
+}
+```
+</ResponseExample>
+
+## 响应字段
+
+<ResponseField name="status" type="string" required>
+健康状态：`ok` 表示正常，`error` 表示异常
+</ResponseField>
+
+<ResponseField name="message" type="string">
+错误信息（仅在状态为 error 时出现）
+</ResponseField>
+
+## 状态码
+
+| 状态码 | 说明 |
+|--------|------|
+| 200 | 服务器健康状态正常 |
+| 500 | 服务器或集群状态异常 |
+
+## 最佳实践
+
+1. **监控频率**：建议每 30-60 秒检查一次健康状态
+2. **超时设置**：设置合理的超时时间，避免误报
+3. **负载均衡**：可用于负载均衡器的健康检查
+4. **容器编排**：适用于 Docker 和 Kubernetes 的健康检查配置
+5. **告警机制**：结合监控系统实现自动告警

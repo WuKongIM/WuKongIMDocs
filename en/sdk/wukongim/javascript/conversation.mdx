@@ -1,0 +1,534 @@
+---
+title: "Conversation Management"
+description: "WuKongIM JavaScript SDK conversation management functionality, including recent conversation sync, listening and operations"
+icon: "messages-square"
+---
+
+## Sync Recent Conversation List
+
+`Need to implement recent conversation data source` [Recent Conversation Data Source](/en/sdk/wukongim/javascript/datasource#recent-conversation-data-source)
+
+Only when opening the app for the first time, you need to sync the recent conversation list. Subsequent changes to the recent conversation list are obtained through listening.
+
+```javascript
+const conversations = await WKSDK.shared().conversationManager.sync({})
+```
+
+### Complete Sync Example
+
+```javascript
+class ConversationManager {
+    constructor() {
+        this.conversations = [];
+        this.isInitialized = false;
+        this.setupConversationListener();
+    }
+    
+    async initializeConversations() {
+        if (this.isInitialized) return;
+        
+        try {
+            // Sync conversations from server
+            const conversations = await WKSDK.shared().conversationManager.sync({
+                version: 0, // Start from version 0 for initial sync
+                limit: 100  // Limit per request
+            });
+            
+            this.conversations = conversations || [];
+            this.isInitialized = true;
+            
+            // Update UI
+            this.updateConversationListUI();
+            
+            console.log('Conversations initialized:', this.conversations.length);
+        } catch (error) {
+            console.error('Failed to initialize conversations:', error);
+        }
+    }
+    
+    updateConversationListUI() {
+        // Sort conversations by timestamp
+        const sortedConversations = this.conversations.sort((a, b) => 
+            b.timestamp - a.timestamp
+        );
+        
+        // Update UI with sorted conversations
+        this.renderConversationList(sortedConversations);
+        
+        // Update total unread count
+        this.updateTotalUnreadCount();
+    }
+    
+    renderConversationList(conversations) {
+        const listContainer = document.getElementById('conversation-list');
+        listContainer.innerHTML = '';
+        
+        conversations.forEach(conversation => {
+            const conversationElement = this.createConversationElement(conversation);
+            listContainer.appendChild(conversationElement);
+        });
+    }
+    
+    createConversationElement(conversation) {
+        const div = document.createElement('div');
+        div.className = 'conversation-item';
+        div.innerHTML = `
+            <div class="conversation-avatar">
+                <img src="${conversation.channel.avatar || '/default-avatar.png'}" alt="Avatar">
+                ${conversation.unreadCount > 0 ? `<span class="unread-badge">${conversation.unreadCount}</span>` : ''}
+            </div>
+            <div class="conversation-content">
+                <div class="conversation-title">${conversation.channel.title}</div>
+                <div class="conversation-last-message">${conversation.lastMessage?.content || ''}</div>
+            </div>
+            <div class="conversation-time">${this.formatTime(conversation.timestamp)}</div>
+        `;
+        
+        // Add click handler
+        div.addEventListener('click', () => {
+            this.openConversation(conversation.channel);
+        });
+        
+        return div;
+    }
+    
+    formatTime(timestamp) {
+        const date = new Date(timestamp * 1000);
+        const now = new Date();
+        
+        if (date.toDateString() === now.toDateString()) {
+            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        } else {
+            return date.toLocaleDateString();
+        }
+    }
+    
+    updateTotalUnreadCount() {
+        const totalUnread = WKSDK.shared().conversationManager.getAllUnreadCount();
+        
+        // Update app badge
+        this.updateAppBadge(totalUnread);
+        
+        // Update tab badge
+        this.updateTabBadge(totalUnread);
+    }
+}
+```
+
+## Listen for Recent Conversation List
+
+```javascript
+const listen = (conversation: Conversation, action: ConversationAction) => {
+    if (action === ConversationAction.add) { 
+        // New recent conversation added
+        handleConversationAdded(conversation);
+    } else if (action === ConversationAction.update) { 
+        // Recent conversation updated
+        handleConversationUpdated(conversation);
+    } else if (action === ConversationAction.remove) { 
+        // Recent conversation deleted
+        handleConversationRemoved(conversation);
+    }
+}
+```
+
+Add listener:
+
+```javascript
+WKSDK.shared().conversationManager.addConversationListener(listen);
+```
+
+Remove listener:
+
+```javascript
+WKSDK.shared().conversationManager.removeConversationListener(listen)
+```
+
+### Complete Listener Implementation
+
+```javascript
+class ConversationListManager {
+    constructor() {
+        this.conversations = new Map(); // Use Map for efficient updates
+        this.setupConversationListener();
+    }
+    
+    setupConversationListener() {
+        this.conversationListener = (conversation, action) => {
+            this.handleConversationChange(conversation, action);
+        };
+        
+        WKSDK.shared().conversationManager.addConversationListener(this.conversationListener);
+    }
+    
+    handleConversationChange(conversation, action) {
+        const channelKey = `${conversation.channel.channelID}_${conversation.channel.channelType}`;
+        
+        switch (action) {
+            case ConversationAction.add:
+                this.handleConversationAdded(conversation, channelKey);
+                break;
+            case ConversationAction.update:
+                this.handleConversationUpdated(conversation, channelKey);
+                break;
+            case ConversationAction.remove:
+                this.handleConversationRemoved(conversation, channelKey);
+                break;
+        }
+        
+        // Update UI after any change
+        this.updateUI();
+    }
+    
+    handleConversationAdded(conversation, channelKey) {
+        console.log('Conversation added:', conversation.channel.channelID);
+        this.conversations.set(channelKey, conversation);
+        
+        // Show notification for new conversation
+        this.showNewConversationNotification(conversation);
+    }
+    
+    handleConversationUpdated(conversation, channelKey) {
+        console.log('Conversation updated:', conversation.channel.channelID);
+        this.conversations.set(channelKey, conversation);
+        
+        // Update specific conversation in UI
+        this.updateConversationInUI(conversation);
+    }
+    
+    handleConversationRemoved(conversation, channelKey) {
+        console.log('Conversation removed:', conversation.channel.channelID);
+        this.conversations.delete(channelKey);
+        
+        // Remove from UI
+        this.removeConversationFromUI(conversation);
+    }
+    
+    updateUI() {
+        // Convert Map to Array and sort
+        const conversationArray = Array.from(this.conversations.values());
+        const sortedConversations = conversationArray.sort((a, b) => 
+            b.timestamp - a.timestamp
+        );
+        
+        // Update conversation list
+        this.renderConversationList(sortedConversations);
+        
+        // Update unread count
+        this.updateUnreadCount();
+    }
+    
+    updateConversationInUI(conversation) {
+        const element = document.querySelector(`[data-channel-id="${conversation.channel.channelID}"]`);
+        if (element) {
+            // Update specific elements
+            const unreadBadge = element.querySelector('.unread-badge');
+            const lastMessage = element.querySelector('.conversation-last-message');
+            const timestamp = element.querySelector('.conversation-time');
+            
+            if (conversation.unreadCount > 0) {
+                if (unreadBadge) {
+                    unreadBadge.textContent = conversation.unreadCount;
+                } else {
+                    // Create unread badge
+                    const badge = document.createElement('span');
+                    badge.className = 'unread-badge';
+                    badge.textContent = conversation.unreadCount;
+                    element.querySelector('.conversation-avatar').appendChild(badge);
+                }
+            } else {
+                if (unreadBadge) {
+                    unreadBadge.remove();
+                }
+            }
+            
+            if (lastMessage) {
+                lastMessage.textContent = conversation.lastMessage?.content || '';
+            }
+            
+            if (timestamp) {
+                timestamp.textContent = this.formatTime(conversation.timestamp);
+            }
+        }
+    }
+    
+    showNewConversationNotification(conversation) {
+        // Show browser notification if permission granted
+        if (Notification.permission === 'granted') {
+            new Notification(`New conversation with ${conversation.channel.title}`, {
+                body: conversation.lastMessage?.content || 'New conversation started',
+                icon: conversation.channel.avatar || '/default-avatar.png'
+            });
+        }
+    }
+    
+    cleanup() {
+        if (this.conversationListener) {
+            WKSDK.shared().conversationManager.removeConversationListener(this.conversationListener);
+        }
+    }
+}
+```
+
+## Other Common Methods
+
+### Get Conversation for a Channel
+
+```javascript
+const conversation = WKSDK.shared().conversationManager.findConversation(channel)
+```
+
+### Remove a Channel's Recent Conversation
+
+```javascript
+WKSDK.shared().conversationManager.removeConversation(channel)
+```
+
+### Get All Unread Count
+
+```javascript
+const unreadCount = WKSDK.shared().conversationManager.getAllUnreadCount()
+```
+
+### Create an Empty Conversation
+
+```javascript
+WKSDK.shared().conversationManager.createEmptyConversation(channel)
+```
+
+### Complete Operations Example
+
+```javascript
+class ConversationOperations {
+    
+    // Get conversation with error handling
+    getConversation(channel) {
+        try {
+            const conversation = WKSDK.shared().conversationManager.findConversation(channel);
+            return conversation;
+        } catch (error) {
+            console.error('Failed to get conversation:', error);
+            return null;
+        }
+    }
+    
+    // Remove conversation with confirmation
+    async removeConversation(channel) {
+        const confirmed = await this.showConfirmDialog(
+            'Delete Conversation',
+            'Are you sure you want to delete this conversation?'
+        );
+        
+        if (confirmed) {
+            try {
+                WKSDK.shared().conversationManager.removeConversation(channel);
+                
+                // Also call server API to sync
+                await this.deleteConversationOnServer(channel);
+                
+                this.showToast('Conversation deleted');
+            } catch (error) {
+                console.error('Failed to remove conversation:', error);
+                this.showToast('Failed to delete conversation');
+            }
+        }
+    }
+    
+    // Clear unread count
+    clearUnreadCount(channel) {
+        const conversation = this.getConversation(channel);
+        if (conversation && conversation.unreadCount > 0) {
+            // Update locally
+            conversation.unreadCount = 0;
+            
+            // Trigger conversation update
+            WKSDK.shared().conversationManager.updateConversation(conversation);
+            
+            // Call server API
+            this.clearUnreadCountOnServer(channel);
+        }
+    }
+    
+    // Get conversations by type
+    getConversationsByType(channelType) {
+        const allConversations = WKSDK.shared().conversationManager.getConversations();
+        return allConversations.filter(conv => 
+            conv.channel.channelType === channelType
+        );
+    }
+    
+    // Search conversations
+    searchConversations(keyword) {
+        const allConversations = WKSDK.shared().conversationManager.getConversations();
+        const lowerKeyword = keyword.toLowerCase();
+        
+        return allConversations.filter(conv => {
+            const title = conv.channel.title?.toLowerCase() || '';
+            const lastMessage = conv.lastMessage?.content?.toLowerCase() || '';
+            
+            return title.includes(lowerKeyword) || lastMessage.includes(lowerKeyword);
+        });
+    }
+    
+    // Get unread statistics
+    getUnreadStats() {
+        const conversations = WKSDK.shared().conversationManager.getConversations();
+        
+        let totalUnread = 0;
+        let unreadConversationCount = 0;
+        
+        conversations.forEach(conv => {
+            if (conv.unreadCount > 0) {
+                totalUnread += conv.unreadCount;
+                unreadConversationCount++;
+            }
+        });
+        
+        return {
+            totalUnread,
+            unreadConversationCount,
+            totalConversations: conversations.length
+        };
+    }
+    
+    // Helper methods
+    async showConfirmDialog(title, message) {
+        return new Promise(resolve => {
+            const confirmed = confirm(`${title}\n\n${message}`);
+            resolve(confirmed);
+        });
+    }
+    
+    showToast(message) {
+        // Implement your toast notification
+        console.log('Toast:', message);
+    }
+    
+    async deleteConversationOnServer(channel) {
+        // Implement server API call
+        const response = await fetch('/api/conversation/delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                channelId: channel.channelID,
+                channelType: channel.channelType
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to delete conversation on server');
+        }
+    }
+    
+    async clearUnreadCountOnServer(channel) {
+        // Implement server API call
+        const response = await fetch('/api/conversation/clear-unread', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                channelId: channel.channelID,
+                channelType: channel.channelType
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to clear unread count on server');
+        }
+    }
+}
+```
+
+## Best Practices
+
+### 1. Performance Optimization
+
+```javascript
+// Use debouncing for frequent updates
+class ConversationUIManager {
+    constructor() {
+        this.updateUIDebounced = this.debounce(this.updateUI.bind(this), 100);
+    }
+    
+    debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+    
+    handleConversationChange(conversation, action) {
+        // Update data immediately
+        this.updateConversationData(conversation, action);
+        
+        // Debounce UI updates
+        this.updateUIDebounced();
+    }
+}
+```
+
+### 2. Memory Management
+
+```javascript
+class ConversationComponent {
+    constructor() {
+        this.listeners = [];
+    }
+    
+    mount() {
+        const conversationListener = (conversation, action) => {
+            this.handleConversationChange(conversation, action);
+        };
+        
+        WKSDK.shared().conversationManager.addConversationListener(conversationListener);
+        this.listeners.push({ type: 'conversation', listener: conversationListener });
+    }
+    
+    unmount() {
+        // Clean up all listeners
+        this.listeners.forEach(({ type, listener }) => {
+            if (type === 'conversation') {
+                WKSDK.shared().conversationManager.removeConversationListener(listener);
+            }
+        });
+        this.listeners = [];
+    }
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Data Source Configuration"
+    icon="database"
+    href="/en/sdk/wukongim/javascript/datasource"
+  >
+    Learn how to configure conversation data sources
+  </Card>
+  <Card
+    title="Advanced Features"
+    icon="cog"
+    href="/en/sdk/wukongim/javascript/advance"
+  >
+    Explore advanced features and custom messages
+  </Card>
+  <Card
+    title="Chat Management"
+    icon="message-circle"
+    href="/en/sdk/wukongim/javascript/chat"
+  >
+    Return to chat message management
+  </Card>
+  <Card
+    title="Channel Management"
+    icon="hash"
+    href="/en/sdk/wukongim/javascript/channel"
+  >
+    Manage channels and subscribers
+  </Card>
+</CardGroup>

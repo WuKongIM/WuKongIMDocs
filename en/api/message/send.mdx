@@ -1,0 +1,588 @@
+---
+title: "Send Message"
+description: "Send messages to specified channels"
+api: "POST /message/send"
+---
+
+## Overview
+
+Send messages to specified channels, supporting various message types including text, images, files, and more.
+
+## Request Body
+
+### Required Parameters
+
+<ParamField body="payload" type="string" required>
+Base64 encoded message content
+</ParamField>
+
+<ParamField body="from_uid" type="string" required>
+Sender user ID
+</ParamField>
+
+<ParamField body="channel_id" type="string" required>
+Target channel ID
+</ParamField>
+
+<ParamField body="channel_type" type="integer" required>
+Channel type (1=personal channel, 2=group channel)
+</ParamField>
+
+### Optional Parameters
+
+<ParamField body="header" type="object">
+Message header information
+<Expandable title="header fields">
+<ParamField body="header.no_persist" type="integer">
+Whether to not persist message (0=persist, 1=do not persist)
+</ParamField>
+<ParamField body="header.red_dot" type="integer">
+Whether to show red dot notification (0=do not show, 1=show)
+</ParamField>
+<ParamField body="header.sync_once" type="integer">
+Whether it's write diffusion, generally 0, only cmd messages are 1
+</ParamField>
+</Expandable>
+</ParamField>
+
+<ParamField body="client_msg_no" type="string">
+Client message number for deduplication and status tracking
+</ParamField>
+
+<ParamField body="stream_no" type="string">
+Stream message number
+</ParamField>
+
+<ParamField body="expire" type="integer">
+Message expiration time (seconds), 0 means no expiration
+</ParamField>
+
+<ParamField body="subscribers" type="array">
+Specified list of subscribers to receive the message (only valid for CMD messages)
+<ParamField body="subscribers[]" type="string">
+Subscriber user ID
+</ParamField>
+</ParamField>
+
+
+<RequestExample>
+```bash cURL
+curl -X POST "http://localhost:5001/message/send" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "header": {
+      "no_persist": 0,
+      "red_dot": 1,
+      "sync_once": 0
+    },
+    "client_msg_no": "client_msg_123",
+    "from_uid": "user123",
+    "channel_id": "group123",
+    "channel_type": 2,
+    "expire": 0,
+    "payload": "SGVsbG8gV29ybGQ=",
+    "tag_key": "important"
+  }'
+```
+
+```javascript JavaScript
+// Send text message
+const textMessage = {
+  header: {
+    no_persist: 0,
+    red_dot: 1,
+    sync_once: 0
+  },
+  client_msg_no: `msg_${Date.now()}`,
+  from_uid: "user123",
+  channel_id: "group123",
+  channel_type: 2,
+  expire: 0,
+  payload: btoa(JSON.stringify({
+    type: "text",
+    content: "Hello, World!"
+  })),
+  tag_key: "normal"
+};
+
+const response = await fetch('http://localhost:5001/message/send', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify(textMessage)
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+import base64
+import json
+
+# Send text message
+message_content = {
+    "type": "text",
+    "content": "Hello, World!"
+}
+
+payload = base64.b64encode(
+    json.dumps(message_content).encode('utf-8')
+).decode('utf-8')
+
+data = {
+    "header": {
+        "no_persist": 0,
+        "red_dot": 1,
+        "sync_once": 0
+    },
+    "client_msg_no": f"msg_{int(time.time() * 1000)}",
+    "from_uid": "user123",
+    "channel_id": "group123",
+    "channel_type": 2,
+    "expire": 0,
+    "payload": payload,
+    "tag_key": "normal"
+}
+
+response = requests.post('http://localhost:5001/message/send', json=data)
+result = response.json()
+print(result)
+```
+
+```go Go
+package main
+
+import (
+    "bytes"
+    "encoding/base64"
+    "encoding/json"
+    "fmt"
+    "net/http"
+    "time"
+)
+
+func main() {
+    // Message content
+    messageContent := map[string]interface{}{
+        "type":    "text",
+        "content": "Hello, World!",
+    }
+    
+    contentBytes, _ := json.Marshal(messageContent)
+    payload := base64.StdEncoding.EncodeToString(contentBytes)
+    
+    data := map[string]interface{}{
+        "header": map[string]interface{}{
+            "no_persist": 0,
+            "red_dot":    1,
+            "sync_once":  0,
+        },
+        "client_msg_no": fmt.Sprintf("msg_%d", time.Now().UnixMilli()),
+        "from_uid":      "user123",
+        "channel_id":    "group123",
+        "channel_type":  2,
+        "expire":        0,
+        "payload":       payload,
+        "tag_key":       "normal",
+    }
+    
+    jsonData, _ := json.Marshal(data)
+    
+    resp, err := http.Post(
+        "http://localhost:5001/message/send",
+        "application/json",
+        bytes.NewBuffer(jsonData),
+    )
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    var result map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Printf("%+v\n", result)
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json Success Response
+{
+  "message_id": 123456789,
+  "message_seq": 1001,
+  "client_msg_no": "client_msg_123"
+}
+```
+</ResponseExample>
+
+## Response Fields
+
+<ResponseField name="message_id" type="integer" required>
+Server-generated message ID
+</ResponseField>
+
+<ResponseField name="message_seq" type="integer" required>
+Message sequence number
+</ResponseField>
+
+<ResponseField name="client_msg_no" type="string" required>
+Client message number (echo)
+</ResponseField>
+
+## Status Codes
+
+| Status Code | Description |
+|-------------|-------------|
+| 200 | Message sent successfully |
+| 400 | Request parameter error |
+| 403 | No sending permission |
+| 500 | Internal server error |
+
+## Message Type Examples
+
+According to WuKongIM protocol specifications, here are recommended Payload structure examples:
+
+### Regular Messages
+
+#### Text Message
+
+```json
+{
+    "type": 1,
+    "content": "This is a text message"
+}
+```
+
+#### Text Message (with @ functionality)
+
+```json
+{
+    "type": 1,
+    "content": "This is a text message",
+    "mention": {
+        "all": 0,
+        "uids": ["1223", "2323"]
+    }
+}
+```
+
+<Note>
+- `mention.all`: Whether to @everyone (0=@users, 1=@everyone)
+- `mention.uids`: If all=1, this field is empty
+</Note>
+
+#### Text Message (with reply)
+
+```json
+{
+    "type": 1,
+    "content": "Replied to someone",
+    "reply": {
+        "root_mid": "xxx",
+        "message_id": "xxxx",
+        "message_seq": 123,
+        "from_uid": "xxxx",
+        "from_name": "xxx",
+        "payload": {}
+    }
+}
+```
+
+#### Image Message
+
+```json
+{
+    "type": 2,
+    "url": "http://xxxxx.com/xxx",
+    "width": 200,
+    "height": 320
+}
+```
+
+#### GIF Message
+
+```json
+{
+    "type": 3,
+    "url": "http://xxxxx.com/xxx",
+    "width": 72,
+    "height": 72
+}
+```
+
+#### Voice Message
+
+```json
+{
+    "type": 4,
+    "url": "http://xxxxx.com/xxx",
+    "timeTrad": 10
+}
+```
+
+<Note>
+`timeTrad`: Voice duration (seconds)
+</Note>
+
+#### File Message
+
+```json
+{
+    "type": 8,
+    "url": "http://xxxxx.com/xxx",
+    "name": "xxxx.docx",
+    "size": 238734
+}
+```
+
+<Note>
+`size`: File size in bytes
+</Note>
+
+#### Command Message
+
+```json
+{
+    "type": 99,
+    "cmd": "groupUpdate",
+    "param": {}
+}
+```
+
+### System Messages
+
+<Note>
+System message type must be greater than 1000
+</Note>
+
+#### Create Group Chat
+
+Message settings: `NoPersist:0, RedDot:0, SyncOnce:1`
+
+```json
+{
+    "type": 1001,
+    "creator": "xxx",
+    "creator_name": "John",
+    "content": "{0} invited {1}, {2} to join the group chat",
+    "extra": [
+        {"uid": "xxx", "name": "John"},
+        {"uid": "xx01", "name": "Alice"},
+        {"uid": "xx02", "name": "Bob"}
+    ]
+}
+```
+
+#### Add Group Members
+
+Message settings: `NoPersist:0, RedDot:0, SyncOnce:1`
+
+```json
+{
+    "type": 1002,
+    "content": "{0} invited {1}, {2} to join the group chat",
+    "extra": [
+        {"uid": "xxx", "name": "John"},
+        {"uid": "xx01", "name": "Alice"},
+        {"uid": "xx02", "name": "Bob"}
+    ]
+}
+```
+
+#### Remove Group Members
+
+Message settings: `NoPersist:0, RedDot:0, SyncOnce:1`
+
+```json
+{
+    "type": 1003,
+    "content": "{0} removed {1} from the group chat",
+    "extra": [
+        {"uid": "xxx", "name": "John"},
+        {"uid": "xx01", "name": "Alice"}
+    ]
+}
+```
+
+#### Group Member Kicked
+
+Message settings: `NoPersist:0, RedDot:1, SyncOnce:0`
+
+```json
+{
+    "type": 1010,
+    "content": "You were removed from the group chat by {0}",
+    "extra": [
+        {"uid": "xxx", "name": "John"}
+    ]
+}
+```
+
+#### Update Group Name
+
+Message settings: `NoPersist:0, RedDot:0, SyncOnce:1`
+
+```json
+{
+    "type": 1005,
+    "content": "{0} changed the group name to \"Test Group\"",
+    "extra": [
+        {"uid": "xxx", "name": "John"}
+    ]
+}
+```
+
+#### Update Group Announcement
+
+Message settings: `NoPersist:0, RedDot:0, SyncOnce:1`
+
+```json
+{
+    "type": 1005,
+    "content": "{0} changed the group announcement to \"This is a group announcement\"",
+    "extra": [
+        {"uid": "xxx", "name": "John"}
+    ]
+}
+```
+
+#### Recall Message
+
+Message settings: `NoPersist:0, RedDot:0, SyncOnce:1`
+
+```json
+{
+    "type": 1006,
+    "message_id": "234343435",
+    "content": "{0} recalled a message",
+    "extra": [
+        {"uid": "xxx", "name": "John"}
+    ]
+}
+```
+
+### Command Messages
+
+#### Basic Command Message
+
+Message settings: `SyncOnce:1`
+
+```json
+{
+    "type": 99,
+    "cmd": "cmd",
+    "param": {}
+}
+```
+
+#### Group Member Info Update
+
+Upon receiving this message, the client should incrementally sync group member information
+
+```json
+{
+    "type": 99,
+    "cmd": "memberUpdate",
+    "param": {
+        "group_no": "xxxx"
+    }
+}
+```
+
+#### Red Dot Clear
+
+Upon receiving this command, the client should clear the red dot for the corresponding conversation
+
+```json
+{
+    "type": 99,
+    "cmd": "unreadClear",
+    "param": {
+        "channel_id": "xxxx",
+        "channel_type": 2
+    }
+}
+```
+
+### Usage Examples
+
+<CodeGroup>
+
+```javascript JavaScript
+// Send text message
+const textMessage = {
+    type: 1,
+    content: "This is a text message"
+};
+
+const payload = btoa(JSON.stringify(textMessage));
+
+const response = await fetch('/message/send', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+        from_uid: "user123",
+        channel_id: "group123",
+        channel_type: 2,
+        payload: payload
+    })
+});
+```
+
+```python Python
+import base64
+import json
+
+# Send image message
+image_message = {
+    "type": 2,
+    "url": "http://example.com/image.jpg",
+    "width": 200,
+    "height": 320
+}
+
+payload = base64.b64encode(
+    json.dumps(image_message).encode('utf-8')
+).decode('utf-8')
+
+data = {
+    "from_uid": "user123",
+    "channel_id": "group123",
+    "channel_type": 2,
+    "payload": payload
+}
+```
+
+```go Go
+package main
+
+import (
+    "encoding/base64"
+    "encoding/json"
+)
+
+// Send voice message
+voiceMessage := map[string]interface{}{
+    "type":     4,
+    "url":      "http://example.com/voice.mp3",
+    "timeTrad": 10,
+}
+
+contentBytes, _ := json.Marshal(voiceMessage)
+payload := base64.StdEncoding.EncodeToString(contentBytes)
+```
+
+</CodeGroup>
+
+## Best Practices
+
+1. **Message Deduplication**: Use unique client_msg_no to avoid duplicate sending
+2. **Message Queue**: Add failed messages to retry queue
+3. **Content Encoding**: Ensure payload is correctly Base64 encoded
+4. **Permission Check**: Check if user has sending permission before sending
+5. **Message Types**: Strictly follow protocol specifications for correct message type numbers
+6. **System Messages**: System message types must be greater than 1000 with correct message flags
+7. **Command Messages**: Command messages should set SyncOnce:1 flag

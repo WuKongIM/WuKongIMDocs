@@ -1,0 +1,672 @@
+---
+title: "Get Channel Whitelist"
+description: "Get the whitelist user list for a channel"
+api: "GET /channel/whitelist"
+---
+
+## Overview
+
+Get the whitelist user list for a specified channel, returning all user IDs in the whitelist.
+
+## Query Parameters
+
+<ParamField query="channel_id" type="string" required>
+Channel ID
+</ParamField>
+
+<ParamField query="channel_type" type="integer" required>
+Channel type
+- `1` - Personal channel
+- `2` - Group channel
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X GET "http://localhost:5001/channel/whitelist?channel_id=group123&channel_type=2"
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5001/channel/whitelist?channel_id=group123&channel_type=2');
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+
+params = {
+    'channel_id': 'group123',
+    'channel_type': 2
+}
+
+response = requests.get('http://localhost:5001/channel/whitelist', params=params)
+data = response.json()
+print(data)
+```
+
+```go Go
+package main
+
+import (
+    "encoding/json"
+    "fmt"
+    "net/http"
+    "net/url"
+)
+
+func main() {
+    baseURL := "http://localhost:5001/channel/whitelist"
+    params := url.Values{}
+    params.Add("channel_id", "group123")
+    params.Add("channel_type", "2")
+    
+    fullURL := baseURL + "?" + params.Encode()
+    
+    resp, err := http.Get(fullURL)
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    var result []string
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Printf("%+v\n", result)
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json Success Response
+[
+  "user456",
+  "user789",
+  "user101"
+]
+```
+
+```json Empty Whitelist
+[]
+```
+</ResponseExample>
+
+## Response Fields
+
+<ResponseField name="whitelist" type="array" required>
+List of whitelisted user IDs
+<ResponseField name="whitelist[]" type="string">
+User ID
+</ResponseField>
+</ResponseField>
+
+## Status Codes
+
+| Status Code | Description |
+|-------------|-------------|
+| 200 | Successfully retrieved whitelist |
+| 400 | Request parameter error |
+| 403 | No view permission |
+| 404 | Channel does not exist |
+| 500 | Internal server error |
+
+## Use Cases
+
+### Whitelist Management Dashboard
+
+**Display Whitelist Members**:
+```javascript
+// Create a whitelist management dashboard
+class WhitelistDashboard {
+    constructor(channelId, channelType) {
+        this.channelId = channelId;
+        this.channelType = channelType;
+        this.whitelistMembers = [];
+    }
+    
+    async loadWhitelist() {
+        try {
+            const response = await fetch(
+                `/channel/whitelist?channel_id=${this.channelId}&channel_type=${this.channelType}`
+            );
+            this.whitelistMembers = await response.json();
+            
+            await this.enrichMemberData();
+            this.renderDashboard();
+        } catch (error) {
+            console.error('Failed to load whitelist:', error);
+            this.showError('Failed to load whitelist members');
+        }
+    }
+    
+    async enrichMemberData() {
+        // Get additional user information for each whitelisted member
+        const enrichedMembers = [];
+        
+        for (const userId of this.whitelistMembers) {
+            try {
+                const userInfo = await getUserInfo(userId);
+                enrichedMembers.push({
+                    userId: userId,
+                    username: userInfo.username || userId,
+                    avatar: userInfo.avatar,
+                    joinedWhitelistAt: userInfo.whitelistJoinDate,
+                    privileges: await this.getUserPrivileges(userId)
+                });
+            } catch (error) {
+                // Fallback for users we can't get info for
+                enrichedMembers.push({
+                    userId: userId,
+                    username: userId,
+                    avatar: null,
+                    joinedWhitelistAt: null,
+                    privileges: ['basic_whitelist']
+                });
+            }
+        }
+        
+        this.enrichedMembers = enrichedMembers;
+    }
+    
+    async getUserPrivileges(userId) {
+        // Get specific privileges for this user
+        const privileges = [];
+        
+        // Check if user has moderator privileges
+        const isModerator = await checkModeratorStatus(this.channelId, userId);
+        if (isModerator) {
+            privileges.push('moderator');
+        }
+        
+        // Check for VIP status
+        const isVIP = await checkVIPStatus(this.channelId, userId);
+        if (isVIP) {
+            privileges.push('vip');
+        }
+        
+        // Default whitelist privileges
+        privileges.push('bypass_mute', 'priority_access');
+        
+        return privileges;
+    }
+    
+    renderDashboard() {
+        const dashboardHTML = `
+            <div class="whitelist-dashboard">
+                <div class="header">
+                    <h2>Channel Whitelist (${this.enrichedMembers.length} members)</h2>
+                    <button onclick="dashboard.addMember()">Add Member</button>
+                    <button onclick="dashboard.refresh()">Refresh</button>
+                </div>
+                
+                <div class="member-list">
+                    ${this.renderMemberList()}
+                </div>
+                
+                <div class="actions">
+                    <button onclick="dashboard.exportWhitelist()">Export List</button>
+                    <button onclick="dashboard.bulkManage()">Bulk Manage</button>
+                </div>
+            </div>
+        `;
+        
+        document.getElementById('whitelist-dashboard').innerHTML = dashboardHTML;
+    }
+    
+    renderMemberList() {
+        return this.enrichedMembers.map(member => `
+            <div class="member-item" data-user-id="${member.userId}">
+                <div class="member-info">
+                    <img src="${member.avatar || '/default-avatar.png'}" alt="Avatar" class="avatar">
+                    <div class="details">
+                        <div class="username">${member.username}</div>
+                        <div class="user-id">${member.userId}</div>
+                        <div class="privileges">${member.privileges.join(', ')}</div>
+                    </div>
+                </div>
+                <div class="member-actions">
+                    <button onclick="dashboard.viewMember('${member.userId}')">View</button>
+                    <button onclick="dashboard.removeMember('${member.userId}')">Remove</button>
+                </div>
+            </div>
+        `).join('');
+    }
+    
+    async addMember() {
+        const userId = prompt('Enter user ID to add to whitelist:');
+        if (userId) {
+            try {
+                await addToWhitelist({
+                    channel_id: this.channelId,
+                    channel_type: this.channelType,
+                    uids: [userId]
+                });
+                
+                await this.loadWhitelist(); // Refresh the list
+                this.showSuccess(`User ${userId} added to whitelist`);
+            } catch (error) {
+                this.showError(`Failed to add user ${userId} to whitelist`);
+            }
+        }
+    }
+    
+    async removeMember(userId) {
+        if (confirm(`Remove ${userId} from whitelist?`)) {
+            try {
+                await removeFromWhitelist({
+                    channel_id: this.channelId,
+                    channel_type: this.channelType,
+                    uids: [userId]
+                });
+                
+                await this.loadWhitelist(); // Refresh the list
+                this.showSuccess(`User ${userId} removed from whitelist`);
+            } catch (error) {
+                this.showError(`Failed to remove user ${userId} from whitelist`);
+            }
+        }
+    }
+    
+    async refresh() {
+        await this.loadWhitelist();
+        this.showSuccess('Whitelist refreshed');
+    }
+    
+    exportWhitelist() {
+        const exportData = {
+            channel_id: this.channelId,
+            channel_type: this.channelType,
+            whitelist_members: this.enrichedMembers,
+            exported_at: new Date().toISOString(),
+            total_members: this.enrichedMembers.length
+        };
+        
+        const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `whitelist-${this.channelId}-${Date.now()}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+    
+    showSuccess(message) {
+        console.log(`✓ ${message}`);
+        // Implement UI notification
+    }
+    
+    showError(message) {
+        console.error(`✗ ${message}`);
+        // Implement UI error notification
+    }
+}
+
+// Usage
+const dashboard = new WhitelistDashboard('group123', 2);
+dashboard.loadWhitelist();
+```
+
+### Permission Checking System
+
+**Check User Whitelist Status**:
+```javascript
+// Comprehensive permission checking system
+class PermissionChecker {
+    constructor() {
+        this.whitelistCache = new Map();
+        this.cacheTimeout = 5 * 60 * 1000; // 5 minutes
+    }
+    
+    async isUserWhitelisted(channelId, channelType, userId) {
+        try {
+            const cacheKey = `${channelId}:${channelType}`;
+            const cached = this.whitelistCache.get(cacheKey);
+            
+            // Check cache first
+            if (cached && Date.now() - cached.timestamp < this.cacheTimeout) {
+                return cached.whitelist.includes(userId);
+            }
+            
+            // Fetch fresh whitelist
+            const whitelist = await this.getChannelWhitelist(channelId, channelType);
+            
+            // Update cache
+            this.whitelistCache.set(cacheKey, {
+                whitelist: whitelist,
+                timestamp: Date.now()
+            });
+            
+            return whitelist.includes(userId);
+        } catch (error) {
+            console.error('Failed to check whitelist status:', error);
+            return false;
+        }
+    }
+    
+    async getChannelWhitelist(channelId, channelType) {
+        const response = await fetch(
+            `/channel/whitelist?channel_id=${channelId}&channel_type=${channelType}`
+        );
+        return await response.json();
+    }
+    
+    async checkUserPermissions(channelId, channelType, userId) {
+        const [isWhitelisted, isBlacklisted, isModerator] = await Promise.all([
+            this.isUserWhitelisted(channelId, channelType, userId),
+            this.isUserBlacklisted(channelId, channelType, userId),
+            this.isUserModerator(channelId, userId)
+        ]);
+        
+        return {
+            userId: userId,
+            isWhitelisted: isWhitelisted,
+            isBlacklisted: isBlacklisted,
+            isModerator: isModerator,
+            effectivePermissions: this.calculateEffectivePermissions({
+                isWhitelisted,
+                isBlacklisted,
+                isModerator
+            })
+        };
+    }
+    
+    calculateEffectivePermissions({ isWhitelisted, isBlacklisted, isModerator }) {
+        if (isBlacklisted && !isModerator) {
+            return {
+                canSendMessage: false,
+                canJoinChannel: false,
+                canBypassMute: false,
+                level: 'restricted'
+            };
+        }
+        
+        if (isWhitelisted || isModerator) {
+            return {
+                canSendMessage: true,
+                canJoinChannel: true,
+                canBypassMute: true,
+                priorityAccess: true,
+                level: isModerator ? 'moderator' : 'privileged'
+            };
+        }
+        
+        return {
+            canSendMessage: true,
+            canJoinChannel: true,
+            canBypassMute: false,
+            level: 'regular'
+        };
+    }
+    
+    async isUserBlacklisted(channelId, channelType, userId) {
+        // Implementation for blacklist checking
+        try {
+            const blacklist = await getChannelBlacklist(channelId, channelType);
+            return blacklist.includes(userId);
+        } catch (error) {
+            return false;
+        }
+    }
+    
+    async isUserModerator(channelId, userId) {
+        // Implementation for moderator checking
+        try {
+            const moderators = await getChannelModerators(channelId);
+            return moderators.includes(userId);
+        } catch (error) {
+            return false;
+        }
+    }
+    
+    clearCache() {
+        this.whitelistCache.clear();
+    }
+    
+    clearChannelCache(channelId, channelType) {
+        const cacheKey = `${channelId}:${channelType}`;
+        this.whitelistCache.delete(cacheKey);
+    }
+}
+
+// Usage
+const permissionChecker = new PermissionChecker();
+
+// Check if user is whitelisted
+const isWhitelisted = await permissionChecker.isUserWhitelisted('group123', 2, 'user456');
+console.log('User whitelisted:', isWhitelisted);
+
+// Get comprehensive permissions
+const permissions = await permissionChecker.checkUserPermissions('group123', 2, 'user456');
+console.log('User permissions:', permissions);
+```
+
+### Whitelist Analytics
+
+**Analyze Whitelist Patterns**:
+```javascript
+// Whitelist analytics and reporting
+class WhitelistAnalytics {
+    constructor() {
+        this.analyticsData = new Map();
+    }
+    
+    async analyzeChannelWhitelist(channelId, channelType) {
+        try {
+            const whitelist = await this.getChannelWhitelist(channelId, channelType);
+            
+            const analysis = {
+                channelId: channelId,
+                channelType: channelType,
+                totalMembers: whitelist.length,
+                memberDetails: await this.analyzeMemberDetails(whitelist),
+                activityAnalysis: await this.analyzeActivity(channelId, whitelist),
+                privilegeDistribution: await this.analyzePrivileges(channelId, whitelist),
+                trends: await this.analyzeTrends(channelId, channelType),
+                recommendations: []
+            };
+            
+            // Generate recommendations
+            analysis.recommendations = this.generateRecommendations(analysis);
+            
+            this.analyticsData.set(`${channelId}:${channelType}`, analysis);
+            
+            return analysis;
+        } catch (error) {
+            console.error('Failed to analyze whitelist:', error);
+            return null;
+        }
+    }
+    
+    async getChannelWhitelist(channelId, channelType) {
+        const response = await fetch(
+            `/channel/whitelist?channel_id=${channelId}&channel_type=${channelType}`
+        );
+        return await response.json();
+    }
+    
+    async analyzeMemberDetails(whitelist) {
+        const memberDetails = {
+            activeMembers: 0,
+            inactiveMembers: 0,
+            newMembers: 0, // Added in last 30 days
+            longTermMembers: 0, // More than 6 months
+            memberTypes: {
+                moderators: 0,
+                vips: 0,
+                regular: 0
+            }
+        };
+        
+        for (const userId of whitelist) {
+            const userInfo = await getUserInfo(userId);
+            const lastActivity = await getLastActivity(userId);
+            
+            // Activity analysis
+            const daysSinceActivity = (Date.now() - lastActivity) / (1000 * 60 * 60 * 24);
+            if (daysSinceActivity <= 7) {
+                memberDetails.activeMembers++;
+            } else {
+                memberDetails.inactiveMembers++;
+            }
+            
+            // Membership duration
+            const membershipDuration = Date.now() - userInfo.whitelistJoinDate;
+            const daysMember = membershipDuration / (1000 * 60 * 60 * 24);
+            
+            if (daysMember <= 30) {
+                memberDetails.newMembers++;
+            } else if (daysMember >= 180) {
+                memberDetails.longTermMembers++;
+            }
+            
+            // Member type
+            if (userInfo.isModerator) {
+                memberDetails.memberTypes.moderators++;
+            } else if (userInfo.isVIP) {
+                memberDetails.memberTypes.vips++;
+            } else {
+                memberDetails.memberTypes.regular++;
+            }
+        }
+        
+        return memberDetails;
+    }
+    
+    async analyzeActivity(channelId, whitelist) {
+        const activityData = {
+            messagesSent: 0,
+            averageMessagesPerMember: 0,
+            mostActiveMembers: [],
+            leastActiveMembers: []
+        };
+        
+        const memberActivity = [];
+        
+        for (const userId of whitelist) {
+            const messageCount = await getUserMessageCount(channelId, userId, 30); // Last 30 days
+            memberActivity.push({ userId, messageCount });
+            activityData.messagesSent += messageCount;
+        }
+        
+        activityData.averageMessagesPerMember = activityData.messagesSent / whitelist.length;
+        
+        // Sort by activity
+        memberActivity.sort((a, b) => b.messageCount - a.messageCount);
+        
+        activityData.mostActiveMembers = memberActivity.slice(0, 5);
+        activityData.leastActiveMembers = memberActivity.slice(-5);
+        
+        return activityData;
+    }
+    
+    async analyzePrivileges(channelId, whitelist) {
+        const privilegeData = {
+            bypassMute: 0,
+            priorityAccess: 0,
+            rateExempt: 0,
+            customPrivileges: {}
+        };
+        
+        for (const userId of whitelist) {
+            const privileges = await getUserPrivileges(channelId, userId);
+            
+            if (privileges.includes('bypass_mute')) privilegeData.bypassMute++;
+            if (privileges.includes('priority_access')) privilegeData.priorityAccess++;
+            if (privileges.includes('rate_exempt')) privilegeData.rateExempt++;
+            
+            // Count custom privileges
+            privileges.forEach(privilege => {
+                if (!['bypass_mute', 'priority_access', 'rate_exempt'].includes(privilege)) {
+                    privilegeData.customPrivileges[privilege] = 
+                        (privilegeData.customPrivileges[privilege] || 0) + 1;
+                }
+            });
+        }
+        
+        return privilegeData;
+    }
+    
+    async analyzeTrends(channelId, channelType) {
+        // Analyze whitelist growth/shrinkage trends
+        const trends = {
+            growthRate: 0,
+            additionRate: 0,
+            removalRate: 0,
+            seasonality: {}
+        };
+        
+        // Implementation would analyze historical data
+        // This is a simplified version
+        
+        return trends;
+    }
+    
+    generateRecommendations(analysis) {
+        const recommendations = [];
+        
+        // Inactive member recommendation
+        if (analysis.memberDetails.inactiveMembers > analysis.memberDetails.activeMembers) {
+            recommendations.push({
+                type: 'cleanup',
+                priority: 'medium',
+                message: 'Consider reviewing inactive whitelist members for removal'
+            });
+        }
+        
+        // Privilege distribution recommendation
+        if (analysis.privilegeDistribution.bypassMute === analysis.totalMembers) {
+            recommendations.push({
+                type: 'privilege_review',
+                priority: 'low',
+                message: 'All whitelist members have bypass_mute privilege - consider if this is necessary'
+            });
+        }
+        
+        // Growth recommendation
+        if (analysis.memberDetails.newMembers > analysis.totalMembers * 0.5) {
+            recommendations.push({
+                type: 'monitoring',
+                priority: 'high',
+                message: 'High rate of new whitelist additions - monitor for abuse'
+            });
+        }
+        
+        return recommendations;
+    }
+    
+    generateReport(channelId, channelType) {
+        const analysis = this.analyticsData.get(`${channelId}:${channelType}`);
+        if (!analysis) return null;
+        
+        return {
+            summary: {
+                channel: `${channelId} (Type: ${channelType})`,
+                totalMembers: analysis.totalMembers,
+                activeMembers: analysis.memberDetails.activeMembers,
+                recommendations: analysis.recommendations.length
+            },
+            details: analysis,
+            generatedAt: new Date().toISOString()
+        };
+    }
+}
+
+// Usage
+const analytics = new WhitelistAnalytics();
+
+// Analyze channel whitelist
+const analysis = await analytics.analyzeChannelWhitelist('group123', 2);
+console.log('Whitelist analysis:', analysis);
+
+// Generate report
+const report = analytics.generateReport('group123', 2);
+console.log('Analytics report:', report);
+```
+
+## Best Practices
+
+1. **Regular Monitoring**: Regularly check whitelist membership for accuracy
+2. **Access Control**: Ensure only authorized users can view whitelist information
+3. **Caching**: Cache whitelist data to improve performance for frequent checks
+4. **Analytics**: Use whitelist data for channel management insights
+5. **Documentation**: Document the purpose and criteria for whitelist membership
+6. **Privacy**: Respect user privacy when displaying whitelist information
+7. **Performance**: Optimize whitelist queries for channels with large member counts

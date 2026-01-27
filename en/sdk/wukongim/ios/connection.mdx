@@ -1,0 +1,261 @@
+---
+title: "Connection Management"
+description: "WuKongIM iOS SDK connection management and status monitoring guide"
+icon: "link-2"
+---
+
+Responsible for establishing, maintaining, and disconnecting IM connections.
+
+This documentation only covers core methods. For more details, check the `[WKSDK shared].connectionManager` interface in the code.
+
+## Configuration
+
+```objc
+[WKSDK shared].options.host = @"xxx.xxx.xxx.xxx"; // IM communication IP
+[WKSDK shared].options.port = 5100; // IM communication TCP port
+
+// Set IM connection authentication information
+[WKSDK shared].options.connectInfoCallback = ^WKConnectInfo * _Nonnull{
+    WKConnectInfo *connectInfo = [WKConnectInfo new];
+    connectInfo.uid = "xxxx"; // User uid (registered with IM communication end by business server)
+    connectInfo.token = "xxxx"; // User token (registered with IM communication end by business server)
+    return  connectInfo;
+};
+```
+
+For more configuration options, check `[WKSDK shared].options`
+
+## Swift Configuration
+
+```swift
+WKSDK.shared.options.host = "xxx.xxx.xxx.xxx" // IM communication IP
+WKSDK.shared.options.port = 5100 // IM communication TCP port
+
+// Set IM connection authentication information
+WKSDK.shared.options.connectInfoCallback = {
+    let connectInfo = WKConnectInfo()
+    connectInfo.uid = "xxxx" // User uid
+    connectInfo.token = "xxxx" // User token
+    return connectInfo
+}
+```
+
+## Advanced Configuration
+
+```objc
+// Set connection timeout
+[WKSDK shared].options.connectTimeout = 10; // 10 seconds
+
+// Set heartbeat interval
+[WKSDK shared].options.heartbeatInterval = 30; // 30 seconds
+
+// Set auto-reconnect
+[WKSDK shared].options.autoReconnect = YES;
+
+// Set max reconnect attempts
+[WKSDK shared].options.maxReconnectAttempts = 10;
+
+// Set reconnect interval
+[WKSDK shared].options.reconnectInterval = 5; // 5 seconds
+```
+
+## Connect
+
+```objc
+// Connect
+[[WKSDK shared].connectionManager connect];
+```
+
+```swift
+// Swift
+WKSDK.shared.connectionManager.connect()
+```
+
+## Disconnect
+
+```objc
+// Disconnect - NO: SDK maintains reconnection mechanism, YES: SDK will no longer reconnect
+[[WKSDK shared].connectionManager disconnect:NO];
+```
+
+```swift
+// Swift
+WKSDK.shared.connectionManager.disconnect(false) // false: maintain reconnection
+```
+
+## Connection Status Monitoring
+
+```objc
+[WKSDK.shared.connectionManager addDelegate:self]; // WKConnectionManagerDelegate
+```
+
+```swift
+// Swift
+WKSDK.shared.connectionManager.addDelegate(self) // WKConnectionManagerDelegate
+```
+
+### Delegate Implementation
+
+```objc
+// ---------- WKConnectionManagerDelegate ----------
+
+/**
+ Connection status monitoring
+ */
+-(void) onConnectStatus:(WKConnectStatus)status reasonCode:(WKReason)reasonCode {
+    switch (status) {
+        case WKConnecting:
+            NSLog(@"Connecting...");
+            break;
+        case WKConnected:
+            NSLog(@"Connected successfully!");
+            break;
+        case WKDisconnected:
+            NSLog(@"Disconnected, reason: %d", reasonCode);
+            break;
+        case WKConnectFail:
+            NSLog(@"Connection failed, reason: %d", reasonCode);
+            break;
+    }
+}
+
+/**
+ Connection kicked off (logged in from another device)
+ */
+-(void) onKick:(WKReason)reasonCode {
+    NSLog(@"Kicked off, reason: %d", reasonCode);
+    // Handle being kicked off, usually show login page
+}
+```
+
+```swift
+// Swift implementation
+extension YourViewController: WKConnectionManagerDelegate {
+    func onConnectStatus(_ status: WKConnectStatus, reasonCode: WKReason) {
+        switch status {
+        case .connecting:
+            print("Connecting...")
+        case .connected:
+            print("Connected successfully!")
+        case .disconnected:
+            print("Disconnected, reason: \(reasonCode)")
+        case .connectFail:
+            print("Connection failed, reason: \(reasonCode)")
+        @unknown default:
+            break
+        }
+    }
+    
+    func onKick(_ reasonCode: WKReason) {
+        print("Kicked off, reason: \(reasonCode)")
+        // Handle being kicked off
+    }
+}
+```
+
+## Connection Status Types
+
+| Status | Description |
+|--------|-------------|
+| `WKConnecting` | Connecting to server |
+| `WKConnected` | Successfully connected |
+| `WKDisconnected` | Disconnected from server |
+| `WKConnectFail` | Connection failed |
+
+## Reason Codes
+
+Common reason codes for connection status changes:
+
+| Code | Description |
+|------|-------------|
+| `WKReasonConnectSuccess` | Connection successful |
+| `WKReasonConnectTimeout` | Connection timeout |
+| `WKReasonAuthFail` | Authentication failed |
+| `WKReasonNetworkError` | Network error |
+| `WKReasonKickOff` | Kicked off by another device |
+
+## Best Practices
+
+### 1. Connection Lifecycle Management
+
+```objc
+// In AppDelegate
+- (void)applicationDidBecomeActive:(UIApplication *)application {
+    // App becomes active, connect if needed
+    if (![WKSDK.shared.connectionManager isConnected]) {
+        [WKSDK.shared.connectionManager connect];
+    }
+}
+
+- (void)applicationDidEnterBackground:(UIApplication *)application {
+    // App enters background, you may choose to disconnect
+    // [WKSDK.shared.connectionManager disconnect:NO];
+}
+```
+
+### 2. Network Status Monitoring
+
+```objc
+#import <SystemConfiguration/SystemConfiguration.h>
+
+// Monitor network reachability
+- (void)startNetworkMonitoring {
+    // Implementation depends on your network monitoring solution
+    // When network becomes available, reconnect
+    [WKSDK.shared.connectionManager connect];
+}
+```
+
+### 3. Error Handling
+
+```objc
+-(void) onConnectStatus:(WKConnectStatus)status reasonCode:(WKReason)reasonCode {
+    if (status == WKConnectFail) {
+        switch (reasonCode) {
+            case WKReasonAuthFail:
+                // Handle authentication failure - refresh token
+                [self refreshTokenAndReconnect];
+                break;
+            case WKReasonNetworkError:
+                // Handle network error - retry later
+                [self scheduleReconnect];
+                break;
+            default:
+                break;
+        }
+    }
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Message Handling"
+    icon="message-circle"
+    href="/en/sdk/wukongim/ios/chat"
+  >
+    Learn how to send and receive messages
+  </Card>
+  <Card
+    title="Channel Management"
+    icon="hash"
+    href="/en/sdk/wukongim/ios/channel"
+  >
+    Manage channels and groups
+  </Card>
+  <Card
+    title="Conversation Management"
+    icon="users"
+    href="/en/sdk/wukongim/ios/conversation"
+  >
+    Handle conversation lists
+  </Card>
+  <Card
+    title="Media Messages"
+    icon="image"
+    href="/en/sdk/wukongim/ios/media"
+  >
+    Handle image, voice, and video messages
+  </Card>
+</CardGroup>

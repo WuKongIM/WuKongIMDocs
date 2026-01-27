@@ -1,0 +1,34 @@
+---
+title: "System Integration"
+description: "Complete guide for integrating WuKongIM into existing business systems"
+icon: "puzzle"
+---
+
+# System Integration
+
+`All WuKongIM APIs should not be called directly by the APP client. The frontend should first call your own business API, and the business API should then call WuKongIM's API. WuKongIM's API should not be exposed to the external network to ensure data security.`
+
+## Step 1: Integrate with Your Business System Users
+
+![User Integration Flow](/images/stress-report/integration.png)
+
+1. Your application calls your own login or registration business API.
+2. After your login or registration business API processes its own business logic, it generates a user ID (uid) and token, then calls WuKongIM's [Login or Register User](/en/api/user/token) API to update WuKongIM
+3. Return the uid and token to your own application client.
+4. The application client calls WuKongIM SDK's connect method, passing in the uid and token. WuKongIM SDK will pass the uid and token to WuKongIM server for verification. If the client-passed values match the server-passed values, verification will pass, and after successful verification, a persistent connection will be maintained.
+
+## Step 2: Provide Webhook Interface
+
+The third-party service provides an HTTP API interface. WuKongIM will pass corresponding data to this interface according to the Webhook agreement using an event mechanism.
+
+## Step 3: Configure Webhook Interface to WuKongIM
+
+Configure your HTTP API interface into **_WuKongIM_**.
+
+```yaml
+---
+webhook: #
+  httpAddr: 'http://xxxxx' # webhook HTTP address, used to notify data to third parties
+```
+
+Events from applications integrated with WuKongIM SDK will be pushed to the third-party system. For example, after a user comes online, **_WuKong SDK_** will notify **_WuKongIM_** server, and **_WuKongIM_** will push the online event to the third-party server through the configured webhook address.

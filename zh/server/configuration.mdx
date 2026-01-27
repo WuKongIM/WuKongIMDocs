@@ -1,0 +1,455 @@
+---
+title: "服务器配置"
+description: "WuKongIM 服务器完整配置指南"
+icon: "settings"
+---
+
+WuKongIM 支持 YAML 配置文件和环境变量两种配置方式。环境变量优先级高于配置文件。
+
+## 基础服务器配置
+
+<CodeGroup>
+```yaml YAML 配置
+# 基础服务器配置
+mode: "release"                       # 运行模式：debug(测试), release(正式), bench(压力测试)
+tokenAuthOn: false                    # 是否开启token验证，默认为false，如果不开启任何人都可以连接到此节点，生产环境建议开启
+managerUID: ""                        # 管理员UID，默认为 ____manager
+managerToken: ""                      # 管理员token，如果此字段有值，则API接口需要在请求头中添加token字段，值为此字段的值
+addr: "tcp://0.0.0.0:5100"           # TCP监听地址
+httpAddr: "0.0.0.0:5001"             # HTTP API的监听地址，默认：0.0.0.0:5001
+wsAddr: "ws://0.0.0.0:5200"          # WebSocket ws 监听地址
+wssAddr: "wss://0.0.0.0:5210"        # WebSocket wss 监听地址，如果打开则需要进行 wssConfig相关的证书配置
+rootDir: "./wukongimdata"             # 数据存储目录
+ginMode: "release"                    # Gin框架的模式：debug(调试), release(正式), test(测试)
+deadlockCheck: false                  # 是否开启死锁检测
+pprofOn: false                        # 是否开启pprof
+whitelistOffOfPerson: true            # 是否关闭个人白名单，默认为true表示关闭个人白名单的验证
+
+```
+
+```bash 环境变量
+WK_MODE=release
+WK_TOKENAUTHON=false
+WK_MANAGERUID=
+WK_MANAGERTOKEN=
+WK_ADDR=tcp://0.0.0.0:5100
+WK_HTTPADDR=0.0.0.0:5001
+WK_WSADDR=ws://0.0.0.0:5200
+WK_WSSADDR=wss://0.0.0.0:5210
+WK_ROOTDIR=./wukongimdata
+WK_GINMODE=release
+WK_DEADLOCKCHECK=false
+WK_PPROFON=false
+WK_WHITELISTOFFOFPERSON=true
+```
+</CodeGroup>
+
+
+## 外部访问配置
+
+<CodeGroup>
+```yaml YAML 配置
+# 公网配置
+external:
+  ip: ""                              # 节点外网IP，客户端能够访问到的IP地址，如果客户端是内网使用，这里也可以填写内网IP
+  tcpAddr: ""                         # 默认自动获取，节点的TCP地址对外公开，APP端长连接通讯，格式：ip:port
+  wsAddr: ""                          # 默认自动获取，节点的wsAddr地址对外公开，WEB端长连接通讯，格式：ws://ip:port（支持域名配置）
+  wssAddr: ""                         # 对外的wssAddr地址，也就是客户端真正连接的地址，格式：wss://ip:port（支持域名配置）
+  managerAddr: ""                     # 默认自动获取，节点的manager地址对外公开，管理后台服务，格式：ip:port
+  apiUrl: ""                          # 默认自动获取，节点的http地址对外公开，http api，格式：http://ip:port
+```
+
+```bash 环境变量
+WK_EXTERNAL_IP=
+WK_EXTERNAL_TCPADDR=
+WK_EXTERNAL_WSADDR=
+WK_EXTERNAL_WSSADDR=
+WK_EXTERNAL_MANAGERADDR=
+WK_EXTERNAL_APIURL=
+```
+</CodeGroup>
+
+## SSL/TLS 配置
+
+<CodeGroup>
+```yaml YAML 配置
+# WSS证书配置
+wssConfig:
+  certFile: ""                        # wss证书文件路径
+  keyFile: ""                         # wss证书key文件路径
+```
+
+```bash 环境变量
+WK_WSSCONFIG_CERTFILE=
+WK_WSSCONFIG_KEYFILE=
+```
+</CodeGroup>
+
+## 日志配置
+
+<CodeGroup>
+```yaml YAML 配置
+# 日志配置
+logger:
+  level: 0                            # 日志级别：0(未配置,将根据mode属性判断), 1(debug), 2(info), 3(warn), 4(error)
+  dir: "./logs"                       # 日志目录
+  lineNum: false                      # 是否打印行号
+```
+
+```bash 环境变量
+WK_LOGGER_LEVEL=0
+WK_LOGGER_DIR=./logs
+WK_LOGGER_LINENUM=false
+```
+</CodeGroup>
+
+## 管理后台配置
+
+<CodeGroup>
+```yaml YAML 配置
+# 管理后台配置
+manager:
+  on: true                            # 是否开启管理后台
+  addr: "0.0.0.0:5300"               # 管理后台监听地址，默认为 0.0.0.0:5300
+
+# 演示界面配置
+demo:
+  on: true                            # 是否开启demo
+  addr: "0.0.0.0:5172"               # demo监听地址，默认为 0.0.0.0:5172
+```
+
+```bash 环境变量
+WK_MANAGER_ON=true
+WK_MANAGER_ADDR=0.0.0.0:5300
+WK_DEMO_ON=true
+WK_DEMO_ADDR=0.0.0.0:5172
+```
+</CodeGroup>
+
+## 频道配置
+
+<CodeGroup>
+```yaml YAML 配置
+# 频道配置
+channel:
+  cacheCount: 1000                    # 频道缓存数量，频道被加载后会缓存到内存中，如果频道数量过多，会占用大量内存，可以通过此配置限制缓存数量
+  createIfNoExist: true               # 频道不存在时是否自动创建，默认为true
+  subscriberCompressOfCount: 0        # 订阅者数多大开始压缩，如果开启默认采用gzip压缩（离线推送的时候订阅者数组太大可以设置此参数进行压缩，默认为0表示不压缩）
+
+# 临时频道配置
+tmpChannel:
+  suffix: "@tmp"                      # 临时频道后缀，带有此后缀的频道将被认为是临时频道，临时频道不会被持久化
+  cacheCount: 500                     # 临时频道缓存数量
+```
+
+```bash 环境变量
+WK_CHANNEL_CACHECOUNT=1000
+WK_CHANNEL_CREATEIFNOEXIST=true
+WK_CHANNEL_SUBSCRIBERCOMPRESSOFCOUNT=0
+WK_TMPCHANNEL_SUFFIX=@tmp
+WK_TMPCHANNEL_CACHECOUNT=500
+```
+</CodeGroup>
+
+## 管理员认证配置
+
+<CodeGroup>
+```yaml YAML 配置
+# 认证配置
+auth:
+  on: true                            # 是否开启认证
+  kind: "jwt"                         # 认证方式：jwt(jwt认证), none(无需认证)
+  # 用户配置
+  # 用户名:密码:资源:权限 *表示通配符，资源格式也可以是[资源ID:权限]
+  # 例如: "admin:pwd:[clusterchannel:rw]" 表示admin用户密码为pwd对clusterchannel资源有读写权限
+  # "admin:pwd:*" 表示admin用户密码为pwd对所有资源有读写权限
+  users:
+    - "admin:pwd:*"                   # 管理员用户
+    - "guest:guest:[*:r]"             # guest用户密码为guest对所有资源有读权限
+
+# JWT配置
+jwt:
+  secret: ""                          # jwt密钥，这个配置比较重要，需要自己生成一个随机字符串（建议随机的32位字符串），用于jwt的加密
+  expire: "30d"                       # jwt过期时间，默认为30天
+```
+
+```bash 环境变量
+WK_AUTH_ON=true
+WK_AUTH_KIND=jwt
+WK_AUTH_USERS="admin:pwd:* guest:guest:[*:r]"
+WK_JWT_SECRET=
+WK_JWT_EXPIRE=30d
+```
+</CodeGroup>
+
+## Webhook 配置
+
+<CodeGroup>
+```yaml YAML 配置
+# webhook配置，两者配其一即可，用于接收消息通知事件，详情请查看文档
+webhook:
+  httpAddr: ""                        # webhook的http地址，通过此地址通知数据给第三方，地址为你提供的api接口地址
+  grpcAddr: ""                        # webhook的grpc地址，当前httpAddr成为瓶颈的时候可以用grpc进行推送，如果此地址有值则不会再调用httpAddr配置的地址，格式为 ip:port，通讯协议请查看文档
+  msgNotifyEventPushInterval: "500ms" # 消息通知事件推送间隔，默认500毫秒发起一次推送
+  msgNotifyEventRetryMaxCount: 5      # 消息通知事件消息推送失败最大重试次数，默认为5次，超过将丢弃
+  msgNotifyEventCountPerPush: 100     # 每次webhook消息通知事件推送消息数量限制，默认一次请求最多推送100条
+  focusEvents:                        # 关注的事件类型，如果没有配置则推送所有事件类型
+    - "msg.offline"
+    - "msg.notify"
+    - "user.onlinestatus"
+```
+
+```bash 环境变量
+WK_WEBHOOK_HTTPADDR=
+WK_WEBHOOK_GRPCADDR=
+WK_WEBHOOK_MSGNOTIFYEVENTPUSHINTERVAL=500ms
+WK_WEBHOOK_MSGNOTIFYEVENTRETRYMAXCOUNT=5
+WK_WEBHOOK_MSGNOTIFYEVENTCOUNTPERPUSH=100
+WK_WEBHOOK_FOCUSEVENTS="msg.offline msg.notify user.onlinestatus"
+```
+</CodeGroup>
+
+
+## 会话配置
+
+<CodeGroup>
+```yaml YAML 配置
+# 最近会话配置
+conversation:
+  on: true                            # 是否开启最近会话
+  cacheExpire: "1d"                   # 最近会话缓存过期时间，默认为1天（注意：这里指清除内存里的最近会话缓存，并不表示清除最近会话）
+  syncInterval: "5m"                  # 最近会话保存间隔，每隔指定的时间进行保存一次，默认为5分钟
+  syncOnce: 100                       # 最近会话同步保存一次的数量，超过指定未保存的数量将进行保存，默认为100
+  userMaxCount: 1000                  # 用户最近会话最大数量，超过此数量的最近会话后最旧的那条将被覆盖掉，默认为1000
+```
+
+```bash 环境变量
+WK_CONVERSATION_ON=true
+WK_CONVERSATION_CACHEEXPIRE=1d
+WK_CONVERSATION_SYNCINTERVAL=5m
+WK_CONVERSATION_SYNCONCE=100
+WK_CONVERSATION_USERMAXCOUNT=1000
+```
+</CodeGroup>
+
+## 消息重试配置
+
+<CodeGroup>
+```yaml YAML 配置
+# 消息重试配置
+messageRetry:
+  interval: "60s"                     # 消息重试间隔，默认为60秒
+  scanInterval: "5s"                  # 消息重试扫描间隔，默认为5秒
+  maxCount: 5                         # 消息重试最大次数，默认为5次
+
+# 用户消息队列配置
+userMsgQueueMaxSize: 0                # 用户消息队列最大大小，0为不限制，默认为0
+```
+
+```bash 环境变量
+WK_MESSAGERETRY_INTERVAL=60s
+WK_MESSAGERETRY_SCANINTERVAL=5s
+WK_MESSAGERETRY_MAXCOUNT=5
+WK_USERMSGQUEUEMAXSIZE=0
+```
+</CodeGroup>
+
+## 追踪配置
+
+<CodeGroup>
+```yaml YAML 配置
+# 数据追踪配置
+trace:
+  prometheusApiUrl: ""                # prometheus的api地址，用于获取监控数据，如果不配置则不会获取监控数据
+```
+
+```bash 环境变量
+WK_TRACE_PROMETHEUSAPIURL=
+```
+</CodeGroup>
+
+## 集群配置
+
+<CodeGroup>
+```yaml YAML 配置
+# 集群配置
+cluster:
+  nodeId: 1001                        # 节点ID，每个节点的ID必须唯一，默认为1001
+  addr: "tcp://0.0.0.0:11110"        # 分布式通讯监听地址，默认为tcp://0.0.0.0:11110
+  serverAddr: ""                      # 节点的分布式通讯对外地址，其他节点连接此节点的地址，如果为空则使用addr的配置
+  apiUrl: ""                          # 节点的http api对外地址，如果为空则使用httpAddr的配置
+  slotCount: 64                       # 槽位数量，整个集群的槽位数量，所有节点的此配置必须一致，默认为64
+  slotReplicaCount: 3                 # 槽位副本数量，每个槽位的副本数量，默认为3
+  channelReplicaCount: 3              # 频道副本数量，每个频道的副本数量，默认为3
+  initNodes:                          # 初始节点列表，集群启动时的初始节点列表
+    - "1001@192.168.1.12:11110"
+    - "1002@192.168.1.13:11110"
+    - "1003@192.168.1.14:11110"
+  seed:                               # 集群种子节点，集群启动时的种子节点列表，用于节点发现
+    - "1001@192.168.1.12:11110"
+```
+
+```bash 环境变量
+WK_CLUSTER_NODEID=1001
+WK_CLUSTER_ADDR=tcp://0.0.0.0:11110
+WK_CLUSTER_SERVERADDR=
+WK_CLUSTER_APIURL=
+WK_CLUSTER_SLOTCOUNT=64
+WK_CLUSTER_SLOTREPLICACOUNT=3
+WK_CLUSTER_CHANNELREPLICACOUNT=3
+WK_CLUSTER_INITNODES="1001@192.168.1.12:11110 1002@192.168.1.13:11110 1003@192.168.1.14:11110"
+WK_CLUSTER_SEED="1001@192.168.1.12:11110"
+```
+</CodeGroup>
+
+## 插件配置
+
+<CodeGroup>
+```yaml YAML 配置
+# 插件配置
+plugin:
+  socketPath: "./wukongimdata/1/wukongim.sock"  # 插件的unix socket地址，用于与插件通讯
+  install:                                      # 默认安装的插件列表，启动时会自动安装这些插件
+    - "https://gitee.com/WuKongDev/plugins/releases/download/latest/wk.plugin.ai-example-${os}-${arch}.wkp"
+    - "https://gitee.com/WuKongDev/plugins/releases/download/latest/wk.plugin.ai-volcengine-${os}-${arch}.wkp"
+```
+
+```bash 环境变量
+WK_PLUGIN_SOCKETPATH=./wukongimdata/1/wukongim.sock
+WK_PLUGIN_INSTALL="https://gitee.com/WuKongDev/plugins/releases/download/latest/wk.plugin.ai-example-${os}-${arch}.wkp https://gitee.com/WuKongDev/plugins/releases/download/latest/wk.plugin.ai-volcengine-${os}-${arch}.wkp"
+```
+</CodeGroup>
+
+## 配置示例
+
+### 生产环境配置
+
+```yaml
+# 生产环境配置
+mode: "release"
+tokenAuthOn: true
+managerUID: "admin"
+managerToken: "prod-secure-token-2024"
+
+external:
+  ip: "203.0.113.1"
+  wssAddr: "wss://yourdomain.com:5210"
+
+wssConfig:
+  certFile: "/etc/letsencrypt/live/yourdomain.com/fullchain.pem"
+  keyFile: "/etc/letsencrypt/live/yourdomain.com/privkey.pem"
+
+logger:
+  level: 3
+  dir: "/var/log/wukongim"
+
+auth:
+  on: true
+  kind: "jwt"
+
+jwt:
+  secret: "your-production-jwt-secret-32-chars"
+  expire: "7d"
+
+manager:
+  on: true
+
+demo:
+  on: false
+```
+
+### 开发环境配置
+
+```yaml
+# 开发环境配置
+mode: "debug"
+tokenAuthOn: false
+
+logger:
+  level: 1
+  lineNum: true
+
+auth:
+  on: true
+  kind: "jwt"
+  users:
+    - "dev:dev123:*"
+    - "test:test123:[*:r]"
+
+jwt:
+  secret: "dev-jwt-secret-for-testing-only"
+  expire: "24h"
+
+manager:
+  on: true
+
+demo:
+  on: true
+```
+
+## Docker Compose 配置
+
+```yaml
+version: '3.7'
+services:
+  wukongim:
+    image: wukongim/wukongim:latest
+    environment:
+      # 基础配置
+      - "WK_MODE=release"
+      - "WK_TOKENAUTHON=true"
+      - "WK_MANAGERTOKEN=secure-token-123"
+
+      # 外部访问
+      - "WK_EXTERNAL_IP=203.0.113.1"
+      - "WK_EXTERNAL_WSSADDR=wss://yourdomain.com:5210"
+
+      # SSL 配置
+      - "WK_WSSCONFIG_CERTFILE=/etc/ssl/certs/wukongim.crt"
+      - "WK_WSSCONFIG_KEYFILE=/etc/ssl/private/wukongim.key"
+
+      # 管理员认证
+      - "WK_AUTH_ON=true"
+      - "WK_AUTH_KIND=jwt"
+      - "WK_JWT_SECRET=your-secure-jwt-secret-32-characters"
+
+    ports:
+      - "5001:5001"   # HTTP API
+      - "5100:5100"   # TCP
+      - "5200:5200"   # WebSocket
+      - "5210:5210"   # WSS
+      - "5300:5300"   # Manager
+
+    volumes:
+      - "./data:/root/wukongim"
+      - "./certs:/etc/ssl/certs:ro"
+      - "./private:/etc/ssl/private:ro"
+```
+
+## 环境变量规则
+
+- **前缀**：所有环境变量以 `WK_` 开头
+- **层级分隔**：使用下划线 `_` 分隔配置层级
+- **大小写**：全部使用大写字母
+- **数组格式**：使用空格分隔多个值，如：`WK_AUTH_USERS="user1:pass1 user2:pass2"`
+- **布尔值**：使用 `true` 或 `false`
+- **优先级**：环境变量 > 配置文件 > 默认值
+
+## 配置验证
+
+启动前验证配置：
+```bash
+# 检查配置语法
+./wukongim --config wukongim.yaml --validate
+
+# 启动时检查配置
+./wukongim --config wukongim.yaml --check-config
+```
+
+## 安全建议
+
+- 生产环境必须启用 `tokenAuthOn`
+- JWT 密钥使用 32 位随机字符串
+- 定期更换管理员 Token 和 JWT 密钥
+- SSL 证书文件权限设置为 600
+- 关闭不必要的演示界面和调试功能

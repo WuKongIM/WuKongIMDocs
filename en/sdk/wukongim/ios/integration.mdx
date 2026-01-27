@@ -1,0 +1,162 @@
+---
+title: "Integration Guide"
+description: "WuKongIM iOS SDK integration and initialization configuration guide"
+icon: "rocket"
+---
+
+## Integration via CocoaPods
+
+Add the dependency to your project's `Podfile`:
+
+```objc
+pod 'WuKongIMSDK'
+```
+
+Then run the installation command:
+
+```bash
+pod install
+```
+
+## Integration via Source Code
+
+If you need to use the latest development version, you can integrate directly from the GitHub repository:
+
+```objc
+pod 'WuKongIMSDK', :git => 'https://github.com/WuKongIM/WuKongIMiOSSDK.git'
+```
+
+## Swift Package Manager
+
+You can also integrate using Swift Package Manager:
+
+1. In Xcode, go to File → Add Package Dependencies
+2. Enter the repository URL: `https://github.com/WuKongIM/WuKongIMiOSSDK.git`
+3. Select the version and add to your project
+
+## Manual Integration
+
+For manual integration:
+
+1. Download the latest release from [GitHub Releases](https://github.com/WuKongIM/WuKongIMiOSSDK/releases)
+2. Drag `WuKongIMSDK.framework` into your project
+3. Add the framework to your target's "Frameworks, Libraries, and Embedded Content"
+4. Set "Embed & Sign" for the framework
+
+## Basic Setup
+
+After integration, import the SDK in your code:
+
+```swift
+import WuKongIMSDK
+```
+
+Or in Objective-C:
+
+```objc
+#import <WuKongIMSDK/WuKongIMSDK.h>
+```
+
+## Initialization
+
+Initialize the SDK in your AppDelegate:
+
+```swift
+// Swift
+func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+    // Initialize WuKongIM SDK
+    WKSDK.shared.setup()
+    return true
+}
+```
+
+```objc
+// Objective-C
+- (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
+    // Initialize WuKongIM SDK
+    [WKSDK.shared setup];
+    return YES;
+}
+```
+
+## Configuration Options
+
+You can configure various options during initialization:
+
+```swift
+// Swift
+let options = WKOptions()
+options.connectAddr = "ws://your-server.com:5200"
+options.apiURL = "http://your-api-server.com"
+options.uploadURL = "http://your-upload-server.com"
+
+WKSDK.shared.setup(options: options)
+```
+
+```objc
+// Objective-C
+WKOptions *options = [[WKOptions alloc] init];
+options.connectAddr = @"ws://your-server.com:5200";
+options.apiURL = @"http://your-api-server.com";
+options.uploadURL = @"http://your-upload-server.com";
+
+[WKSDK.shared setupWithOptions:options];
+```
+
+## Permissions
+
+Add necessary permissions to your `Info.plist`:
+
+```xml
+<!-- Network access -->
+<key>NSAppTransportSecurity</key>
+<dict>
+    <key>NSAllowsArbitraryLoads</key>
+    <true/>
+</dict>
+
+<!-- Microphone access for voice messages -->
+<key>NSMicrophoneUsageDescription</key>
+<string>This app needs microphone access to record voice messages</string>
+
+<!-- Camera access for photo/video messages -->
+<key>NSCameraUsageDescription</key>
+<string>This app needs camera access to take photos and videos</string>
+
+<!-- Photo library access -->
+<key>NSPhotoLibraryUsageDescription</key>
+<string>This app needs photo library access to send images</string>
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Connection Management"
+    icon="link"
+    href="/en/sdk/wukongim/ios/connection"
+  >
+    Learn how to manage connection status
+  </Card>
+  <Card
+    title="Message Handling"
+    icon="message-circle"
+    href="/en/sdk/wukongim/ios/chat"
+  >
+    Implement message sending and receiving
+  </Card>
+  <Card
+    title="Channel Management"
+    icon="hash"
+    href="/en/sdk/wukongim/ios/channel"
+  >
+    Manage channels and groups
+  </Card>
+  <Card
+    title="Conversation Management"
+    icon="users"
+    href="/en/sdk/wukongim/ios/conversation"
+  >
+    Handle conversation lists
+  </Card>
+</CardGroup>

@@ -1,0 +1,496 @@
+---
+title: "Batch Get User IM Addresses"
+description: "Batch get IM connection addresses for multiple users"
+api: "POST /route/batch"
+---
+
+## Overview
+
+Batch get IM connection addresses for multiple users, used to assign different connection nodes for different users.
+
+## Query Parameters
+
+<ParamField query="intranet" type="integer" default={0}>
+Whether to return intranet addresses
+- `0` - Return external network addresses
+- `1` - Return internal network addresses
+</ParamField>
+
+## Request Body
+
+<ParamField body="uids" type="array" required>
+Array of user IDs
+<ParamField body="uids[]" type="string">
+User ID
+</ParamField>
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "http://localhost:5001/route/batch?intranet=0" \
+  -H "Content-Type: application/json" \
+  -d '["user1", "user2", "user3"]'
+```
+
+```javascript JavaScript
+const userIds = ["user1", "user2", "user3"];
+
+const response = await fetch('http://localhost:5001/route/batch?intranet=0', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify(userIds)
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+
+user_ids = ["user1", "user2", "user3"]
+
+response = requests.post(
+    'http://localhost:5001/route/batch',
+    params={'intranet': 0},
+    json=user_ids
+)
+
+data = response.json()
+print(data)
+```
+
+```go Go
+package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    userIds := []string{"user1", "user2", "user3"}
+    jsonData, _ := json.Marshal(userIds)
+    
+    resp, err := http.Post(
+        "http://localhost:5001/route/batch?intranet=0",
+        "application/json",
+        bytes.NewBuffer(jsonData),
+    )
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    var result []map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Printf("%+v\n", result)
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json Success Response
+[
+  {
+    "uids": ["user1", "user2"],
+    "tcp_addr": "127.0.0.1:5100",
+    "ws_addr": "ws://127.0.0.1:5200",
+    "wss_addr": "wss://127.0.0.1:5300"
+  },
+  {
+    "uids": ["user3"],
+    "tcp_addr": "127.0.0.1:5101",
+    "ws_addr": "ws://127.0.0.1:5201",
+    "wss_addr": "wss://127.0.0.1:5301"
+  }
+]
+```
+</ResponseExample>
+
+## Response Fields
+
+The response is an array, each element contains the following fields:
+
+<ResponseField name="uids" type="array" required>
+List of user IDs assigned to this address
+</ResponseField>
+
+<ResponseField name="tcp_addr" type="string" required>
+TCP connection address, format: `host:port`
+</ResponseField>
+
+<ResponseField name="ws_addr" type="string" required>
+WebSocket connection address, format: `ws://host:port`
+</ResponseField>
+
+<ResponseField name="wss_addr" type="string" required>
+WebSocket Secure connection address, format: `wss://host:port`
+</ResponseField>
+
+## Status Codes
+
+| Status Code | Description |
+|-------------|-------------|
+| 200 | Successfully retrieved batch IM connection addresses |
+| 400 | Request parameter error |
+| 500 | Internal server error |
+
+## Use Cases
+
+### Multi-User Connection Setup
+
+**Batch Connect Multiple Users**:
+```javascript
+// Connect multiple users to their assigned nodes
+async function batchConnectUsers(userIds) {
+    try {
+        // Get connection addresses for all users
+        const response = await fetch('/route/batch?intranet=0', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(userIds)
+        });
+        
+        const addressGroups = await response.json();
+        const connections = [];
+        
+        // Connect users to their assigned nodes
+        for (const group of addressGroups) {
+            const connectionUrl = window.location.protocol === 'https:' 
+                ? group.wss_addr 
+                : group.ws_addr;
+            
+            for (const uid of group.uids) {
+                try {
+                    const connection = await connectUser(uid, connectionUrl);
+                    connections.push({
+                        uid: uid,
+                        connection: connection,
+                        node_address: connectionUrl,
+                        success: true
+                    });
+                } catch (error) {
+                    connections.push({
+                        uid: uid,
+                        connection: null,
+                        node_address: connectionUrl,
+                        success: false,
+                        error: error.message
+                    });
+                }
+            }
+        }
+        
+        return connections;
+    } catch (error) {
+        console.error('Batch user connection failed:', error);
+        throw error;
+    }
+}
+
+// Usage
+const userIds = ['user1', 'user2', 'user3', 'user4', 'user5'];
+const connections = await batchConnectUsers(userIds);
+
+const successful = connections.filter(c => c.success);
+const failed = connections.filter(c => !c.success);
+
+console.log(`Connected ${successful.length} users, ${failed.length} failed`);
+```
+
+### Load Distribution
+
+**Distribute Users Across Nodes**:
+```javascript
+// Distribute users across available nodes for load balancing
+class UserLoadDistributor {
+    constructor() {
+        this.nodeUserMap = new Map();
+    }
+    
+    async distributeUsers(userIds, batchSize = 50) {
+        const batches = this.chunkArray(userIds, batchSize);
+        const allDistributions = [];
+        
+        for (const batch of batches) {
+            try {
+                const distributions = await this.getBatchDistribution(batch);
+                allDistributions.push(...distributions);
+                
+                // Track node assignments
+                this.trackNodeAssignments(distributions);
+                
+            } catch (error) {
+                console.error('Failed to distribute batch:', error);
+            }
+        }
+        
+        return allDistributions;
+    }
+    
+    async getBatchDistribution(userIds) {
+        const response = await fetch('/route/batch?intranet=0', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(userIds)
+        });
+        
+        return await response.json();
+    }
+    
+    trackNodeAssignments(distributions) {
+        for (const dist of distributions) {
+            const nodeKey = dist.ws_addr;
+            if (!this.nodeUserMap.has(nodeKey)) {
+                this.nodeUserMap.set(nodeKey, []);
+            }
+            this.nodeUserMap.get(nodeKey).push(...dist.uids);
+        }
+    }
+    
+    getNodeStatistics() {
+        const stats = [];
+        for (const [nodeAddr, users] of this.nodeUserMap) {
+            stats.push({
+                node_address: nodeAddr,
+                user_count: users.length,
+                users: users
+            });
+        }
+        return stats;
+    }
+    
+    chunkArray(array, size) {
+        const chunks = [];
+        for (let i = 0; i < array.length; i += size) {
+            chunks.push(array.slice(i, i + size));
+        }
+        return chunks;
+    }
+}
+
+// Usage
+const distributor = new UserLoadDistributor();
+const userIds = Array.from({length: 1000}, (_, i) => `user${i + 1}`);
+
+const distributions = await distributor.distributeUsers(userIds);
+const stats = distributor.getNodeStatistics();
+
+console.log('Node distribution statistics:', stats);
+```
+
+### Connection Pool Management
+
+**Manage Connection Pools by Node**:
+```javascript
+// Manage connection pools for different nodes
+class NodeConnectionPoolManager {
+    constructor() {
+        this.pools = new Map();
+        this.userNodeMap = new Map();
+    }
+    
+    async initializePools(userIds) {
+        // Get node assignments for users
+        const distributions = await this.getBatchAddresses(userIds);
+        
+        // Create connection pools for each node
+        for (const dist of distributions) {
+            const nodeKey = dist.ws_addr;
+            
+            if (!this.pools.has(nodeKey)) {
+                this.pools.set(nodeKey, {
+                    address: dist.ws_addr,
+                    tcp_addr: dist.tcp_addr,
+                    wss_addr: dist.wss_addr,
+                    connections: new Map(),
+                    userCount: 0
+                });
+            }
+            
+            const pool = this.pools.get(nodeKey);
+            
+            // Track user assignments
+            for (const uid of dist.uids) {
+                this.userNodeMap.set(uid, nodeKey);
+                pool.userCount++;
+            }
+        }
+        
+        console.log(`Initialized ${this.pools.size} connection pools`);
+    }
+    
+    async getBatchAddresses(userIds) {
+        const response = await fetch('/route/batch?intranet=0', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(userIds)
+        });
+        
+        return await response.json();
+    }
+    
+    async connectUser(userId) {
+        const nodeKey = this.userNodeMap.get(userId);
+        if (!nodeKey) {
+            throw new Error(`No node assignment found for user ${userId}`);
+        }
+        
+        const pool = this.pools.get(nodeKey);
+        if (!pool) {
+            throw new Error(`No connection pool found for node ${nodeKey}`);
+        }
+        
+        // Check if user already has a connection
+        if (pool.connections.has(userId)) {
+            return pool.connections.get(userId);
+        }
+        
+        // Create new connection
+        try {
+            const connection = new WebSocket(pool.address);
+            
+            await new Promise((resolve, reject) => {
+                connection.onopen = resolve;
+                connection.onerror = reject;
+                setTimeout(reject, 5000); // 5 second timeout
+            });
+            
+            pool.connections.set(userId, connection);
+            console.log(`User ${userId} connected to node ${nodeKey}`);
+            
+            return connection;
+        } catch (error) {
+            console.error(`Failed to connect user ${userId} to node ${nodeKey}:`, error);
+            throw error;
+        }
+    }
+    
+    disconnectUser(userId) {
+        const nodeKey = this.userNodeMap.get(userId);
+        if (!nodeKey) return;
+        
+        const pool = this.pools.get(nodeKey);
+        if (!pool) return;
+        
+        const connection = pool.connections.get(userId);
+        if (connection) {
+            connection.close();
+            pool.connections.delete(userId);
+            console.log(`User ${userId} disconnected from node ${nodeKey}`);
+        }
+    }
+    
+    getPoolStatistics() {
+        const stats = [];
+        for (const [nodeKey, pool] of this.pools) {
+            stats.push({
+                node_address: nodeKey,
+                assigned_users: pool.userCount,
+                active_connections: pool.connections.size,
+                connection_rate: (pool.connections.size / pool.userCount * 100).toFixed(2) + '%'
+            });
+        }
+        return stats;
+    }
+}
+
+// Usage
+const poolManager = new NodeConnectionPoolManager();
+
+// Initialize with user list
+const userIds = ['user1', 'user2', 'user3', 'user4', 'user5'];
+await poolManager.initializePools(userIds);
+
+// Connect users
+for (const userId of userIds) {
+    try {
+        await poolManager.connectUser(userId);
+    } catch (error) {
+        console.error(`Failed to connect ${userId}:`, error);
+    }
+}
+
+// Get statistics
+const stats = poolManager.getPoolStatistics();
+console.log('Pool statistics:', stats);
+```
+
+### Geographic Distribution
+
+**Route Users by Geographic Location**:
+```javascript
+// Route users to geographically optimal nodes
+async function routeUsersByLocation(userLocations) {
+    const userIds = userLocations.map(ul => ul.userId);
+    
+    try {
+        // Get node assignments
+        const distributions = await fetch('/route/batch?intranet=0', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(userIds)
+        }).then(r => r.json());
+        
+        // Analyze geographic distribution
+        const geoAnalysis = [];
+        
+        for (const dist of distributions) {
+            const nodeUsers = dist.uids.map(uid => 
+                userLocations.find(ul => ul.userId === uid)
+            );
+            
+            const avgLatitude = nodeUsers.reduce((sum, u) => sum + u.latitude, 0) / nodeUsers.length;
+            const avgLongitude = nodeUsers.reduce((sum, u) => sum + u.longitude, 0) / nodeUsers.length;
+            
+            geoAnalysis.push({
+                node_address: dist.ws_addr,
+                users: dist.uids,
+                user_count: dist.uids.length,
+                avg_location: {
+                    latitude: avgLatitude,
+                    longitude: avgLongitude
+                },
+                user_locations: nodeUsers.map(u => ({
+                    userId: u.userId,
+                    latitude: u.latitude,
+                    longitude: u.longitude,
+                    country: u.country
+                }))
+            });
+        }
+        
+        return geoAnalysis;
+    } catch (error) {
+        console.error('Geographic routing failed:', error);
+        throw error;
+    }
+}
+
+// Usage
+const userLocations = [
+    { userId: 'user1', latitude: 40.7128, longitude: -74.0060, country: 'US' },
+    { userId: 'user2', latitude: 51.5074, longitude: -0.1278, country: 'UK' },
+    { userId: 'user3', latitude: 35.6762, longitude: 139.6503, country: 'JP' },
+    { userId: 'user4', latitude: 39.9042, longitude: 116.4074, country: 'CN' },
+    { userId: 'user5', latitude: 52.5200, longitude: 13.4050, country: 'DE' }
+];
+
+const geoDistribution = await routeUsersByLocation(userLocations);
+console.log('Geographic distribution:', geoDistribution);
+```
+
+## Best Practices
+
+1. **Batch Size**: Use appropriate batch sizes to balance performance and resource usage
+2. **Error Handling**: Handle partial failures gracefully when some users can't be routed
+3. **Caching**: Cache node assignments to reduce API calls for frequently accessed users
+4. **Load Monitoring**: Monitor node load distribution and adjust routing as needed
+5. **Failover**: Implement failover mechanisms when assigned nodes become unavailable
+6. **Geographic Optimization**: Consider user geographic location for optimal routing
+7. **Connection Pooling**: Use connection pools to efficiently manage multiple user connections

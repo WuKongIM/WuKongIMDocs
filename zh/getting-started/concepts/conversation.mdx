@@ -1,0 +1,62 @@
+---
+title: "会话"
+description: "WuKongIM 会话的核心结构和管理方法"
+icon: "message-circle"
+---
+
+## 概念解释
+
+### 什么是会话？
+
+会话（Conversation）是用户与特定频道之间的交互记录，包含了用户在该频道中的消息历史、未读状态、最后活跃时间等信息。会话是用户界面中聊天列表的基础数据结构。
+
+### 为什么会话很重要？
+
+- **聊天列表**：会话列表就是用户看到的聊天列表，显示所有正在进行的对话
+- **未读管理**：会话记录了每个聊天的未读消息数量，帮助用户快速了解哪些聊天有新消息
+- **快速访问**：通过会话列表，用户可以快速访问最近的聊天记录
+
+### 与其他概念的关系
+
+- **频道（Channel）**：每个会话对应一个频道，会话的 `channel_id` 就是频道的 ID
+- **消息（Message）**：会话显示该频道的最后一条消息和未读消息数量
+- **用户（User）**：会话属于特定用户，不同用户看到的会话列表不同
+
+## 核心结构
+
+会话包含以下核心属性：
+
+| 属性 | 类型 | 说明 |
+|------|------|------|
+| `channel_id` | string | 频道标识符 |
+| `channel_type` | integer | 频道类型（1=个人，2=群组） |
+| `unread` | integer | 未读消息数量 |
+| `last_msg_seq` | integer | 最后消息序号 |
+| `timestamp` | integer | 最后更新时间戳 |
+| `version` | integer | 会话版本号 |
+
+### 会话示例
+
+```json
+{
+  "channel_id": "group123",
+  "channel_type": 2,
+  "unread": 5,
+  "last_msg_seq": 1001,
+  "timestamp": 1640995200,
+  "version": 100
+}
+```
+
+## 相关 API 端点
+
+| 端点 | 方法 | 说明 |
+|------|------|------|
+| `/conversation/sync` | POST | 同步会话列表 |
+| `/conversation/setUnread` | POST | 设置未读数量 |
+| `/conversation/clearUnread` | POST | 清除未读数量 |
+| `/conversation/delete` | POST | 删除会话 |
+
+<Note>
+  会话按最后消息时间排序，是用户界面中聊天列表的基础数据结构。
+</Note>

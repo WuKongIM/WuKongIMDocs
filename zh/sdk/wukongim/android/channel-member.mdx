@@ -1,0 +1,610 @@
+---
+title: "频道成员管理"
+description: "WuKongIM Android SDK 频道成员管理功能，包括成员获取、搜索和管理"
+icon: "users"
+---
+
+频道成员管理器负责管理频道内的成员信息，包括获取成员列表、搜索成员、修改成员备注等功能。
+
+<Note>
+需要实现频道成员数据源: [频道成员数据源](/zh/sdk/wukongim/android/datasource#频道成员数据源)
+</Note>
+
+## 获取频道成员
+
+### 获取所有成员
+
+<CodeGroup>
+```java Java
+// 获取频道内所有成员
+WKIM.getInstance().getChannelMembersManager().getMembers(channelId, channelType);
+```
+
+```kotlin Kotlin
+// 获取频道内所有成员
+WKIM.getInstance().channelMembersManager.getMembers(channelId, channelType)
+```
+</CodeGroup>
+
+### 获取单个成员
+
+<CodeGroup>
+```java Java
+// 单个频道成员
+WKIM.getInstance().getChannelMembersManager().getMember(channelId, channelType, uid);
+```
+
+```kotlin Kotlin
+// 单个频道成员
+WKIM.getInstance().channelMembersManager.getMember(channelId, channelType, uid)
+```
+</CodeGroup>
+
+### 完整使用示例
+
+```java
+public class GroupMembersActivity extends AppCompatActivity {
+    
+    private String channelId;
+    private byte channelType;
+    private List<WKChannelMember> memberList = new ArrayList<>();
+    private MemberAdapter memberAdapter;
+    
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_group_members);
+        
+        setupRecyclerView();
+        loadMembers();
+    }
+    
+    private void loadMembers() {
+        // 获取频道所有成员
+        List<WKChannelMember> members = WKIM.getInstance().getChannelMembersManager()
+                .getMembers(channelId, channelType);
+        
+        if (members != null && !members.isEmpty()) {
+            memberList.clear();
+            memberList.addAll(members);
+            memberAdapter.notifyDataSetChanged();
+            
+            updateMemberCount(members.size());
+        } else {
+            // 本地没有数据，可能需要从服务器同步
+            showEmptyState();
+        }
+    }
+    
+    private void getMemberInfo(String uid) {
+        WKChannelMember member = WKIM.getInstance().getChannelMembersManager()
+                .getMember(channelId, channelType, uid);
+        
+        if (member != null) {
+            showMemberProfile(member);
+        } else {
+            showToast("成员信息不存在");
+        }
+    }
+    
+    private void updateMemberCount(int count) {
+        setTitle("群成员 (" + count + ")");
+    }
+}
+```
+
+## 搜索成员
+
+### 分页搜索成员
+
+<CodeGroup>
+```java Java
+// 搜索频道成员列表
+WKIM.getInstance().getChannelMembersManager().getWithPageOrSearch(
+    channelId, 
+    channelType, 
+    "keyword", 
+    1,  // 页码
+    20, // 每页数量
+    (list, isRemote) -> {
+        // list 成员列表    
+        // isRemote 是否为远端数据
+        runOnUiThread(() -> {
+            handleSearchResult(list, isRemote);
+        });
+    }
+);
+```
+
+```kotlin Kotlin
+// 搜索频道成员列表
+WKIM.getInstance().channelMembersManager.getWithPageOrSearch(
+    channelId, 
+    channelType, 
+    "keyword", 
+    1,  // 页码
+    20  // 每页数量
+) { list, isRemote ->
+    // list 成员列表    
+    // isRemote 是否为远端数据
+    runOnUiThread {
+        handleSearchResult(list, isRemote)
+    }
+}
+```
+</CodeGroup>
+
+### 搜索功能示例
+
+```java
+public class MemberSearchActivity extends AppCompatActivity {
+    
+    private EditText searchEditText;
+    private RecyclerView searchResultRecyclerView;
+    private List<WKChannelMember> searchResults = new ArrayList<>();
+    private MemberAdapter searchAdapter;
+    
+    private String channelId;
+    private byte channelType;
+    private int currentPage = 1;
+    private boolean isLoading = false;
+    
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_member_search);
+        
+        setupViews();
+        setupSearch();
+    }
+    
+    private void setupSearch() {
+        searchEditText.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void afterTextChanged(Editable s) {
+                String keyword = s.toString().trim();
+                if (!TextUtils.isEmpty(keyword)) {
+                    searchMembers(keyword);
+                } else {
+                    clearSearchResults();
+                }
+            }
+            
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {}
+        });
+    }
+    
+    private void searchMembers(String keyword) {
+        if (isLoading) return;
+        
+        isLoading = true;
+        showLoadingIndicator();
+        
+        WKIM.getInstance().getChannelMembersManager().getWithPageOrSearch(
+            channelId,
+            channelType,
+            keyword,
+            1, // 重新搜索从第一页开始
+            20,
+            (list, isRemote) -> {
+                runOnUiThread(() -> {
+                    isLoading = false;
+                    hideLoadingIndicator();
+                    
+                    if (list != null && !list.isEmpty()) {
+                        searchResults.clear();
+                        searchResults.addAll(list);
+                        searchAdapter.notifyDataSetChanged();
+                        showSearchResults();
+                    } else {
+                        showNoResultsState();
+                    }
+                });
+            }
+        );
+    }
+    
+    private void loadMoreMembers(String keyword) {
+        if (isLoading) return;
+        
+        isLoading = true;
+        currentPage++;
+        
+        WKIM.getInstance().getChannelMembersManager().getWithPageOrSearch(
+            channelId,
+            channelType,
+            keyword,
+            currentPage,
+            20,
+            (list, isRemote) -> {
+                runOnUiThread(() -> {
+                    isLoading = false;
+                    
+                    if (list != null && !list.isEmpty()) {
+                        int oldSize = searchResults.size();
+                        searchResults.addAll(list);
+                        searchAdapter.notifyItemRangeInserted(oldSize, list.size());
+                    }
+                });
+            }
+        );
+    }
+}
+```
+
+## 常用操作方法
+
+### 保存频道成员
+
+<CodeGroup>
+```java Java
+// 批量保存成员
+WKIM.getInstance().getChannelMembersManager().save(List<WKChannelMember> list);
+```
+
+```kotlin Kotlin
+// 批量保存成员
+WKIM.getInstance().channelMembersManager.save(list)
+```
+</CodeGroup>
+
+### 修改成员备注
+
+<CodeGroup>
+```java Java
+// 修改备注
+WKIM.getInstance().getChannelMembersManager().updateRemarkName(channelId, channelType, uid, remark);
+```
+
+```kotlin Kotlin
+// 修改备注
+WKIM.getInstance().channelMembersManager.updateRemarkName(channelId, channelType, uid, remark)
+```
+</CodeGroup>
+
+### 操作示例
+
+```java
+public class MemberManagementHelper {
+    
+    // 批量添加成员
+    public void addMembers(String channelId, byte channelType, List<WKChannelMember> newMembers) {
+        // 保存到本地数据库
+        WKIM.getInstance().getChannelMembersManager().save(newMembers);
+        
+        // 同时调用服务器API
+        ApiManager.addChannelMembers(channelId, channelType, newMembers, 
+            new ApiCallback<Void>() {
+                @Override
+                public void onSuccess(Void result) {
+                    // 添加成功，本地数据已经保存
+                    notifyMembersChanged();
+                }
+                
+                @Override
+                public void onError(int code, String message) {
+                    // 添加失败，可能需要回滚本地数据
+                    handleAddMembersError(code, message);
+                }
+            });
+    }
+    
+    // 修改成员备注
+    public void updateMemberRemark(String channelId, byte channelType, String uid, String newRemark) {
+        // 更新本地备注
+        WKIM.getInstance().getChannelMembersManager().updateRemarkName(channelId, channelType, uid, newRemark);
+        
+        // 同步到服务器
+        ApiManager.updateMemberRemark(channelId, channelType, uid, newRemark,
+            new ApiCallback<Void>() {
+                @Override
+                public void onSuccess(Void result) {
+                    // 备注更新成功
+                    notifyMemberRemarkChanged(uid, newRemark);
+                }
+                
+                @Override
+                public void onError(int code, String message) {
+                    // 更新失败，恢复原备注
+                    WKChannelMember member = WKIM.getInstance().getChannelMembersManager()
+                            .getMember(channelId, channelType, uid);
+                    if (member != null) {
+                        WKIM.getInstance().getChannelMembersManager()
+                                .updateRemarkName(channelId, channelType, uid, member.memberRemark);
+                    }
+                }
+            });
+    }
+    
+    // 获取在线成员
+    public List<WKChannelMember> getOnlineMembers(String channelId, byte channelType) {
+        List<WKChannelMember> allMembers = WKIM.getInstance().getChannelMembersManager()
+                .getMembers(channelId, channelType);
+        
+        List<WKChannelMember> onlineMembers = new ArrayList<>();
+        if (allMembers != null) {
+            for (WKChannelMember member : allMembers) {
+                if (member.status == 1) { // 1表示正常状态
+                    onlineMembers.add(member);
+                }
+            }
+        }
+        return onlineMembers;
+    }
+    
+    // 获取管理员成员
+    public List<WKChannelMember> getAdminMembers(String channelId, byte channelType) {
+        List<WKChannelMember> allMembers = WKIM.getInstance().getChannelMembersManager()
+                .getMembers(channelId, channelType);
+        
+        List<WKChannelMember> adminMembers = new ArrayList<>();
+        if (allMembers != null) {
+            for (WKChannelMember member : allMembers) {
+                if (member.role > 0) { // role > 0 表示有管理权限
+                    adminMembers.add(member);
+                }
+            }
+        }
+        return adminMembers;
+    }
+}
+```
+
+## WKChannelMember 数据结构
+
+### 成员属性
+
+```java
+public class WKChannelMember {
+    // 自增ID
+    public long id;
+    
+    // 频道id
+    public String channelID;
+    
+    // 频道类型
+    public byte channelType;
+    
+    // 成员id
+    public String memberUID;
+    
+    // 成员名称
+    public String memberName;
+    
+    // 成员备注
+    public String memberRemark;
+    
+    // 成员头像
+    public String memberAvatar;
+    
+    // 成员角色
+    public int role;
+    
+    // 成员状态黑名单等1：正常2：黑名单
+    public int status;
+    
+    // 是否删除
+    public int isDeleted;
+    
+    // 创建时间
+    public String createdAt;
+    
+    // 修改时间
+    public String updatedAt;
+    
+    // 版本
+    public long version;
+    
+    // 机器人0否1是
+    public int robot;
+    
+    // 扩展字段
+    public HashMap extraMap;
+    
+    // 用户备注
+    public String remark;
+    
+    // 邀请者uid
+    public String memberInviteUID;
+    
+    // 被禁言到期时间
+    public long forbiddenExpirationTime;
+    
+    public String memberAvatarCacheKey;
+}
+```
+
+### 属性说明
+
+| 属性 | 类型 | 说明 |
+|------|------|------|
+| `id` | long | 自增ID |
+| `channelID` | String | 频道ID |
+| `channelType` | byte | 频道类型 |
+| `memberUID` | String | 成员用户ID |
+| `memberName` | String | 成员名称 |
+| `memberRemark` | String | 成员备注 |
+| `memberAvatar` | String | 成员头像URL |
+| `role` | int | 成员角色（0=普通成员，>0=管理员） |
+| `status` | int | 成员状态（1=正常，2=黑名单） |
+| `isDeleted` | int | 是否删除（0=正常，1=已删除） |
+| `robot` | int | 是否机器人（0=否，1=是） |
+| `remark` | String | 用户备注 |
+| `memberInviteUID` | String | 邀请者UID |
+| `forbiddenExpirationTime` | long | 禁言到期时间戳 |
+
+## 最佳实践
+
+### 1. 成员列表性能优化
+
+```java
+public class MemberListOptimizer {
+    
+    private static final int PAGE_SIZE = 50;
+    private List<WKChannelMember> allMembers = new ArrayList<>();
+    private List<WKChannelMember> displayMembers = new ArrayList<>();
+    
+    // 分页加载成员
+    public void loadMembersWithPagination(String channelId, byte channelType, int page) {
+        if (page == 1) {
+            // 第一页，获取所有成员
+            allMembers = WKIM.getInstance().getChannelMembersManager()
+                    .getMembers(channelId, channelType);
+            displayMembers.clear();
+        }
+        
+        if (allMembers != null) {
+            int startIndex = (page - 1) * PAGE_SIZE;
+            int endIndex = Math.min(startIndex + PAGE_SIZE, allMembers.size());
+            
+            if (startIndex < allMembers.size()) {
+                List<WKChannelMember> pageMembers = allMembers.subList(startIndex, endIndex);
+                displayMembers.addAll(pageMembers);
+                notifyDataChanged();
+            }
+        }
+    }
+    
+    // 搜索优化
+    public List<WKChannelMember> searchMembersLocal(String keyword) {
+        if (TextUtils.isEmpty(keyword)) {
+            return allMembers;
+        }
+        
+        List<WKChannelMember> results = new ArrayList<>();
+        for (WKChannelMember member : allMembers) {
+            if (matchesKeyword(member, keyword)) {
+                results.add(member);
+            }
+        }
+        return results;
+    }
+    
+    private boolean matchesKeyword(WKChannelMember member, String keyword) {
+        String lowerKeyword = keyword.toLowerCase();
+        
+        // 搜索名称
+        if (member.memberName != null && member.memberName.toLowerCase().contains(lowerKeyword)) {
+            return true;
+        }
+        
+        // 搜索备注
+        if (member.memberRemark != null && member.memberRemark.toLowerCase().contains(lowerKeyword)) {
+            return true;
+        }
+        
+        // 搜索用户ID
+        if (member.memberUID != null && member.memberUID.toLowerCase().contains(lowerKeyword)) {
+            return true;
+        }
+        
+        return false;
+    }
+}
+```
+
+### 2. 成员状态管理
+
+```java
+public class MemberStatusHelper {
+    
+    public static String getDisplayName(WKChannelMember member) {
+        // 优先显示备注，没有备注显示名称
+        return !TextUtils.isEmpty(member.remark) ? member.remark : 
+               (!TextUtils.isEmpty(member.memberRemark) ? member.memberRemark : member.memberName);
+    }
+    
+    public static boolean isNormalMember(WKChannelMember member) {
+        return member.status == 1 && member.isDeleted == 0;
+    }
+    
+    public static boolean isBlacklistMember(WKChannelMember member) {
+        return member.status == 2;
+    }
+    
+    public static boolean isAdminMember(WKChannelMember member) {
+        return member.role > 0;
+    }
+    
+    public static boolean isRobotMember(WKChannelMember member) {
+        return member.robot == 1;
+    }
+    
+    public static boolean isForbiddenMember(WKChannelMember member) {
+        return member.forbiddenExpirationTime > System.currentTimeMillis() / 1000;
+    }
+    
+    public static String getRoleText(int role) {
+        switch (role) {
+            case 0:
+                return "普通成员";
+            case 1:
+                return "管理员";
+            case 2:
+                return "群主";
+            default:
+                return "未知角色";
+        }
+    }
+}
+```
+
+### 3. 内存管理
+
+```java
+@Override
+protected void onDestroy() {
+    super.onDestroy();
+    
+    // 清理成员列表
+    if (memberList != null) {
+        memberList.clear();
+    }
+    
+    if (searchResults != null) {
+        searchResults.clear();
+    }
+    
+    // 取消搜索任务
+    if (searchHandler != null) {
+        searchHandler.removeCallbacksAndMessages(null);
+    }
+}
+```
+
+## 下一步
+
+<CardGroup cols={2}>
+  <Card
+    title="会话管理"
+    icon="users"
+    href="/zh/sdk/wukongim/android/conversation"
+  >
+    学习如何管理会话列表
+  </Card>
+  <Card
+    title="数据源配置"
+    icon="database"
+    href="/zh/sdk/wukongim/android/datasource"
+  >
+    配置频道成员数据源
+  </Card>
+  <Card
+    title="频道管理"
+    icon="hash"
+    href="/zh/sdk/wukongim/android/channel"
+  >
+    回到频道管理功能
+  </Card>
+  <Card
+    title="命令管理"
+    icon="terminal"
+    href="/zh/sdk/wukongim/android/cmd"
+  >
+    学习命令消息处理
+  </Card>
+</CardGroup>

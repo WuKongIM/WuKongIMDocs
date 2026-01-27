@@ -1,0 +1,332 @@
+---
+title: "移除频道白名单"
+description: "从频道白名单中移除指定用户"
+api: "POST /channel/whitelist_remove"
+---
+
+## 概述
+
+从频道白名单中移除指定用户。移除后，用户将失去白名单特权，如果启用白名单模式，将无法向频道发送消息。
+
+## 请求体
+
+### 必传参数
+
+<ParamField body="channel_id" type="string" required>
+频道ID，不能为空或包含特殊字符
+</ParamField>
+
+<ParamField body="channel_type" type="integer" required>
+频道类型
+- `1` - 个人频道
+- `2` - 群组频道
+</ParamField>
+
+<ParamField body="uids" type="array" required>
+要从白名单中移除的用户ID列表
+<ParamField body="uids[]" type="string">
+用户ID
+</ParamField>
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "http://localhost:5001/channel/whitelist_remove" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "channel_id": "group123",
+    "channel_type": 2,
+    "uids": ["user1", "user2"]
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5001/channel/whitelist_remove', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    channel_id: 'group123',
+    channel_type: 2,
+    uids: ['user1', 'user2']
+  })
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+
+data = {
+    "channel_id": "group123",
+    "channel_type": 2,
+    "uids": ["user1", "user2"]
+}
+
+response = requests.post('http://localhost:5001/channel/whitelist_remove', json=data)
+result = response.json()
+print(result)
+```
+
+```go Go
+package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    data := map[string]interface{}{
+        "channel_id":   "group123",
+        "channel_type": 2,
+        "uids":         []string{"user1", "user2"},
+    }
+    
+    jsonData, _ := json.Marshal(data)
+    
+    resp, err := http.Post(
+        "http://localhost:5001/channel/whitelist_remove",
+        "application/json",
+        bytes.NewBuffer(jsonData),
+    )
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    var result map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Printf("%+v\n", result)
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json 成功响应
+{
+  "status": "ok"
+}
+```
+</ResponseExample>
+
+## 响应字段
+
+<ResponseField name="status" type="string" required>
+操作状态，成功时返回 `"ok"`
+</ResponseField>
+
+## 状态码
+
+| 状态码 | 说明 |
+|--------|------|
+| 200 | 用户从白名单移除成功 |
+| 400 | 请求参数错误 |
+| 403 | 没有管理权限 |
+| 404 | 频道不存在 |
+| 500 | 服务器内部错误 |
+
+## 功能说明
+
+### 移除操作
+
+移除操作会执行以下步骤：
+
+1. **验证用户**：检查指定用户是否在白名单中
+2. **移除条目**：从频道白名单中删除指定用户
+3. **权限变更**：用户失去白名单特权
+4. **立即生效**：权限变更立即生效
+
+### 权限影响
+
+被移除的用户将失去：
+
+| 特权 | 影响 | 生效时间 |
+|------|------|----------|
+| 发送权限 | 在白名单模式下无法发送消息 | 立即生效 |
+| 特殊权限 | 失去绕过某些限制的能力 | 立即生效 |
+| 优先处理 | 消息不再获得优先处理 | 立即生效 |
+| 特权标识 | 失去白名单用户身份 | 立即生效 |
+
+## 白名单模式影响
+
+### 启用白名单模式时
+
+- **被移除用户**：无法向频道发送消息
+- **其他白名单用户**：不受影响，继续享有特权
+- **普通用户**：仍然无法发送消息
+
+### 禁用白名单模式时
+
+- **被移除用户**：仍可正常发送消息
+- **权限变更**：主要影响特殊权限和优先级
+
+## 使用场景
+
+### 权限降级
+
+```bash
+# 移除不再需要特权的用户
+curl -X POST "/channel/whitelist_remove" -d '{
+  "channel_id": "group123",
+  "channel_type": 2,
+  "uids": ["former_admin"]
+}'
+```
+
+### 批量清理
+
+```bash
+# 批量移除多个用户
+curl -X POST "/channel/whitelist_remove" -d '{
+  "channel_id": "group123",
+  "channel_type": 2,
+  "uids": ["user1", "user2", "user3"]
+}'
+```
+
+### 临时限制
+
+```bash
+# 临时移除用户特权
+curl -X POST "/channel/whitelist_remove" -d '{
+  "channel_id": "group123",
+  "channel_type": 2,
+  "uids": ["temp_restricted_user"]
+}'
+```
+
+## 白名单管理策略
+
+### 操作对比
+
+| 操作 | 功能 | 影响范围 | 适用场景 |
+|------|------|----------|----------|
+| `whitelist_add` | 添加到白名单 | 新增特权 | 授予用户特权 |
+| `whitelist_remove` | 从白名单移除 | 移除特权 | 撤销用户特权 |
+| `whitelist_set` | 替换整个白名单 | 全面重置 | 批量管理 |
+
+### 管理原则
+
+1. **最小权限原则**：只给必要的用户白名单权限
+2. **定期审查**：定期检查白名单用户的必要性
+3. **权限分级**：根据用户角色分配不同级别的权限
+4. **透明管理**：记录所有权限变更操作
+
+## 权限层级系统
+
+### 权限优先级
+
+```
+系统用户 > 管理员 > 黑名单 > 白名单 > 普通用户
+```
+
+### 移除后的权限状态
+
+| 原状态 | 移除后状态 | 权限变化 |
+|--------|------------|----------|
+| 白名单用户 | 普通用户 | 失去白名单特权 |
+| 白名单+黑名单 | 黑名单用户 | 仍受黑名单限制 |
+| 白名单+管理员 | 管理员 | 保留管理员权限 |
+
+## 最佳实践
+
+1. **权限审计**：定期审查白名单用户的活跃度和必要性
+2. **渐进式移除**：对于重要用户，考虑渐进式权限降级
+3. **通知机制**：移除前通知相关用户和管理员
+4. **备份策略**：在批量操作前备份当前白名单状态
+5. **监控影响**：移除后监控频道活动变化
+6. **文档记录**：记录移除原因和预期影响
+
+## 错误处理
+
+### 常见错误
+
+| 错误信息 | 原因 | 解决方案 |
+|----------|------|----------|
+| 频道ID不能为空 | 未提供频道ID | 确保提供有效的频道ID |
+| 频道类型不能为0 | 频道类型无效 | 使用有效的频道类型（1或2） |
+| uids不能为空 | 未提供用户列表 | 提供要移除的用户ID列表 |
+| 移除白名单失败 | 移除操作失败 | 检查用户是否在白名单中 |
+
+### 错误恢复
+
+```javascript
+async function removeFromWhitelistSafely(channelId, channelType, uids) {
+  try {
+    // 先检查用户是否在白名单中
+    const currentWhitelist = await getCurrentWhitelist(channelId, channelType);
+    const usersToRemove = uids.filter(uid => currentWhitelist.includes(uid));
+    
+    if (usersToRemove.length === 0) {
+      console.warn('没有用户需要从白名单中移除');
+      return { status: 'ok', message: 'No users to remove' };
+    }
+    
+    const response = await fetch('/channel/whitelist_remove', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        channel_id: channelId,
+        channel_type: channelType,
+        uids: usersToRemove
+      })
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('移除白名单失败:', error);
+    throw error;
+  }
+}
+```
+
+## 监控和分析
+
+### 关键指标
+
+- 白名单移除操作频率
+- 被移除用户的后续行为
+- 频道活跃度变化
+- 消息发送量变化
+
+### 分析报告
+
+定期生成分析报告：
+
+- 白名单用户活跃度统计
+- 权限变更影响分析
+- 用户行为模式变化
+- 频道健康度评估
+
+## 安全考虑
+
+### 操作安全
+
+1. **权限验证**：确保只有授权用户可以执行移除操作
+2. **操作日志**：记录所有白名单变更操作
+3. **审批流程**：对于重要用户的移除，考虑审批流程
+4. **回滚机制**：提供快速恢复白名单的机制
+
+### 防护措施
+
+- 限制批量操作的频率
+- 监控异常的权限变更模式
+- 设置关键用户的保护机制
+- 实施多重验证机制
+
+## 相关接口
+
+- [添加频道白名单](/zh/api/channel/whitelist) - 添加用户到白名单
+- [设置频道白名单](/zh/api/channel/whitelist-set) - 设置完整白名单
+- [获取频道白名单](/zh/api/channel/get-whitelist) - 获取当前白名单
+- [移除频道黑名单](/zh/api/channel/blacklist-remove) - 移除黑名单用户

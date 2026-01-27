@@ -1,0 +1,320 @@
+---
+title: "Set Channel Whitelist"
+description: "Set (replace) the entire whitelist for a channel"
+api: "POST /channel/whitelist_set"
+---
+
+## Overview
+
+Set (replace) the entire whitelist for a channel. This operation will first remove all existing whitelist entries and then add new ones. If UIDs is empty, the entire whitelist will be cleared.
+
+## Request Body
+
+### Required Parameters
+
+<ParamField body="channel_id" type="string" required>
+Channel ID, cannot be empty or contain special characters
+</ParamField>
+
+<ParamField body="channel_type" type="integer" required>
+Channel type
+- `1` - Person channel
+- `2` - Group channel
+</ParamField>
+
+### Optional Parameters
+
+<ParamField body="uids" type="array">
+List of user IDs to set as whitelist. If empty, clears the entire whitelist.
+<ParamField body="uids[]" type="string">
+User ID
+</ParamField>
+</ParamField>
+
+<RequestExample>
+```bash Set Whitelist
+curl -X POST "http://localhost:5001/channel/whitelist_set" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "channel_id": "group123",
+    "channel_type": 2,
+    "uids": ["user1", "user2", "user3"]
+  }'
+```
+
+```bash Clear Whitelist
+curl -X POST "http://localhost:5001/channel/whitelist_set" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "channel_id": "group123",
+    "channel_type": 2,
+    "uids": []
+  }'
+```
+
+```javascript JavaScript
+// Set whitelist
+const response = await fetch('http://localhost:5001/channel/whitelist_set', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    channel_id: 'group123',
+    channel_type: 2,
+    uids: ['user1', 'user2', 'user3']
+  })
+});
+
+const data = await response.json();
+console.log(data);
+
+// Clear whitelist
+const clearResponse = await fetch('http://localhost:5001/channel/whitelist_set', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    channel_id: 'group123',
+    channel_type: 2,
+    uids: []
+  })
+});
+```
+
+```python Python
+import requests
+
+# Set whitelist
+data = {
+    "channel_id": "group123",
+    "channel_type": 2,
+    "uids": ["user1", "user2", "user3"]
+}
+
+response = requests.post('http://localhost:5001/channel/whitelist_set', json=data)
+result = response.json()
+print(result)
+
+# Clear whitelist
+clear_data = {
+    "channel_id": "group123",
+    "channel_type": 2,
+    "uids": []
+}
+
+clear_response = requests.post('http://localhost:5001/channel/whitelist_set', json=clear_data)
+clear_result = clear_response.json()
+print(clear_result)
+```
+
+```go Go
+package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    // Set whitelist
+    data := map[string]interface{}{
+        "channel_id":   "group123",
+        "channel_type": 2,
+        "uids":         []string{"user1", "user2", "user3"},
+    }
+    
+    jsonData, _ := json.Marshal(data)
+    
+    resp, err := http.Post(
+        "http://localhost:5001/channel/whitelist_set",
+        "application/json",
+        bytes.NewBuffer(jsonData),
+    )
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    var result map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Printf("%+v\n", result)
+    
+    // Clear whitelist
+    clearData := map[string]interface{}{
+        "channel_id":   "group123",
+        "channel_type": 2,
+        "uids":         []string{},
+    }
+    
+    clearJsonData, _ := json.Marshal(clearData)
+    
+    clearResp, err := http.Post(
+        "http://localhost:5001/channel/whitelist_set",
+        "application/json",
+        bytes.NewBuffer(clearJsonData),
+    )
+    if err != nil {
+        panic(err)
+    }
+    defer clearResp.Body.Close()
+    
+    var clearResult map[string]interface{}
+    json.NewDecoder(clearResp.Body).Decode(&clearResult)
+    fmt.Printf("%+v\n", clearResult)
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json Success Response
+{
+  "status": "ok"
+}
+```
+</ResponseExample>
+
+## Response Fields
+
+<ResponseField name="status" type="string" required>
+Operation status, returns `"ok"` on success
+</ResponseField>
+
+## Status Codes
+
+| Status Code | Description |
+|-------------|-------------|
+| 200 | Whitelist set successfully |
+| 400 | Request parameter error |
+| 403 | No management permission |
+| 404 | Channel does not exist |
+| 500 | Internal server error |
+
+## Functionality
+
+### Set Operation
+
+The set operation performs the following steps:
+
+1. **Clear Existing Whitelist**: Remove all existing whitelist entries for the channel
+2. **Add New Entries**: Add the provided user ID list to the whitelist
+3. **Update Permissions**: Take effect immediately, only whitelisted users can send messages (if whitelist mode is enabled)
+4. **Conversation Management**: Automatically create related conversations for person channels
+
+### Clear Operation
+
+When `uids` is an empty array:
+
+- Clear all whitelist entries for the channel
+- Restore normal permissions for all users
+- Disable whitelist mode
+
+## Whitelist Mechanism
+
+### Permission Features
+
+Whitelisted users enjoy the following privileges:
+
+| Privilege | Description | Applicable Condition |
+|-----------|-------------|---------------------|
+| Send Permission | Can send messages to the channel | When whitelist mode is enabled |
+| Bypass Restrictions | Bypass certain channel restrictions | Based on channel configuration |
+| Priority Processing | Messages may receive priority processing | System configuration related |
+| Conversation Guarantee | Ensure conversations are created normally | Person channels |
+
+### Whitelist Mode
+
+- **When Enabled**: Only whitelisted users can send messages
+- **When Disabled**: Whitelist does not affect message sending permissions
+- **Person Channels**: Whitelisted users automatically create conversations
+
+## Use Cases
+
+### Batch Management
+
+```bash
+# Set new whitelist, replacing all existing entries
+curl -X POST "/channel/whitelist_set" -d '{
+  "channel_id": "group123",
+  "channel_type": 2,
+  "uids": ["admin1", "admin2", "moderator1"]
+}'
+```
+
+### Clear Whitelist
+
+```bash
+# Clear all whitelist, restore all user permissions
+curl -X POST "/channel/whitelist_set" -d '{
+  "channel_id": "group123",
+  "channel_type": 2,
+  "uids": []
+}'
+```
+
+### Reset Whitelist
+
+```bash
+# Completely reset whitelist to new user list
+curl -X POST "/channel/whitelist_set" -d '{
+  "channel_id": "group123",
+  "channel_type": 2,
+  "uids": ["new_privileged_user"]
+}'
+```
+
+## Comparison with Other Whitelist Operations
+
+| Operation | Function | Use Case |
+|-----------|----------|----------|
+| `whitelist_add` | Add users to existing whitelist | Incrementally add privileged users |
+| `whitelist_set` | Replace entire whitelist | Batch management, reset whitelist |
+| `whitelist_remove` | Remove specific users from whitelist | Remove specific user privileges |
+
+## Permission Hierarchy
+
+Whitelist position in the permission system:
+
+```
+System Users > Administrators > Blacklist > Whitelist > Regular Users
+```
+
+### Conflict Handling
+
+| Situation | Result | Description |
+|-----------|--------|-------------|
+| Both in blacklist and whitelist | Treated as blacklist | Blacklist has higher priority |
+| Only in whitelist | Enjoy whitelist privileges | Normal whitelist user |
+| Only in blacklist | Subject to blacklist restrictions | Normal blacklist user |
+| In neither list | Regular user permissions | Default permission handling |
+
+## Best Practices
+
+1. **Use Carefully**: Set operation clears all existing whitelist, ensure this is intended behavior
+2. **Backup Existing Data**: Get current whitelist before setting as backup
+3. **Permission Verification**: Ensure operator has sufficient management permissions
+4. **Progressive Management**: For large channels, consider progressive whitelist management
+5. **Monitor Effects**: Monitor channel activity and user feedback after setting
+6. **Document Records**: Record whitelist change reasons and expected effects
+
+## Error Handling
+
+### Common Errors
+
+| Error Message | Cause | Solution |
+|---------------|-------|----------|
+| Channel ID cannot be empty | No channel ID provided | Ensure valid channel ID is provided |
+| Channel type cannot be 0 | Invalid channel type | Use valid channel type (1 or 2) |
+| Channel ID cannot contain special characters | Invalid channel ID format | Use alphanumeric characters and underscores |
+| Remove all whitelist failed | Clear operation failed | Check channel status and permissions |
+| Add whitelist failed | Add operation failed | Check user ID validity |
+
+## Related APIs
+
+- [Add Channel Whitelist](/en/api/channel/whitelist) - Incrementally add whitelist users
+- [Remove Channel Whitelist](/en/api/channel/whitelist-remove) - Remove specific whitelist users
+- [Get Channel Whitelist](/en/api/channel/get-whitelist) - Get current whitelist
+- [Set Channel Blacklist](/en/api/channel/blacklist-set) - Manage blacklist users

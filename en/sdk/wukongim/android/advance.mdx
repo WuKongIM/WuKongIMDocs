@@ -1,0 +1,625 @@
+---
+title: "Advanced Features"
+description: "WuKongIM Android SDK advanced features, including custom messages, message extensions, message receipts and message replies"
+icon: "settings"
+---
+
+Advanced features provide developers with the ability to extend WuKongIM Android SDK, including custom message types, message extensions, message receipts, message editing and message replies and other enterprise-level features.
+
+<Note>
+In WuKongIM, all message types are custom messages
+</Note>
+
+## Custom Messages
+
+### Custom Regular Messages
+
+Below we use a business card message as an example to show how to create custom message types.
+
+#### Step 1: Define Message
+
+Define a message object that inherits from `WKMessageContent` and specify the message type in the constructor.
+
+<Note>
+Built-in message types in SDK can be viewed through `WKMsgContentType`
+</Note>
+
+<CodeGroup>
+```java Java
+public class WKCardContent extends WKMessageContent {
+
+    public WKCardContent() {
+        type = 3; // Specify message type
+    }
+    
+    // Define fields to send to the recipient
+    public String uid;    // User ID
+    public String name;   // Name
+    public String avatar; // Avatar
+}
+```
+
+```kotlin Kotlin
+class WKCardContent : WKMessageContent() {
+    var uid: String = ""
+    var name: String = ""
+    var avatar: String = ""
+
+    init {
+        type = 3 // Specify message type
+    }
+}
+```
+</CodeGroup>
+
+<Warning>
+Note: Custom message objects must provide a parameterless constructor
+</Warning>
+
+#### Step 2: Encoding and Decoding
+
+We need to send the three fields `uid`, `name`, `avatar` to the recipient. The final message content passed is:
+
+```json
+{
+  "type": 3,
+  "uid": "xxxx",
+  "name": "xxx",
+  "avatar": "xxx"
+}
+```
+
+Override the `encodeMsg` method of `WKMessageContent` to start encoding:
+
+<CodeGroup>
+```java Java
+@Override
+public JSONObject encodeMsg() {
+    JSONObject jsonObject = new JSONObject();
+    try {
+        jsonObject.put("uid", uid);
+        jsonObject.put("name", name);
+        jsonObject.put("avatar", avatar);
+    } catch (JSONException e) {
+        e.printStackTrace();
+    }
+    return jsonObject;
+}
+```
+
+```kotlin Kotlin
+override fun encodeMsg(): JSONObject {
+    val jsonObject = JSONObject()
+    jsonObject.put("uid", uid)
+    jsonObject.put("name", name)
+    jsonObject.put("avatar", avatar)
+    return jsonObject
+}
+```
+</CodeGroup>
+
+Override the `decodeMsg` method of `WKMessageContent` to start decoding:
+
+<CodeGroup>
+```java Java
+@Override
+public WKMessageContent decodeMsg(JSONObject jsonObject) {
+    uid = jsonObject.optString("uid");
+    name = jsonObject.optString("name");
+    avatar = jsonObject.optString("avatar");
+    return this;
+}
+```
+
+```kotlin Kotlin
+override fun decodeMsg(jsonObject: JSONObject): WKMessageContent {
+    this.uid = jsonObject.optString("uid")
+    this.name = jsonObject.optString("name")
+    this.avatar = jsonObject.optString("avatar")
+    return this
+}
+```
+</CodeGroup>
+
+<Note>
+When encoding and decoding messages, there's no need to consider the `type` field, as the SDK handles it internally
+</Note>
+
+If you want to control the content displayed when this custom message is retrieved, you can override the `getDisplayContent` method:
+
+<CodeGroup>
+```java Java
+@Override
+public String getDisplayContent() {
+    return "[Business Card]";
+}
+```
+
+```kotlin Kotlin
+override fun getDisplayContent(): String {
+    return "[Business Card]"
+}
+```
+</CodeGroup>
+
+If you want this type of message to be searchable in global search, you can override the `getSearchableWord` method:
+
+<CodeGroup>
+```java Java
+@Override
+public String getSearchableWord() {
+    return "[Card]";
+}
+```
+
+```kotlin Kotlin
+override fun getSearchableWord(): String {
+    return "[Card]"
+}
+```
+</CodeGroup>
+
+#### Step 3: Register Message
+
+<CodeGroup>
+```java Java
+WKIM.getInstance().getMsgManager().registerContentMsg(WKCardContent.class);
+```
+
+```kotlin Kotlin
+WKIM.getInstance().msgManager.registerContentMsg(WKCardContent::class.java)
+```
+</CodeGroup>
+
+Through these three steps, the custom regular message is complete. When receiving a message, if the type in `WKMsg` is 3, it indicates that the message is a business card message, where `baseContentMsgModel` is the custom `WKCardContent`. At this time, you can cast `baseContentMsgModel` to `WKCardContent` and render it on the UI.
+
+<Note>
+Complete code reference: [Business Card Message](https://github.com/TangSengDaoDao/TangSengDaoDaoAndroid/blob/master/wkuikit/src/main/java/com/chat/uikit/chat/msgmodel/WKCardContent.java)
+</Note>
+
+### Complete Business Card Message Implementation Example
+
+```java
+public class WKCardContent extends WKMessageContent {
+    public String uid;
+    public String name;
+    public String avatar;
+    public String phone;
+    public String email;
+
+    public WKCardContent() {
+        type = 3;
+    }
+
+    public WKCardContent(String uid, String name, String avatar) {
+        this();
+        this.uid = uid;
+        this.name = name;
+        this.avatar = avatar;
+    }
+
+    @Override
+    public JSONObject encodeMsg() {
+        JSONObject jsonObject = new JSONObject();
+        try {
+            jsonObject.put("uid", uid);
+            jsonObject.put("name", name);
+            jsonObject.put("avatar", avatar);
+            if (!TextUtils.isEmpty(phone)) {
+                jsonObject.put("phone", phone);
+            }
+            if (!TextUtils.isEmpty(email)) {
+                jsonObject.put("email", email);
+            }
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+        return jsonObject;
+    }
+
+    @Override
+    public WKMessageContent decodeMsg(JSONObject jsonObject) {
+        uid = jsonObject.optString("uid");
+        name = jsonObject.optString("name");
+        avatar = jsonObject.optString("avatar");
+        phone = jsonObject.optString("phone");
+        email = jsonObject.optString("email");
+        return this;
+    }
+
+    @Override
+    public String getDisplayContent() {
+        return String.format("[Business Card] %s", name);
+    }
+
+    @Override
+    public String getSearchableWord() {
+        return String.format("[Business Card] %s %s", name, phone != null ? phone : "");
+    }
+
+    // Validate if business card information is complete
+    public boolean isValid() {
+        return !TextUtils.isEmpty(uid) && !TextUtils.isEmpty(name);
+    }
+}
+
+// Register business card message
+WKIM.getInstance().getMsgManager().registerContentMsg(WKCardContent.class);
+
+// Send business card message
+public void sendCardMessage(WKChannel channel, String uid, String name, String avatar) {
+    WKCardContent cardContent = new WKCardContent(uid, name, avatar);
+    if (cardContent.isValid()) {
+        WKIM.getInstance().getMsgManager().sendMessage(cardContent, channel);
+    }
+}
+```
+
+### Custom Attachment Messages
+
+Sometimes we need to send messages with attachments when sending messages. WuKongIM also provides custom attachment messages, which are not much different from regular messages. Below we use location messages as an example.
+
+#### Step 1: Define Message
+
+Note that custom attachment messages need to inherit from `WKMediaMessageContent` instead of `WKMessageContent`.
+
+<CodeGroup>
+```java Java
+public class WKLocationContent extends WKMediaMessageContent {
+    // Define fields to send to the recipient
+    public double longitude; // Longitude
+    public double latitude;  // Latitude
+    public String address;   // Detailed address information
+    
+    public WKLocationContent(double longitude, double latitude, String address) {
+        type = 6;
+        this.longitude = longitude;
+        this.latitude = latitude;
+        this.address = address;
+    }
+    
+    // Must provide parameterless constructor here
+    public WKLocationContent() {
+        type = 6;
+    }
+}
+```
+
+```kotlin Kotlin
+class WKLocationContent(var longitude: Double, var latitude: Double, var address: String) :
+    WKMediaMessageContent() {
+
+    init {
+        type = 6 // Specify message type
+    }
+}
+```
+</CodeGroup>
+
+<Note>
+`WKMediaMessageContent` provides `url` and `localPath` fields, so custom messages don't need to define network address and local address fields again
+</Note>
+
+#### Step 2: Encoding and Decoding
+
+We need to send `longitude`, `latitude`, `address`, `url` information to the recipient. The final message content passed is:
+
+```json
+{
+  "type": 6,
+  "longitude": 115.25,
+  "latitude": 39.26,
+  "url": "xxx",
+  "address": "xxx"
+}
+```
+
+Override the `encodeMsg` method of `WKMessageContent` to start encoding:
+
+<CodeGroup>
+```java Java
+@Override
+public JSONObject encodeMsg() {
+    JSONObject jsonObject = new JSONObject();
+    try {
+        jsonObject.put("address", address);
+        jsonObject.put("latitude", latitude);
+        jsonObject.put("longitude", longitude);
+        jsonObject.put("url", url); // Location screenshot
+        jsonObject.put("localPath", localPath);
+    } catch (JSONException e) {
+        e.printStackTrace();
+    }
+    return jsonObject;
+}
+```
+
+```kotlin Kotlin
+override fun encodeMsg(): JSONObject {
+    val jsonObject = JSONObject()
+    jsonObject.put("longitude", longitude)
+    jsonObject.put("latitude", latitude)
+    jsonObject.put("address", address)
+    jsonObject.put("url", url)
+    jsonObject.put("localPath", localPath)
+    return jsonObject
+}
+```
+</CodeGroup>
+
+<Note>
+When encoding messages, you can write `localPath` local fields. After the SDK saves the message, the message sent to the recipient does not include this field
+</Note>
+
+Override the `decodeMsg` method of `WKMessageContent` to start decoding:
+
+<CodeGroup>
+```java Java
+@Override
+public WKMessageContent decodeMsg(JSONObject jsonObject) {
+    latitude = jsonObject.optDouble("latitude");
+    longitude = jsonObject.optDouble("longitude");
+    address = jsonObject.optString("address");
+    url = jsonObject.optString("url");
+    if (jsonObject.has("localPath"))
+        localPath = jsonObject.optString("localPath");
+    return this;
+}
+```
+
+```kotlin Kotlin
+override fun decodeMsg(jsonObject: JSONObject): WKMessageContent {
+    this.latitude = jsonObject.optDouble("latitude")
+    this.longitude = jsonObject.optDouble("longitude")
+    this.address = jsonObject.optString("address")
+    this.url = jsonObject.optString("url")
+    if (jsonObject.has("localPath"))
+        this.localPath = jsonObject.optString("localPath")
+    return this
+}
+```
+</CodeGroup>
+
+<Note>
+When decoding messages, if decoding local fields, you need to check if the field exists, because received messages don't have local fields. For example, `localPath` is not available when receiving messages
+</Note>
+
+#### Step 3: Register Message
+
+<CodeGroup>
+```java Java
+WKIM.getInstance().getMsgManager().registerContentMsg(WKLocationContent.class);
+```
+
+```kotlin Kotlin
+WKIM.getInstance().msgManager.registerContentMsg(WKLocationContent::class.java)
+```
+</CodeGroup>
+
+## Message Extensions
+
+As business develops, applications have increasingly more features in chat. To meet most requirements, WuKongIM has added message extension functionality. Message extensions are divided into `local extensions` and `remote extensions`. Local extensions are only for local app use and will be lost after uninstalling the app. Remote extensions are saved on the server and data will be restored after uninstalling and reinstalling.
+
+### Local Extensions
+
+Local extensions are the `localExtraMap` field in the message object `WKMsg`.
+
+<CodeGroup>
+```java Java
+/**
+ * Modify message local extensions
+ *
+ * @param clientMsgNo Client ID
+ * @param hashExtra   Extension fields
+ */
+WKIM.getInstance().getMsgManager().updateLocalExtraWithClientMsgNo(String clientMsgNo, HashMap<String, Object> hashExtra);
+```
+
+```kotlin Kotlin
+WKIM.getInstance().msgManager.updateLocalExtraWithClientMsgNo(clientMsgNo, hashExtra)
+```
+</CodeGroup>
+
+<Note>
+After successful update, the SDK will trigger a refresh message callback
+</Note>
+
+### Remote Extensions
+
+Remote extensions are the `remoteExtra` field in the message object `WKMsg`.
+
+<CodeGroup>
+```java Java
+/**
+ * Save remote extensions
+ * @param channel Channel information
+ * @param list Remote extension data
+ */
+WKIM.getInstance().getMsgManager().saveRemoteExtraMsg(WKChannel channel, List<WKSyncExtraMsg> list);
+```
+
+```kotlin Kotlin
+WKIM.getInstance().msgManager.saveRemoteExtraMsg(channel, list)
+```
+</CodeGroup>
+
+<Note>
+After successful update, the SDK will trigger a refresh message callback
+</Note>
+
+## Message Read/Unread
+
+Message read/unread is also called message receipts. Message receipt functionality can be set through settings.
+
+<CodeGroup>
+```java Java
+WKMsgSetting setting = new WKMsgSetting();
+setting.receipt = 1; // Enable receipts
+
+WKSendOptions options = new WKSendOptions();
+options.setting = setting;
+
+// Send message
+WKIM.getInstance().getMsgManager().sendWithOptions(contentModel, channel, options);
+```
+
+```kotlin Kotlin
+val setting = WKMsgSetting()
+setting.receipt = 1 // Enable receipts
+
+val options = WKSendOptions()
+options.setting = setting
+
+// Send message
+WKIM.getInstance().msgManager.sendWithOptions(
+    wkBaseContentMsgModel, channel, options
+)
+```
+</CodeGroup>
+
+When a logged-in user views messages sent by others, if the sender has enabled message receipts, the viewed messages need to be uploaded to the server to mark them as read. When the sender or yourself uploads read messages, the server will send a sync message extension cmd (command) message `syncMessageExtra`. At this time, you need to sync the latest message extensions and save them to the SDK.
+
+## Message Editing
+
+When we send a message to someone and find that the content is wrong, we don't need to recall and resend it. We just need to edit the message.
+
+### Set Edit Content
+
+<CodeGroup>
+```java Java
+/**
+ * Modify edit content
+ * @param msgID Message server ID
+ * @param channelID Channel ID
+ * @param channelType Channel type
+ * @param content Edited content
+ */
+WKIM.getInstance().getMsgManager().updateMsgEdit(String msgID, String channelID, byte channelType, String content);
+```
+
+```kotlin Kotlin
+WKIM.getInstance().msgManager.updateMsgEdit(msgID, channelID, channelType, content)
+```
+</CodeGroup>
+
+After changing the SDK message edit content, you need to upload the edited content to the server, which requires listening for upload message extensions.
+
+### Listen for Upload Message Extensions
+
+<CodeGroup>
+```java Java
+// Listen for upload message extensions
+WKIM.getInstance().getMsgManager().addOnUploadMsgExtraListener(new IUploadMsgExtraListener() {
+    @Override
+    public void onUpload(WKMsgExtra msgExtra) {
+        // Upload to your own server
+    }
+});
+```
+
+```kotlin Kotlin
+WKIM.getInstance().msgManager.addOnUploadMsgExtraListener(object : IUploadMsgExtraListener {
+    override fun onUpload(msgExtra: WKMsgExtra) {
+        // Upload to server
+    }
+})
+```
+</CodeGroup>
+
+## Message Reply
+
+In chat, if there are too many messages, sending message replies will make the messages very messy and hard to follow. At this time, you need to make specific replies to certain messages, which is message reply.
+
+When sending a message, you just need to assign the `WKReply` object in the message content `WKMessageContent` to achieve the message reply effect.
+
+### WKReply Object Core Fields
+
+```java
+public class WKReply {
+    // Root message ID of the replied message, the first reply message ID in multi-level replies
+    public String root_mid;
+    // Replied message ID
+    public String message_id;
+    // Replied MessageSeq
+    public long message_seq;
+    // Replied user uid
+    public String from_uid;
+    // Replied user name
+    public String from_name;
+    // Replied message body
+    public WKMessageContent payload;
+    // Edited content of replied message
+    public String contentEdit;
+    // Edited message entity of replied message
+    public WKMessageContent contentEditMsgModel;
+    // Edit time
+    public long editAt;
+}
+```
+
+## Message Reactions (Likes)
+
+### Save Message Reactions
+
+<CodeGroup>
+```java Java
+// Save message reactions
+WKIM.getInstance().getMsgManager().saveMessageReactions(List<WKSyncMsgReaction> list)
+```
+
+```kotlin Kotlin
+// Save message reactions
+WKIM.getInstance().msgManager.saveMessageReactions(list)
+```
+</CodeGroup>
+
+<Note>
+The same user can only make one reaction to the same message. Repeated reactions with different emojis to the same message will be treated as modifying the reaction, while repeated reactions with the same emoji will be treated as deleting the reaction. After the SDK updates message reactions, it will trigger a message refresh event. The app needs to listen for this event and refresh the UI.
+</Note>
+
+### Get Message Reactions
+
+<CodeGroup>
+```java Java
+// Get reactions for a message
+WKIM.getInstance().getMsgManager().getMsgReactions(String messageID);
+```
+
+```kotlin Kotlin
+// Get reactions for a message
+WKIM.getInstance().msgManager.getMsgReactions(messageID)
+```
+</CodeGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Data Source Configuration"
+    icon="database"
+    href="/en/sdk/wukongim/android/datasource"
+  >
+    Return to data source configuration
+  </Card>
+  <Card
+    title="Message Management"
+    icon="message-circle"
+    href="/en/sdk/wukongim/android/message"
+  >
+    Return to message management functionality
+  </Card>
+  <Card
+    title="Basic Features"
+    icon="foundation"
+    href="/en/sdk/wukongim/android/base"
+  >
+    Return to basic features
+  </Card>
+  <Card
+    title="Channel Management"
+    icon="hash"
+    href="/en/sdk/wukongim/android/channel"
+  >
+    Return to channel management
+  </Card>
+</CardGroup>

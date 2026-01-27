@@ -1,0 +1,449 @@
+---
+title: "Command Management"
+description: "WuKongIM HarmonyOS SDK command management functionality, including CMD message listening and processing"
+icon: "terminal"
+---
+
+Command management is responsible for handling CMD (command) messages sent from the server. CMD messages can only be sent from the server to the client for parsing, used to handle various system-level instructions and status synchronization.
+
+<Note>
+CMD messages can only be sent from the server, clients cannot actively send CMD messages
+</Note>
+
+## Listen for Command Messages
+
+### Basic Listening
+
+```typescript
+cmdListener = (cmd: WKCMD) => {
+  // Handle CMD messages
+};
+
+// Add CMD message listener
+WKIM.shared.cmdManager().addCmdListener(this.cmdListener);
+
+// Remove listener when exiting page
+WKIM.shared.cmdManager().removeCmdListener(this.cmdListener);
+```
+
+### Complete Command Listening Management
+
+```typescript
+interface CMDMessageEvent {
+  cmd: WKCMD;
+  timestamp: number;
+  processed: boolean;
+}
+
+class CMDMessageManager {
+  private static cmdListeners: Set<(cmd: WKCMD) => void> = new Set();
+  private static cmdEventCallbacks: Array<(event: CMDMessageEvent) => void> = [];
+  
+  // Add command listener
+  static addCmdListener(callback: (cmd: WKCMD) => void): void {
+    this.cmdListeners.add(callback);
+    
+    WKIM.shared.cmdManager().addCmdListener((cmd: WKCMD) => {
+      // Call callback
+      callback(cmd);
+      
+      // Send to event callbacks
+      const event: CMDMessageEvent = {
+        cmd,
+        timestamp: Date.now(),
+        processed: false
+      };
+      
+      this.cmdEventCallbacks.forEach(cb => cb(event));
+      
+      // Handle common commands
+      this.handleCommonCommands(cmd);
+      
+      console.log('Received command message:', cmd.cmd);
+    });
+  }
+  
+  // Remove command listener
+  static removeCmdListener(callback: (cmd: WKCMD) => void): void {
+    this.cmdListeners.delete(callback);
+    WKIM.shared.cmdManager().removeCmdListener(callback);
+  }
+  
+  // Add command event callback
+  static addCmdEventCallback(callback: (event: CMDMessageEvent) => void): void {
+    this.cmdEventCallbacks.push(callback);
+  }
+  
+  // Remove command event callback
+  static removeCmdEventCallback(callback: (event: CMDMessageEvent) => void): void {
+    const index = this.cmdEventCallbacks.indexOf(callback);
+    if (index > -1) {
+      this.cmdEventCallbacks.splice(index, 1);
+    }
+  }
+  
+  // Remove all listeners
+  static removeAllListeners(): void {
+    this.cmdListeners.forEach(callback => {
+      WKIM.shared.cmdManager().removeCmdListener(callback);
+    });
+    this.cmdListeners.clear();
+    this.cmdEventCallbacks = [];
+  }
+  
+  // Handle common commands
+  private static handleCommonCommands(cmd: WKCMD): void {
+    switch (cmd.cmd) {
+      case 'syncConversation':
+        this.handleSyncConversation(cmd);
+        break;
+      case 'syncChannelInfo':
+        this.handleSyncChannelInfo(cmd);
+        break;
+      case 'syncChannelMember':
+        this.handleSyncChannelMember(cmd);
+        break;
+      case 'syncMessageExtra':
+        this.handleSyncMessageExtra(cmd);
+        break;
+      case 'syncMessageReaction':
+        this.handleSyncMessageReaction(cmd);
+        break;
+      case 'userStatusUpdate':
+        this.handleUserStatusUpdate(cmd);
+        break;
+      case 'channelUpdate':
+        this.handleChannelUpdate(cmd);
+        break;
+      case 'memberUpdate':
+        this.handleMemberUpdate(cmd);
+        break;
+      default:
+        console.log('Unhandled command:', cmd.cmd);
+        break;
+    }
+  }
+  
+  // Handle sync conversation command
+  private static handleSyncConversation(cmd: WKCMD): void {
+    console.log('Handle sync conversation command');
+    // Trigger conversation sync logic
+    // Can call conversation manager's sync method here
+  }
+  
+  // Handle sync channel info command
+  private static handleSyncChannelInfo(cmd: WKCMD): void {
+    console.log('Handle sync channel info command');
+    if (cmd.paramJsonObject) {
+      const channelId = cmd.paramJsonObject['channel_id'] as string;
+      const channelType = cmd.paramJsonObject['channel_type'] as number;
+      
+      if (channelId && channelType !== undefined) {
+        // Refresh channel info
+        WKIM.shared.channelManager().fetchChannelInfo(channelId, channelType);
+      }
+    }
+  }
+  
+  // Handle sync channel member command
+  private static handleSyncChannelMember(cmd: WKCMD): void {
+    console.log('Handle sync channel member command');
+    // Trigger channel member sync logic
+  }
+  
+  // Handle sync message extra command
+  private static handleSyncMessageExtra(cmd: WKCMD): void {
+    console.log('Handle sync message extra command');
+    // Trigger message extra sync logic
+  }
+  
+  // Handle sync message reaction command
+  private static handleSyncMessageReaction(cmd: WKCMD): void {
+    console.log('Handle sync message reaction command');
+    // Trigger message reaction sync logic
+  }
+  
+  // Handle user status update command
+  private static handleUserStatusUpdate(cmd: WKCMD): void {
+    console.log('Handle user status update command');
+    if (cmd.paramJsonObject) {
+      const uid = cmd.paramJsonObject['uid'] as string;
+      const online = cmd.paramJsonObject['online'] as number;
+      
+      if (uid && online !== undefined) {
+        // Update user online status
+        console.log(`User ${uid} status update: ${online === 1 ? 'online' : 'offline'}`);
+      }
+    }
+  }
+  
+  // Handle channel update command
+  private static handleChannelUpdate(cmd: WKCMD): void {
+    console.log('Handle channel update command');
+    // Handle channel info changes
+  }
+  
+  // Handle member update command
+  private static handleMemberUpdate(cmd: WKCMD): void {
+    console.log('Handle member update command');
+    // Handle member info changes
+  }
+  
+  // Dispose
+  static dispose(): void {
+    this.removeAllListeners();
+  }
+}
+```
+
+## Common Command Types
+
+### System Sync Commands
+
+These commands are used to sync various data states:
+
+```typescript
+class SystemSyncCommands {
+  
+  // Sync conversation list
+  static readonly SYNC_CONVERSATION = 'syncConversation';
+  
+  // Sync channel info
+  static readonly SYNC_CHANNEL_INFO = 'syncChannelInfo';
+  
+  // Sync channel member
+  static readonly SYNC_CHANNEL_MEMBER = 'syncChannelMember';
+  
+  // Sync message extra
+  static readonly SYNC_MESSAGE_EXTRA = 'syncMessageExtra';
+  
+  // Sync message reaction
+  static readonly SYNC_MESSAGE_REACTION = 'syncMessageReaction';
+  
+  // Handle system sync commands
+  static handleSyncCommand(cmd: WKCMD): void {
+    switch (cmd.cmd) {
+      case this.SYNC_CONVERSATION:
+        this.syncConversations(cmd.paramJsonObject);
+        break;
+      case this.SYNC_CHANNEL_INFO:
+        this.syncChannelInfo(cmd.paramJsonObject);
+        break;
+      case this.SYNC_CHANNEL_MEMBER:
+        this.syncChannelMember(cmd.paramJsonObject);
+        break;
+      case this.SYNC_MESSAGE_EXTRA:
+        this.syncMessageExtra(cmd.paramJsonObject);
+        break;
+      case this.SYNC_MESSAGE_REACTION:
+        this.syncMessageReaction(cmd.paramJsonObject);
+        break;
+    }
+  }
+  
+  private static syncConversations(param?: Record<string, Object>): void {
+    // Implement conversation sync logic
+    console.log('Sync conversation data');
+  }
+  
+  private static syncChannelInfo(param?: Record<string, Object>): void {
+    // Implement channel info sync logic
+    console.log('Sync channel info');
+  }
+  
+  private static syncChannelMember(param?: Record<string, Object>): void {
+    // Implement channel member sync logic
+    console.log('Sync channel member');
+  }
+  
+  private static syncMessageExtra(param?: Record<string, Object>): void {
+    // Implement message extra sync logic
+    console.log('Sync message extra');
+  }
+  
+  private static syncMessageReaction(param?: Record<string, Object>): void {
+    // Implement message reaction sync logic
+    console.log('Sync message reaction');
+  }
+}
+```
+
+### Status Update Commands
+
+These commands are used for real-time status updates:
+
+```typescript
+class StatusUpdateCommands {
+  
+  // User online status update
+  static readonly USER_STATUS_UPDATE = 'userStatusUpdate';
+  
+  // Channel status update
+  static readonly CHANNEL_UPDATE = 'channelUpdate';
+  
+  // Member status update
+  static readonly MEMBER_UPDATE = 'memberUpdate';
+  
+  // Message status update
+  static readonly MESSAGE_UPDATE = 'messageUpdate';
+  
+  // Handle status update commands
+  static handleStatusCommand(cmd: WKCMD): void {
+    switch (cmd.cmd) {
+      case this.USER_STATUS_UPDATE:
+        this.handleUserStatusUpdate(cmd.paramJsonObject);
+        break;
+      case this.CHANNEL_UPDATE:
+        this.handleChannelUpdate(cmd.paramJsonObject);
+        break;
+      case this.MEMBER_UPDATE:
+        this.handleMemberUpdate(cmd.paramJsonObject);
+        break;
+      case this.MESSAGE_UPDATE:
+        this.handleMessageUpdate(cmd.paramJsonObject);
+        break;
+    }
+  }
+  
+  private static handleUserStatusUpdate(param?: Record<string, Object>): void {
+    if (param) {
+      const uid = param['uid'] as string;
+      const online = param['online'] as number;
+      const lastSeen = param['last_seen'] as number;
+      
+      console.log('User status update:', uid, 'online:', online, 'last seen:', lastSeen);
+      
+      // Update local user status
+      // Can notify UI update through events
+    }
+  }
+  
+  private static handleChannelUpdate(param?: Record<string, Object>): void {
+    if (param) {
+      const channelId = param['channel_id'] as string;
+      const channelType = param['channel_type'] as number;
+      
+      console.log('Channel update:', channelId, 'type:', channelType);
+      
+      // Refresh channel info
+      if (channelId && channelType !== undefined) {
+        WKIM.shared.channelManager().fetchChannelInfo(channelId, channelType);
+      }
+    }
+  }
+  
+  private static handleMemberUpdate(param?: Record<string, Object>): void {
+    if (param) {
+      const channelId = param['channel_id'] as string;
+      const memberUid = param['member_uid'] as string;
+      
+      console.log('Member update: channel', channelId, 'member', memberUid);
+      
+      // Refresh member info
+      // Trigger member list update
+    }
+  }
+  
+  private static handleMessageUpdate(param?: Record<string, Object>): void {
+    if (param) {
+      const messageId = param['message_id'] as string;
+      const action = param['action'] as string;
+      
+      console.log('Message update:', messageId, 'action:', action);
+      
+      // Handle message updates (like recall, edit, etc.)
+    }
+  }
+}
+```
+
+## Data Structure Description
+
+### WKCMD Command Object
+
+```typescript
+export class WKCMD {
+  cmd: string = '';                                    // Command ID
+  paramJsonObject?: Record<string, Object>;           // Command parameters
+}
+```
+
+### Field Description
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `cmd` | string | Command identifier, used to distinguish different types of commands |
+| `paramJsonObject` | Record&lt;string, Object&gt; | Command parameters, can contain any type of data |
+
+### Common Command Parameter Formats
+
+#### Sync Command Parameters
+
+```typescript
+// Sync conversation command parameters
+{
+  "version": 123456,
+  "last_msg_seqs": "1,2,3,4,5",
+  "msg_count": 20
+}
+
+// Sync channel info command parameters
+{
+  "channel_id": "channel123",
+  "channel_type": 2,
+  "version": 123456
+}
+```
+
+#### Status Update Command Parameters
+
+```typescript
+// User status update parameters
+{
+  "uid": "user123",
+  "online": 1,
+  "last_seen": 1640995200,
+  "device_flag": 1
+}
+
+// Channel update parameters
+{
+  "channel_id": "channel123",
+  "channel_type": 2,
+  "action": "update",
+  "fields": ["name", "avatar"]
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Reminder Management"
+    icon="bell"
+    href="/en/sdk/wukongim/harmonyos/reminder"
+  >
+    Learn about @mentions and custom reminder functionality
+  </Card>
+  <Card
+    title="Advanced Features"
+    icon="cog"
+    href="/en/sdk/wukongim/harmonyos/advance"
+  >
+    Explore custom messages and extension features
+  </Card>
+  <Card
+    title="Channel Member Management"
+    icon="users"
+    href="/en/sdk/wukongim/harmonyos/channel_member"
+  >
+    Return to channel member management functionality
+  </Card>
+  <Card
+    title="Data Source Configuration"
+    icon="database"
+    href="/en/sdk/wukongim/harmonyos/datasource"
+  >
+    Configure data sources and sync logic
+  </Card>
+</CardGroup>

@@ -1,0 +1,455 @@
+---
+title: "Remove Connection"
+description: "Remove a specific connection for a specified user"
+api: "POST /conn/remove"
+---
+
+## Overview
+
+Remove a specific connection for a specified user, used for cleaning up invalid connections or managing user connection states.
+
+## Request Body
+
+### Required Parameters
+
+<ParamField body="uid" type="string" required>
+User ID
+</ParamField>
+
+<ParamField body="conn_id" type="integer" required>
+Connection ID
+</ParamField>
+
+### Optional Parameters
+
+<ParamField body="node_id" type="integer">
+Node ID, specifies connection on a specific node
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "http://localhost:5001/conn/remove" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "uid": "user123",
+    "conn_id": 12345,
+    "node_id": 1
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5001/conn/remove', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    uid: 'user123',
+    conn_id: 12345,
+    node_id: 1
+  })
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+
+data = {
+    "uid": "user123",
+    "conn_id": 12345,
+    "node_id": 1
+}
+
+response = requests.post('http://localhost:5001/conn/remove', json=data)
+result = response.json()
+print(result)
+```
+
+```go Go
+package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    data := map[string]interface{}{
+        "uid":     "user123",
+        "conn_id": 12345,
+        "node_id": 1,
+    }
+    
+    jsonData, _ := json.Marshal(data)
+    
+    resp, err := http.Post(
+        "http://localhost:5001/conn/remove",
+        "application/json",
+        bytes.NewBuffer(jsonData),
+    )
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    var result map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Printf("%+v\n", result)
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json Success Response
+{
+  "status": "ok"
+}
+```
+</ResponseExample>
+
+## Response Fields
+
+<ResponseField name="status" type="string" required>
+Operation status, returns `"ok"` on success
+</ResponseField>
+
+## Status Codes
+
+| Status Code | Description |
+|-------------|-------------|
+| 200 | Connection removed successfully |
+| 400 | Request parameter error |
+| 404 | Connection does not exist |
+| 500 | Internal server error |
+
+## Use Cases
+
+### Connection Cleanup
+
+**Remove Stale Connections**:
+```javascript
+// Remove stale or inactive connections
+async function removeStaleConnection(userId, connectionId, nodeId) {
+    try {
+        await removeConnection({
+            uid: userId,
+            conn_id: connectionId,
+            node_id: nodeId
+        });
+        
+        console.log(`Stale connection ${connectionId} removed for user ${userId}`);
+    } catch (error) {
+        console.error('Failed to remove stale connection:', error);
+    }
+}
+```
+
+**Batch Connection Cleanup**:
+```javascript
+// Clean up multiple stale connections
+async function batchRemoveConnections(connectionsToRemove) {
+    const results = [];
+    
+    for (const conn of connectionsToRemove) {
+        try {
+            await removeConnection({
+                uid: conn.uid,
+                conn_id: conn.conn_id,
+                node_id: conn.node_id
+            });
+            
+            results.push({
+                uid: conn.uid,
+                conn_id: conn.conn_id,
+                success: true
+            });
+        } catch (error) {
+            results.push({
+                uid: conn.uid,
+                conn_id: conn.conn_id,
+                success: false,
+                error: error.message
+            });
+        }
+    }
+    
+    return results;
+}
+```
+
+### Connection Management
+
+**Manage User Connection Limits**:
+```javascript
+// Enforce connection limits per user
+class ConnectionLimitManager {
+    constructor(maxConnectionsPerUser = 5) {
+        this.maxConnections = maxConnectionsPerUser;
+    }
+    
+    async enforceConnectionLimit(userId) {
+        try {
+            // Get user's current connections
+            const connections = await getUserConnections(userId);
+            
+            if (connections.length > this.maxConnections) {
+                // Sort by last activity (oldest first)
+                connections.sort((a, b) => a.last_activity - b.last_activity);
+                
+                // Remove oldest connections
+                const toRemove = connections.slice(0, connections.length - this.maxConnections);
+                
+                for (const conn of toRemove) {
+                    await removeConnection({
+                        uid: userId,
+                        conn_id: conn.conn_id,
+                        node_id: conn.node_id
+                    });
+                    
+                    console.log(`Removed old connection ${conn.conn_id} for user ${userId}`);
+                }
+            }
+        } catch (error) {
+            console.error('Failed to enforce connection limit:', error);
+        }
+    }
+}
+
+// Usage
+const limitManager = new ConnectionLimitManager(3);
+await limitManager.enforceConnectionLimit('user123');
+```
+
+### Security Management
+
+**Remove Suspicious Connections**:
+```javascript
+// Remove connections flagged as suspicious
+async function removeSuspiciousConnection(userId, connectionId, nodeId, reason) {
+    try {
+        // Log security event
+        await logSecurityEvent({
+            type: 'suspicious_connection_removal',
+            user_id: userId,
+            connection_id: connectionId,
+            node_id: nodeId,
+            reason: reason,
+            timestamp: new Date().toISOString()
+        });
+        
+        // Remove the connection
+        await removeConnection({
+            uid: userId,
+            conn_id: connectionId,
+            node_id: nodeId
+        });
+        
+        // Notify security team
+        await notifySecurityTeam({
+            action: 'connection_removed',
+            user_id: userId,
+            connection_id: connectionId,
+            reason: reason
+        });
+        
+        console.log(`Suspicious connection ${connectionId} removed for user ${userId}`);
+    } catch (error) {
+        console.error('Failed to remove suspicious connection:', error);
+    }
+}
+```
+
+### Node Maintenance
+
+**Node-specific Connection Cleanup**:
+```javascript
+// Remove all connections from a specific node during maintenance
+async function removeNodeConnections(nodeId) {
+    try {
+        // Get all connections on the node
+        const nodeConnections = await getNodeConnections(nodeId);
+        
+        console.log(`Removing ${nodeConnections.length} connections from node ${nodeId}`);
+        
+        const results = [];
+        for (const conn of nodeConnections) {
+            try {
+                await removeConnection({
+                    uid: conn.uid,
+                    conn_id: conn.conn_id,
+                    node_id: nodeId
+                });
+                
+                results.push({ uid: conn.uid, conn_id: conn.conn_id, success: true });
+            } catch (error) {
+                results.push({ 
+                    uid: conn.uid, 
+                    conn_id: conn.conn_id, 
+                    success: false, 
+                    error: error.message 
+                });
+            }
+        }
+        
+        const successful = results.filter(r => r.success).length;
+        const failed = results.filter(r => !r.success).length;
+        
+        console.log(`Node ${nodeId} cleanup: ${successful} successful, ${failed} failed`);
+        
+        return results;
+    } catch (error) {
+        console.error(`Failed to cleanup node ${nodeId} connections:`, error);
+    }
+}
+```
+
+### Monitoring and Diagnostics
+
+**Connection Health Monitoring**:
+```javascript
+class ConnectionHealthMonitor {
+    constructor(checkInterval = 60000) {
+        this.checkInterval = checkInterval;
+        this.isMonitoring = false;
+    }
+    
+    startMonitoring() {
+        if (this.isMonitoring) return;
+        
+        this.isMonitoring = true;
+        this.monitoringInterval = setInterval(() => {
+            this.checkConnectionHealth();
+        }, this.checkInterval);
+        
+        console.log('Connection health monitoring started');
+    }
+    
+    stopMonitoring() {
+        if (this.monitoringInterval) {
+            clearInterval(this.monitoringInterval);
+            this.monitoringInterval = null;
+        }
+        this.isMonitoring = false;
+        console.log('Connection health monitoring stopped');
+    }
+    
+    async checkConnectionHealth() {
+        try {
+            // Get all active connections
+            const connections = await getAllConnections();
+            
+            const unhealthyConnections = connections.filter(conn => 
+                this.isConnectionUnhealthy(conn)
+            );
+            
+            if (unhealthyConnections.length > 0) {
+                console.log(`Found ${unhealthyConnections.length} unhealthy connections`);
+                
+                // Remove unhealthy connections
+                for (const conn of unhealthyConnections) {
+                    await this.removeUnhealthyConnection(conn);
+                }
+            }
+        } catch (error) {
+            console.error('Connection health check failed:', error);
+        }
+    }
+    
+    isConnectionUnhealthy(connection) {
+        const now = Date.now();
+        const lastActivity = connection.last_activity || 0;
+        const idleTime = now - lastActivity;
+        
+        // Consider connection unhealthy if idle for more than 10 minutes
+        return idleTime > 10 * 60 * 1000;
+    }
+    
+    async removeUnhealthyConnection(connection) {
+        try {
+            await removeConnection({
+                uid: connection.uid,
+                conn_id: connection.conn_id,
+                node_id: connection.node_id
+            });
+            
+            console.log(`Removed unhealthy connection ${connection.conn_id} for user ${connection.uid}`);
+        } catch (error) {
+            console.error(`Failed to remove unhealthy connection ${connection.conn_id}:`, error);
+        }
+    }
+}
+
+// Usage
+const healthMonitor = new ConnectionHealthMonitor(30000); // Check every 30 seconds
+healthMonitor.startMonitoring();
+```
+
+### Administrative Operations
+
+**Admin Connection Management**:
+```javascript
+// Administrative function to manage user connections
+async function adminManageUserConnections(adminUserId, targetUserId, action) {
+    try {
+        // Verify admin permissions
+        const hasPermission = await verifyAdminPermission(adminUserId, 'connection_management');
+        if (!hasPermission) {
+            throw new Error('Insufficient admin permissions');
+        }
+        
+        // Get target user's connections
+        const connections = await getUserConnections(targetUserId);
+        
+        let results = [];
+        
+        switch (action.type) {
+            case 'remove_all':
+                results = await batchRemoveConnections(connections);
+                break;
+                
+            case 'remove_by_device':
+                const deviceConnections = connections.filter(conn => 
+                    conn.device_flag === action.device_flag
+                );
+                results = await batchRemoveConnections(deviceConnections);
+                break;
+                
+            case 'remove_specific':
+                const specificConn = connections.find(conn => 
+                    conn.conn_id === action.conn_id
+                );
+                if (specificConn) {
+                    results = await batchRemoveConnections([specificConn]);
+                }
+                break;
+        }
+        
+        // Log admin action
+        await logAdminAction(adminUserId, 'connection_management', {
+            target_user: targetUserId,
+            action: action,
+            results: results
+        });
+        
+        return results;
+    } catch (error) {
+        console.error('Admin connection management failed:', error);
+        throw error;
+    }
+}
+```
+
+## Best Practices
+
+1. **Permission Verification**: Ensure proper authorization before removing connections
+2. **Logging**: Log all connection removals for audit and debugging purposes
+3. **Graceful Handling**: Handle connection removal errors gracefully
+4. **Batch Operations**: Use batch operations for better performance when removing multiple connections
+5. **Monitoring**: Implement monitoring to detect and remove unhealthy connections
+6. **Security**: Remove suspicious connections promptly to maintain system security
+7. **Node Awareness**: Consider node distribution when managing connections in clustered environments

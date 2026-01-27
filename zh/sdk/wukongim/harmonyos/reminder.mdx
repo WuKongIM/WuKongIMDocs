@@ -1,0 +1,810 @@
+---
+title: "提醒管理"
+description: "WuKongIM HarmonyOS SDK 提醒管理功能，包括@提醒、系统提醒和自定义提醒"
+icon: "bell"
+---
+
+提醒项管理负责处理各种类型的提醒消息，如@提醒、入群申请、系统通知等。会话提醒目前只支持服务器下发指令，客户端只需监听同步会话提醒和监听刷新会话消息即可。
+
+<Note>
+提醒项只能由服务器下发，客户端主要负责接收、显示和管理提醒状态
+</Note>
+
+## 获取提醒项
+
+### 获取指定频道的提醒项
+
+```typescript
+// 获取指定频道的提醒项
+// channelId: 频道ID
+// channelType: 频道类型
+// done: 1.已经完成的提醒项 0.未完成的提醒项
+WKIM.shared.reminderManager().get(channelId, channelType, done);
+```
+
+### 完整提醒项获取示例
+
+```typescript
+import { WKIM, WKReminder, WKChannelType } from '@wukong/wkim';
+
+class ReminderManager {
+  
+  // 获取指定频道的提醒项
+  static getChannelReminders(channelId: string, channelType: number, done: number = 0): WKReminder[] {
+    try {
+      const reminders = WKIM.shared.reminderManager().get(channelId, channelType, done);
+      console.log(`获取到 ${reminders.length} 个提醒项`);
+      return reminders;
+    } catch (error) {
+      console.error('获取提醒项失败:', error);
+      return [];
+    }
+  }
+  
+  // 获取所有未完成的提醒项
+  static getAllPendingReminders(): WKReminder[] {
+    // 这里需要遍历所有频道获取提醒项
+    // 实际实现可能需要SDK提供相应的API
+    const allReminders: WKReminder[] = [];
+    
+    // 示例：获取所有会话的提醒项
+    const conversations = WKIM.shared.conversationManager().all();
+    for (const conv of conversations) {
+      const reminders = this.getChannelReminders(conv.channelId, conv.channelType, 0);
+      allReminders.push(...reminders);
+    }
+    
+    return allReminders;
+  }
+  
+  // 获取已完成的提醒项
+  static getCompletedReminders(channelId: string, channelType: number): WKReminder[] {
+    return this.getChannelReminders(channelId, channelType, 1);
+  }
+  
+  // 按类型获取提醒项
+  static getRemindersByType(channelId: string, channelType: number, type: number): WKReminder[] {
+    const allReminders = this.getChannelReminders(channelId, channelType, 0);
+    return allReminders.filter(reminder => reminder.type === type);
+  }
+  
+  // 获取@提醒
+  static getMentionReminders(channelId: string, channelType: number): WKReminder[] {
+    return this.getRemindersByType(channelId, channelType, ReminderType.mention);
+  }
+  
+  // 获取入群申请提醒
+  static getJoinRequestReminders(channelId: string, channelType: number): WKReminder[] {
+    return this.getRemindersByType(channelId, channelType, ReminderType.joinRequest);
+  }
+  
+  // 获取系统通知提醒
+  static getSystemNoticeReminders(channelId: string, channelType: number): WKReminder[] {
+    return this.getRemindersByType(channelId, channelType, ReminderType.systemNotice);
+  }
+  
+  // 统计提醒数量
+  static getTotalReminderCount(): number {
+    const allReminders = this.getAllPendingReminders();
+    return allReminders.length;
+  }
+  
+  // 按类型统计提醒数量
+  static getReminderCountByType(): Map<number, number> {
+    const allReminders = this.getAllPendingReminders();
+    const countMap = new Map<number, number>();
+    
+    for (const reminder of allReminders) {
+      const count = countMap.get(reminder.type) || 0;
+      countMap.set(reminder.type, count + 1);
+    }
+    
+    return countMap;
+  }
+  
+  // 检查是否有未读提醒
+  static hasUnreadReminders(channelId: string, channelType: number): boolean {
+    const reminders = this.getChannelReminders(channelId, channelType, 0);
+    return reminders.length > 0;
+  }
+  
+  // 获取提醒显示文本
+  static getReminderDisplayText(reminder: WKReminder): string {
+    if (reminder.text) {
+      return reminder.text;
+    }
+    
+    // 根据类型返回默认文本
+    switch (reminder.type) {
+      case ReminderType.mention:
+        return '有人@我';
+      case ReminderType.joinRequest:
+        return '入群申请';
+      case ReminderType.systemNotice:
+        return '系统通知';
+      case ReminderType.unreadVoice:
+        return '语音未读';
+      default:
+        return '新提醒';
+    }
+  }
+}
+
+// 提醒类型常量
+class ReminderType {
+  static readonly mention = 1;        // @提醒
+  static readonly joinRequest = 2;    // 入群申请
+  static readonly systemNotice = 3;   // 系统通知
+  static readonly unreadVoice = 4;    // 语音未读
+  static readonly custom = 99;        // 自定义提醒
+}
+```
+
+## 保存提醒项
+
+### 保存或更新提醒项
+
+```typescript
+// 保存提醒项
+WKIM.shared.reminderManager().save(list: WKReminder[]);
+```
+
+### 完整提醒项保存示例
+
+```typescript
+class ReminderOperations {
+  
+  // 保存单个提醒项
+  static saveReminder(reminder: WKReminder): void {
+    try {
+      WKIM.shared.reminderManager().save([reminder]);
+      console.log('保存提醒项成功:', reminder.reminderId);
+    } catch (error) {
+      console.error('保存提醒项失败:', error);
+    }
+  }
+  
+  // 批量保存提醒项
+  static batchSaveReminders(reminders: WKReminder[]): void {
+    try {
+      WKIM.shared.reminderManager().save(reminders);
+      console.log(`批量保存 ${reminders.length} 个提醒项成功`);
+    } catch (error) {
+      console.error('批量保存提醒项失败:', error);
+    }
+  }
+  
+  // 标记提醒为已完成
+  static markReminderAsDone(reminder: WKReminder): void {
+    reminder.done = 1;
+    reminder.needUpload = 1; // 标记需要上传到业务服务器
+    this.saveReminder(reminder);
+  }
+  
+  // 批量标记提醒为已完成
+  static batchMarkRemindersAsDone(reminders: WKReminder[]): void {
+    for (const reminder of reminders) {
+      reminder.done = 1;
+      reminder.needUpload = 1;
+    }
+    this.batchSaveReminders(reminders);
+  }
+  
+  // 创建@提醒
+  static createMentionReminder(options: {
+    messageId: string;
+    channelId: string;
+    channelType: number;
+    messageSeq: number;
+    mentionText: string;
+    publisher?: string;
+  }): WKReminder {
+    const reminder = new WKReminder();
+    reminder.messageId = options.messageId;
+    reminder.channelId = options.channelId;
+    reminder.channelType = options.channelType;
+    reminder.messageSeq = options.messageSeq;
+    reminder.type = ReminderType.mention;
+    reminder.text = options.mentionText;
+    reminder.publisher = options.publisher || '';
+    reminder.done = 0;
+    reminder.needUpload = 0;
+    reminder.version = Date.now();
+    
+    return reminder;
+  }
+  
+  // 创建入群申请提醒
+  static createJoinRequestReminder(options: {
+    channelId: string;
+    channelType: number;
+    applicantName: string;
+    requestData: Record<string, Object>;
+  }): WKReminder {
+    const reminder = new WKReminder();
+    reminder.channelId = options.channelId;
+    reminder.channelType = options.channelType;
+    reminder.type = ReminderType.joinRequest;
+    reminder.text = `${options.applicantName} 申请加入群聊`;
+    reminder.data = options.requestData;
+    reminder.done = 0;
+    reminder.needUpload = 0;
+    reminder.version = Date.now();
+    
+    return reminder;
+  }
+  
+  // 创建系统通知提醒
+  static createSystemNoticeReminder(options: {
+    channelId: string;
+    channelType: number;
+    noticeText: string;
+    noticeData?: Record<string, Object>;
+  }): WKReminder {
+    const reminder = new WKReminder();
+    reminder.channelId = options.channelId;
+    reminder.channelType = options.channelType;
+    reminder.type = ReminderType.systemNotice;
+    reminder.text = options.noticeText;
+    reminder.data = options.noticeData;
+    reminder.done = 0;
+    reminder.needUpload = 0;
+    reminder.version = Date.now();
+    
+    return reminder;
+  }
+  
+  // 创建语音未读提醒
+  static createUnreadVoiceReminder(options: {
+    messageId: string;
+    channelId: string;
+    channelType: number;
+    messageSeq: number;
+    voiceDuration: number;
+  }): WKReminder {
+    const reminder = new WKReminder();
+    reminder.messageId = options.messageId;
+    reminder.channelId = options.channelId;
+    reminder.channelType = options.channelType;
+    reminder.messageSeq = options.messageSeq;
+    reminder.type = ReminderType.unreadVoice;
+    reminder.text = '语音消息未读';
+    reminder.data = { duration: options.voiceDuration };
+    reminder.done = 0;
+    reminder.needUpload = 0;
+    reminder.version = Date.now();
+    
+    return reminder;
+  }
+}
+```
+
+## 事件监听
+
+### 新增/更新事件
+
+```typescript
+refreshReminders = (reminders: WKReminder[]): void => {
+    // 新增提醒项 或 更新提醒项
+};
+
+// 监听提醒项
+WKIM.shared.reminderManager().addRefreshListener(this.refreshReminders);
+
+// 移除监听
+WKIM.shared.reminderManager().removeRefreshListener(this.refreshReminders);
+```
+
+### 完整事件监听管理
+
+```typescript
+interface ReminderEvent {
+  type: ReminderEventType;
+  reminders: WKReminder[];
+  timestamp: number;
+}
+
+enum ReminderEventType {
+  refresh = 'refresh',    // 刷新提醒
+  update = 'update',      // 更新提醒
+  delete = 'delete',      // 删除提醒
+}
+
+class ReminderListener {
+  private static refreshListeners: Set<(reminders: WKReminder[]) => void> = new Set();
+  private static reminderEventCallbacks: Array<(event: ReminderEvent) => void> = [];
+  
+  // 添加提醒刷新监听
+  static addRefreshReminderListener(callback: (reminders: WKReminder[]) => void): void {
+    this.refreshListeners.add(callback);
+    
+    WKIM.shared.reminderManager().addRefreshListener((reminders: WKReminder[]) => {
+      // 调用回调
+      callback(reminders);
+      
+      // 发送到事件回调
+      const event: ReminderEvent = {
+        type: ReminderEventType.refresh,
+        reminders,
+        timestamp: Date.now()
+      };
+      
+      this.reminderEventCallbacks.forEach(cb => cb(event));
+      
+      // 处理特定类型的提醒
+      this.handleSpecificReminders(reminders);
+      
+      console.log('收到提醒更新:', reminders.length);
+    });
+  }
+  
+  // 移除提醒刷新监听
+  static removeRefreshReminderListener(callback: (reminders: WKReminder[]) => void): void {
+    this.refreshListeners.delete(callback);
+    WKIM.shared.reminderManager().removeRefreshListener(callback);
+  }
+  
+  // 添加提醒事件回调
+  static addReminderEventCallback(callback: (event: ReminderEvent) => void): void {
+    this.reminderEventCallbacks.push(callback);
+  }
+  
+  // 移除提醒事件回调
+  static removeReminderEventCallback(callback: (event: ReminderEvent) => void): void {
+    const index = this.reminderEventCallbacks.indexOf(callback);
+    if (index > -1) {
+      this.reminderEventCallbacks.splice(index, 1);
+    }
+  }
+  
+  // 移除所有监听
+  static removeAllListeners(): void {
+    this.refreshListeners.forEach(callback => {
+      WKIM.shared.reminderManager().removeRefreshListener(callback);
+    });
+    this.refreshListeners.clear();
+    this.reminderEventCallbacks = [];
+  }
+  
+  // 处理特定类型的提醒
+  private static handleSpecificReminders(reminders: WKReminder[]): void {
+    for (const reminder of reminders) {
+      switch (reminder.type) {
+        case ReminderType.mention:
+          this.handleMentionReminder(reminder);
+          break;
+        case ReminderType.joinRequest:
+          this.handleJoinRequestReminder(reminder);
+          break;
+        case ReminderType.systemNotice:
+          this.handleSystemNoticeReminder(reminder);
+          break;
+        case ReminderType.unreadVoice:
+          this.handleUnreadVoiceReminder(reminder);
+          break;
+        default:
+          this.handleCustomReminder(reminder);
+          break;
+      }
+    }
+  }
+  
+  // 处理@提醒
+  private static handleMentionReminder(reminder: WKReminder): void {
+    console.log('处理@提醒:', reminder.text);
+    // 可以在这里触发通知、声音等
+    this.showNotification('有人@我', reminder.text);
+  }
+  
+  // 处理入群申请提醒
+  private static handleJoinRequestReminder(reminder: WKReminder): void {
+    console.log('处理入群申请提醒:', reminder.text);
+    this.showNotification('入群申请', reminder.text);
+  }
+  
+  // 处理系统通知提醒
+  private static handleSystemNoticeReminder(reminder: WKReminder): void {
+    console.log('处理系统通知提醒:', reminder.text);
+    this.showNotification('系统通知', reminder.text);
+  }
+  
+  // 处理语音未读提醒
+  private static handleUnreadVoiceReminder(reminder: WKReminder): void {
+    console.log('处理语音未读提醒:', reminder.text);
+    this.showNotification('语音消息', reminder.text);
+  }
+  
+  // 处理自定义提醒
+  private static handleCustomReminder(reminder: WKReminder): void {
+    console.log('处理自定义提醒:', reminder.text);
+    this.showNotification('提醒', reminder.text);
+  }
+  
+  // 显示通知
+  private static showNotification(title: string, content: string): void {
+    // 实现通知显示逻辑
+    // 可以使用 HarmonyOS 的通知API
+  }
+  
+  // 为特定频道添加监听
+  static addChannelReminderListener(channelId: string, channelType: number, callback: (reminders: WKReminder[]) => void): void {
+    const wrappedCallback = (reminders: WKReminder[]) => {
+      // 过滤当前频道的提醒
+      const channelReminders = reminders.filter(reminder => 
+        reminder.channelId === channelId && reminder.channelType === channelType
+      );
+      
+      if (channelReminders.length > 0) {
+        callback(channelReminders);
+      }
+    };
+    
+    this.addRefreshReminderListener(wrappedCallback);
+  }
+  
+  // 销毁
+  static dispose(): void {
+    this.removeAllListeners();
+  }
+}
+```
+
+## 数据结构说明
+
+### WKReminder 提醒对象
+
+```typescript
+export class WKReminder {
+  // 提醒项ID
+  reminderId = 0;
+  // 消息ID
+  messageId = '';
+  // 所属频道ID
+  channelId: string = '';
+  // 所属频道类型
+  channelType: number = WKChannelType.personal;
+  // 消息序号
+  messageSeq = 0;
+  // 提醒项类型 1.[@某人] 2.[入群申请] ...
+  type = 0;
+  // 显示内容
+  text = '';
+  // 提醒项内容
+  data?: Record<string, Object>;
+  // 版本号 增量同步需要
+  version = 0;
+  // 是否完成 1.是
+  done = 0;
+  // 是否需要上传到服务器
+  needUpload = 0;
+  // 发布者
+  publisher = '';
+}
+```
+
+### 字段说明
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `reminderId` | number | 提醒项唯一标识 |
+| `messageId` | string | 关联的消息ID |
+| `channelId` | string | 所属频道ID |
+| `channelType` | number | 频道类型 |
+| `messageSeq` | number | 消息序列号 |
+| `type` | number | 提醒类型（1=@提醒，2=入群申请，3=系统通知，4=语音未读） |
+| `text` | string | 提醒显示文本 |
+| `data` | Record | 附加数据，可以是任意类型 |
+| `version` | number | 版本号，用于同步 |
+| `done` | number | 完成状态（0=未完成，1=已完成） |
+| `needUpload` | number | 是否需要上传到业务服务器（0=否，1=是） |
+| `publisher` | string | 发布者ID |
+
+### 提醒类型说明
+
+| 类型值 | 说明 |
+|--------|------|
+| `1` | @提醒 |
+| `2` | 入群申请 |
+| `3` | 系统通知 |
+| `4` | 语音未读 |
+| `99` | 自定义提醒 |
+
+## HarmonyOS 组件集成示例
+
+### 提醒列表组件
+
+```typescript
+@Component
+export struct ReminderListComponent {
+  @State private reminders: WKReminder[] = [];
+  @State private loading: boolean = true;
+  private channelId?: string;
+  private channelType?: number;
+  private refreshListener?: (reminders: WKReminder[]) => void;
+  
+  constructor(channelId?: string, channelType?: number) {
+    this.channelId = channelId;
+    this.channelType = channelType;
+  }
+  
+  aboutToAppear(): void {
+    this.loadReminders();
+    this.setupListener();
+  }
+  
+  aboutToDisappear(): void {
+    if (this.refreshListener) {
+      ReminderListener.removeRefreshReminderListener(this.refreshListener);
+    }
+  }
+  
+  private loadReminders(): void {
+    this.loading = true;
+    
+    let reminders: WKReminder[];
+    if (this.channelId && this.channelType !== undefined) {
+      // 获取特定频道的提醒
+      reminders = ReminderManager.getChannelReminders(this.channelId, this.channelType, 0);
+    } else {
+      // 获取所有提醒
+      reminders = ReminderManager.getAllPendingReminders();
+    }
+    
+    this.reminders = reminders;
+    this.loading = false;
+  }
+  
+  private setupListener(): void {
+    this.refreshListener = (reminders: WKReminder[]) => {
+      if (this.channelId && this.channelType !== undefined) {
+        // 过滤特定频道的提醒
+        const channelReminders = reminders.filter(reminder => 
+          reminder.channelId === this.channelId && reminder.channelType === this.channelType
+        );
+        
+        if (channelReminders.length > 0) {
+          this.loadReminders();
+        }
+      } else {
+        // 刷新所有提醒
+        this.loadReminders();
+      }
+    };
+    
+    ReminderListener.addRefreshReminderListener(this.refreshListener);
+  }
+  
+  build() {
+    Column() {
+      // 标题栏
+      Row() {
+        Text('提醒消息')
+          .fontSize(18)
+          .fontWeight(FontWeight.Bold)
+        
+        Blank()
+        
+        if (this.reminders.length > 0) {
+          Button('全部已读')
+            .fontSize(14)
+            .onClick(() => {
+              this.markAllAsDone();
+            })
+        }
+      }
+      .width('100%')
+      .padding(16)
+      
+      // 提醒列表
+      if (this.loading) {
+        Column() {
+          LoadingProgress()
+            .width(40)
+            .height(40)
+          Text('加载中...')
+            .margin({ top: 8 })
+        }
+        .justifyContent(FlexAlign.Center)
+        .layoutWeight(1)
+      } else if (this.reminders.length === 0) {
+        Column() {
+          Image($r('app.media.empty_reminder'))
+            .width(64)
+            .height(64)
+            .margin({ bottom: 16 })
+          Text('暂无提醒')
+            .fontSize(16)
+            .fontColor(Color.Grey)
+        }
+        .justifyContent(FlexAlign.Center)
+        .layoutWeight(1)
+      } else {
+        List() {
+          ForEach(this.reminders, (reminder: WKReminder) => {
+            ListItem() {
+              this.buildReminderItem(reminder)
+            }
+          })
+        }
+        .layoutWeight(1)
+      }
+    }
+    .width('100%')
+    .height('100%')
+  }
+  
+  @Builder
+  private buildReminderItem(reminder: WKReminder) {
+    Row() {
+      // 提醒图标
+      Circle({ width: 40, height: 40 })
+        .fill(this.getReminderColor(reminder.type))
+        .margin({ right: 12 })
+        .overlay(
+          Image(this.getReminderIcon(reminder.type))
+            .width(20)
+            .height(20)
+            .fillColor(Color.White)
+        )
+      
+      Column() {
+        // 提醒标题
+        Text(ReminderManager.getReminderDisplayText(reminder))
+          .fontSize(16)
+          .fontWeight(FontWeight.Medium)
+          .maxLines(1)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+        
+        // 提醒内容
+        if (reminder.text && reminder.text !== ReminderManager.getReminderDisplayText(reminder)) {
+          Text(reminder.text)
+            .fontSize(14)
+            .fontColor(Color.Grey)
+            .maxLines(2)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .margin({ top: 2 })
+        }
+        
+        // 频道信息
+        Text(`频道: ${reminder.channelId}`)
+          .fontSize(12)
+          .fontColor(Color.Grey)
+          .margin({ top: 4 })
+      }
+      .alignItems(HorizontalAlign.Start)
+      .layoutWeight(1)
+      
+      // 提醒类型标签
+      Text(this.getReminderTypeText(reminder.type))
+        .fontSize(10)
+        .fontColor(Color.White)
+        .backgroundColor(this.getReminderColor(reminder.type))
+        .padding({ left: 6, right: 6, top: 2, bottom: 2 })
+        .borderRadius(8)
+    }
+    .width('100%')
+    .padding(12)
+    .alignItems(VerticalAlign.Top)
+    .onClick(() => {
+      this.handleReminderTap(reminder);
+    })
+  }
+  
+  private getReminderColor(type: number): Color {
+    switch (type) {
+      case ReminderType.mention:
+        return Color.Orange;
+      case ReminderType.joinRequest:
+        return Color.Blue;
+      case ReminderType.systemNotice:
+        return Color.Green;
+      case ReminderType.unreadVoice:
+        return Color.Purple;
+      default:
+        return Color.Grey;
+    }
+  }
+  
+  private getReminderIcon(type: number): Resource {
+    switch (type) {
+      case ReminderType.mention:
+        return $r('app.media.ic_mention');
+      case ReminderType.joinRequest:
+        return $r('app.media.ic_person_add');
+      case ReminderType.systemNotice:
+        return $r('app.media.ic_info');
+      case ReminderType.unreadVoice:
+        return $r('app.media.ic_mic');
+      default:
+        return $r('app.media.ic_notifications');
+    }
+  }
+  
+  private getReminderTypeText(type: number): string {
+    switch (type) {
+      case ReminderType.mention:
+        return '@提醒';
+      case ReminderType.joinRequest:
+        return '入群申请';
+      case ReminderType.systemNotice:
+        return '系统通知';
+      case ReminderType.unreadVoice:
+        return '语音未读';
+      default:
+        return '提醒';
+    }
+  }
+  
+  private handleReminderTap(reminder: WKReminder): void {
+    // 处理提醒点击事件
+    if (reminder.messageId) {
+      // 跳转到对应的消息
+      this.navigateToMessage(reminder);
+    } else {
+      // 处理其他类型的提醒
+      this.handleSpecialReminder(reminder);
+    }
+    
+    // 标记为已读
+    this.markReminderAsDone(reminder);
+  }
+  
+  private navigateToMessage(reminder: WKReminder): void {
+    // 跳转到消息页面
+    console.log('跳转到消息:', reminder.messageId);
+  }
+  
+  private handleSpecialReminder(reminder: WKReminder): void {
+    // 处理特殊提醒
+    console.log('处理特殊提醒:', reminder.type);
+  }
+  
+  private markReminderAsDone(reminder: WKReminder): void {
+    ReminderOperations.markReminderAsDone(reminder);
+    
+    // 从列表中移除
+    const index = this.reminders.indexOf(reminder);
+    if (index > -1) {
+      this.reminders.splice(index, 1);
+    }
+  }
+  
+  private markAllAsDone(): void {
+    ReminderOperations.batchMarkRemindersAsDone(this.reminders);
+    this.reminders = [];
+  }
+}
+```
+
+## 下一步
+
+<CardGroup cols={2}>
+  <Card
+    title="高级功能"
+    icon="cog"
+    href="/zh/sdk/wukongim/harmonyos/advance"
+  >
+    探索自定义消息和扩展特性
+  </Card>
+  <Card
+    title="命令管理"
+    icon="terminal"
+    href="/zh/sdk/wukongim/harmonyos/cmd"
+  >
+    回到命令消息处理功能
+  </Card>
+  <Card
+    title="频道成员管理"
+    icon="users"
+    href="/zh/sdk/wukongim/harmonyos/channel_member"
+  >
+    回到频道成员管理功能
+  </Card>
+  <Card
+    title="数据源配置"
+    icon="database"
+    href="/zh/sdk/wukongim/harmonyos/datasource"
+  >
+    配置数据源和同步逻辑
+  </Card>
+</CardGroup>

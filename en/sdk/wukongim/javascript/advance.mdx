@@ -1,0 +1,591 @@
+---
+title: "Advanced Features"
+description: "WuKongIM JavaScript SDK advanced features, including custom message types and extension functionality"
+icon: "settings"
+---
+
+## Custom Messages
+
+### Custom Regular Messages
+
+We'll use a custom GIF message as an example.
+
+#### Step 1: Inherit MessageContent and Define GIF Message Structure
+
+```ts
+class GifContent extends MessageContent {
+  width!: number; // GIF width
+  height!: number; // GIF height
+  url!: string; // GIF remote download URL
+}
+```
+
+#### Step 2: Encoding and Decoding
+
+```ts
+// The final message content passed is {"type":101,"url":"xxxx","width":xxx,"height":xxx}
+
+class GifContent extends MessageContent {
+  width!: number // GIF width
+  height!: number // GIF height
+  url!: string // GIF remote download URL
+
+  // Decode
+  decodeJSON(content: any) {
+    this.width = content["width"] || 0
+    this.height = content["height"] || 0
+    this.url = content["url"]
+  }
+  
+  // Encode
+  encodeJSON() {
+    return { "width": this.width, "height": this.height, "url": this.url }
+  }
+}
+```
+
+#### Step 3: Register
+
+```ts
+const contentTypeGif = 101 // Custom message type
+WKSDK.shared().register(contentTypeGif, () => new GifContent()); // GIF animation
+```
+
+### Complete GIF Message Implementation Example
+
+```typescript
+class GifContent extends MessageContent {
+  width!: number;
+  height!: number;
+  url!: string;
+  duration?: number; // GIF duration (optional)
+  size?: number; // File size (optional)
+
+  constructor(url?: string, width?: number, height?: number) {
+    super();
+    this.url = url || '';
+    this.width = width || 0;
+    this.height = height || 0;
+  }
+
+  // Decode from JSON
+  decodeJSON(content: any) {
+    this.width = content["width"] || 0;
+    this.height = content["height"] || 0;
+    this.url = content["url"] || '';
+    this.duration = content["duration"];
+    this.size = content["size"];
+  }
+
+  // Encode to JSON
+  encodeJSON() {
+    const json: any = {
+      "width": this.width,
+      "height": this.height,
+      "url": this.url
+    };
+    
+    if (this.duration) {
+      json["duration"] = this.duration;
+    }
+    
+    if (this.size) {
+      json["size"] = this.size;
+    }
+    
+    return json;
+  }
+
+  // Display content for conversation list
+  getDisplayText(): string {
+    return "[GIF]";
+  }
+
+  // Searchable content
+  getSearchableText(): string {
+    return "[GIF Animation]";
+  }
+
+  // Validate GIF content
+  isValid(): boolean {
+    return this.url && this.url.length > 0 && this.width > 0 && this.height > 0;
+  }
+}
+
+// Register GIF message
+const contentTypeGif = 101;
+WKSDK.shared().register(contentTypeGif, () => new GifContent());
+
+// Send GIF message
+function sendGifMessage(channel: Channel, gifUrl: string, width: number, height: number) {
+  const gifContent = new GifContent(gifUrl, width, height);
+  if (gifContent.isValid()) {
+    WKSDK.shared().chatManager.send(gifContent, channel);
+  }
+}
+```
+
+### Custom Attachment Messages
+
+The process for custom attachment messages is not much different from regular messages. We'll use an image message as an example.
+
+#### Step 1: Inherit MediaMessageContent
+
+Note that here we inherit from MediaMessageContent, not MessageContent. When sending attachment messages, the SDK will call the [upload task](/en/sdk/wukongim/javascript/datasource#file-upload-data-source) to upload local files to the server, then encode and send the message.
+
+The final message content passed is `{"type":3,"url":"xxxx","width":xxx,"height":xxx}`
+
+```ts
+class ImageContent extends MediaMessageContent {
+  width!: number // Image width
+  height!: number // Image height
+  url!: string // Image remote download URL
+}
+```
+
+#### Step 2: Encoding and Decoding
+
+```ts
+class ImageContent extends MediaMessageContent {
+  width!: number // Image width
+  height!: number // Image height
+  url!: string // Image remote download URL
+
+  constructor(file?: File, width?: number, height?: number) {
+    super()
+    this.file = file // File is the image file object to upload
+    this.width = width || 0
+    this.height = height || 0
+  }
+  
+  // After the attachment file is uploaded successfully, we get this.remoteUrl remote download address, 
+  // which can then be encoded into the message
+  encodeJSON() {
+    return { "width": this.width || 0, "height": this.height || 0, "url": this.remoteUrl || "" }
+  }
+
+  // Decode message
+  decodeJSON(content: any) {
+    this.width = content["width"] || 0
+    this.height = content["height"] || 0
+    this.url = content["url"] || ''
+  }
+}
+```
+
+#### Step 3: Register
+
+```ts
+const contentTypeImage = 3 // Custom message type
+WKSDK.shared().register(contentTypeImage, () => new ImageContent());
+```
+
+### Complete Image Message Implementation Example
+
+```typescript
+class ImageContent extends MediaMessageContent {
+  width!: number;
+  height!: number;
+  url!: string;
+  thumbnailUrl?: string; // Thumbnail URL (optional)
+  format?: string; // Image format (jpg, png, etc.)
+
+  constructor(file?: File, width?: number, height?: number) {
+    super();
+    this.file = file;
+    this.width = width || 0;
+    this.height = height || 0;
+    this.url = '';
+  }
+
+  // Encode to JSON for sending
+  encodeJSON() {
+    const json: any = {
+      "width": this.width || 0,
+      "height": this.height || 0,
+      "url": this.remoteUrl || this.url || ""
+    };
+    
+    if (this.thumbnailUrl) {
+      json["thumbnail_url"] = this.thumbnailUrl;
+    }
+    
+    if (this.format) {
+      json["format"] = this.format;
+    }
+    
+    return json;
+  }
+
+  // Decode from JSON when receiving
+  decodeJSON(content: any) {
+    this.width = content["width"] || 0;
+    this.height = content["height"] || 0;
+    this.url = content["url"] || '';
+    this.thumbnailUrl = content["thumbnail_url"];
+    this.format = content["format"];
+  }
+
+  // Display content for conversation list
+  getDisplayText(): string {
+    return "[Image]";
+  }
+
+  // Searchable content
+  getSearchableText(): string {
+    return "[Image Picture]";
+  }
+
+  // Validate image content
+  isValid(): boolean {
+    return (this.url && this.url.length > 0) || (this.file instanceof File);
+  }
+
+  // Get aspect ratio
+  getAspectRatio(): number {
+    if (this.width > 0 && this.height > 0) {
+      return this.width / this.height;
+    }
+    return 1;
+  }
+
+  // Get display size with max constraints
+  getDisplaySize(maxWidth: number, maxHeight: number): { width: number, height: number } {
+    if (this.width === 0 || this.height === 0) {
+      return { width: maxWidth, height: maxHeight };
+    }
+
+    const aspectRatio = this.getAspectRatio();
+    let displayWidth = this.width;
+    let displayHeight = this.height;
+
+    // Scale down if too large
+    if (displayWidth > maxWidth) {
+      displayWidth = maxWidth;
+      displayHeight = displayWidth / aspectRatio;
+    }
+
+    if (displayHeight > maxHeight) {
+      displayHeight = maxHeight;
+      displayWidth = displayHeight * aspectRatio;
+    }
+
+    return { width: Math.round(displayWidth), height: Math.round(displayHeight) };
+  }
+}
+
+// Register image message
+const contentTypeImage = 3;
+WKSDK.shared().register(contentTypeImage, () => new ImageContent());
+
+// Send image message with file
+function sendImageMessage(channel: Channel, imageFile: File) {
+  // Get image dimensions
+  const img = new Image();
+  img.onload = function() {
+    const imageContent = new ImageContent(imageFile, img.width, img.height);
+    imageContent.format = imageFile.type.split('/')[1]; // Get format from MIME type
+    
+    if (imageContent.isValid()) {
+      WKSDK.shared().chatManager.send(imageContent, channel);
+    }
+  };
+  
+  img.src = URL.createObjectURL(imageFile);
+}
+
+// Send image message with URL
+function sendImageMessageWithUrl(channel: Channel, imageUrl: string, width: number, height: number) {
+  const imageContent = new ImageContent();
+  imageContent.url = imageUrl;
+  imageContent.width = width;
+  imageContent.height = height;
+  
+  if (imageContent.isValid()) {
+    WKSDK.shared().chatManager.send(imageContent, channel);
+  }
+}
+```
+
+### Advanced Custom Message Features
+
+#### Message Content Validation
+
+```typescript
+abstract class BaseCustomContent extends MessageContent {
+  // Abstract validation method
+  abstract isValid(): boolean;
+  
+  // Common validation helper
+  protected validateUrl(url: string): boolean {
+    try {
+      new URL(url);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  
+  protected validateDimensions(width: number, height: number): boolean {
+    return width > 0 && height > 0 && width <= 4096 && height <= 4096;
+  }
+}
+```
+
+#### Message Content Preprocessing
+
+```typescript
+class VideoContent extends MediaMessageContent {
+  duration!: number;
+  coverUrl!: string;
+  
+  // Preprocess before sending
+  async preprocess(): Promise<void> {
+    if (this.file && this.file.type.startsWith('video/')) {
+      // Extract video metadata
+      const metadata = await this.extractVideoMetadata(this.file);
+      this.duration = metadata.duration;
+      this.width = metadata.width;
+      this.height = metadata.height;
+      
+      // Generate thumbnail
+      this.coverUrl = await this.generateThumbnail(this.file);
+    }
+  }
+  
+  private async extractVideoMetadata(file: File): Promise<any> {
+    return new Promise((resolve) => {
+      const video = document.createElement('video');
+      video.onloadedmetadata = () => {
+        resolve({
+          duration: video.duration,
+          width: video.videoWidth,
+          height: video.videoHeight
+        });
+      };
+      video.src = URL.createObjectURL(file);
+    });
+  }
+  
+  private async generateThumbnail(file: File): Promise<string> {
+    return new Promise((resolve) => {
+      const video = document.createElement('video');
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d')!;
+      
+      video.onloadeddata = () => {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0);
+        resolve(canvas.toDataURL('image/jpeg', 0.8));
+      };
+      
+      video.src = URL.createObjectURL(file);
+    });
+  }
+}
+```
+
+## Message Extensions and Metadata
+
+### Local Message Extensions
+
+```typescript
+class MessageExtensionManager {
+  // Add local extension to message
+  addLocalExtension(message: Message, key: string, value: any): void {
+    if (!message.localExtra) {
+      message.localExtra = {};
+    }
+    message.localExtra[key] = value;
+  }
+  
+  // Get local extension from message
+  getLocalExtension(message: Message, key: string): any {
+    return message.localExtra?.[key];
+  }
+  
+  // Mark message as important
+  markAsImportant(message: Message, important: boolean = true): void {
+    this.addLocalExtension(message, 'important', important);
+  }
+  
+  // Add local note to message
+  addNote(message: Message, note: string): void {
+    this.addLocalExtension(message, 'note', note);
+  }
+  
+  // Set reminder for message
+  setReminder(message: Message, reminderTime: number): void {
+    this.addLocalExtension(message, 'reminder', reminderTime);
+  }
+}
+```
+
+### Message Search Enhancement
+
+```typescript
+class SearchableMessageContent extends MessageContent {
+  // Enhanced searchable text with metadata
+  getSearchableText(): string {
+    const baseText = this.getDisplayText();
+    const metadata = this.getSearchMetadata();
+    return `${baseText} ${metadata.join(' ')}`;
+  }
+  
+  // Get additional search metadata
+  protected getSearchMetadata(): string[] {
+    return [];
+  }
+}
+
+class LocationContent extends SearchableMessageContent {
+  latitude!: number;
+  longitude!: number;
+  address!: string;
+  title?: string;
+  
+  protected getSearchMetadata(): string[] {
+    const metadata = ['location', 'place'];
+    if (this.address) metadata.push(this.address);
+    if (this.title) metadata.push(this.title);
+    return metadata;
+  }
+  
+  getDisplayText(): string {
+    return `[Location] ${this.title || this.address}`;
+  }
+}
+```
+
+## Best Practices
+
+### 1. Message Type Management
+
+```typescript
+// Centralized message type definitions
+export enum CustomMessageTypes {
+  GIF = 101,
+  STICKER = 102,
+  LOCATION = 103,
+  BUSINESS_CARD = 104,
+  FILE = 105,
+  POLL = 106
+}
+
+// Message factory
+export class MessageFactory {
+  static createMessage(type: number): MessageContent | null {
+    switch (type) {
+      case CustomMessageTypes.GIF:
+        return new GifContent();
+      case CustomMessageTypes.LOCATION:
+        return new LocationContent();
+      case CustomMessageTypes.BUSINESS_CARD:
+        return new BusinessCardContent();
+      default:
+        return null;
+    }
+  }
+}
+
+// Register all custom messages
+export function registerCustomMessages() {
+  Object.values(CustomMessageTypes).forEach(type => {
+    if (typeof type === 'number') {
+      WKSDK.shared().register(type, () => MessageFactory.createMessage(type));
+    }
+  });
+}
+```
+
+### 2. Error Handling
+
+```typescript
+class SafeMessageContent extends MessageContent {
+  encodeJSON() {
+    try {
+      return this.doEncode();
+    } catch (error) {
+      console.error('Message encoding failed:', error);
+      return { error: 'Encoding failed' };
+    }
+  }
+  
+  decodeJSON(content: any) {
+    try {
+      this.doDecode(content);
+    } catch (error) {
+      console.error('Message decoding failed:', error);
+      // Set default values on decode failure
+      this.setDefaults();
+    }
+  }
+  
+  protected abstract doEncode(): any;
+  protected abstract doDecode(content: any): void;
+  protected abstract setDefaults(): void;
+}
+```
+
+### 3. Performance Optimization
+
+```typescript
+// Lazy loading for large message content
+class LazyImageContent extends ImageContent {
+  private _thumbnailLoaded = false;
+  private _fullImageLoaded = false;
+  
+  async loadThumbnail(): Promise<string> {
+    if (!this._thumbnailLoaded && this.thumbnailUrl) {
+      // Load thumbnail
+      this._thumbnailLoaded = true;
+    }
+    return this.thumbnailUrl || this.url;
+  }
+  
+  async loadFullImage(): Promise<string> {
+    if (!this._fullImageLoaded && this.url) {
+      // Preload full image
+      const img = new Image();
+      img.src = this.url;
+      await new Promise(resolve => img.onload = resolve);
+      this._fullImageLoaded = true;
+    }
+    return this.url;
+  }
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Data Source Configuration"
+    icon="database"
+    href="/en/sdk/wukongim/javascript/datasource"
+  >
+    Learn how to configure data sources for custom messages
+  </Card>
+  <Card
+    title="Chat Management"
+    icon="message-circle"
+    href="/en/sdk/wukongim/javascript/chat"
+  >
+    Return to chat message management
+  </Card>
+  <Card
+    title="Channel Management"
+    icon="hash"
+    href="/en/sdk/wukongim/javascript/channel"
+  >
+    Return to channel management
+  </Card>
+  <Card
+    title="Basic Features"
+    icon="foundation"
+    href="/en/sdk/wukongim/javascript/base"
+  >
+    Return to basic features
+  </Card>
+</CardGroup>

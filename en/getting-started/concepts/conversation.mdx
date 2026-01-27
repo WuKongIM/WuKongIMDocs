@@ -1,0 +1,187 @@
+---
+title: "Conversation"
+description: "Core structure and management methods of WuKongIM conversations"
+icon: "message-circle"
+---
+
+## Concept Explanation
+
+### What is a Conversation?
+
+A Conversation is the interaction record between a user and a specific channel, containing the user's message history in that channel, unread status, last active time, and other information. Conversations are the fundamental data structure for chat lists in user interfaces.
+
+### Why are Conversations Important?
+
+- **Chat List**: The conversation list is the chat list that users see, displaying all ongoing conversations
+- **Unread Management**: Conversations record the number of unread messages for each chat, helping users quickly understand which chats have new messages
+- **Quick Access**: Through the conversation list, users can quickly access recent chat records
+
+### Relationship with Other Concepts
+
+- **Channel**: Each conversation corresponds to a channel; the conversation's `channel_id` is the channel's ID
+- **Message**: Conversations display the last message of that channel and the number of unread messages
+- **User**: Conversations belong to specific users; different users see different conversation lists
+
+## Core Structure
+
+Conversations contain the following core attributes:
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `channel_id` | string | Channel identifier |
+| `channel_type` | integer | Channel type (1=personal, 2=group) |
+| `unread` | integer | Number of unread messages |
+| `last_msg_seq` | integer | Last message sequence number |
+| `timestamp` | integer | Last update timestamp |
+| `version` | integer | Conversation version number |
+
+### Conversation Example
+
+```json
+{
+  "channel_id": "group123",
+  "channel_type": 2,
+  "unread": 5,
+  "last_msg_seq": 1001,
+  "timestamp": 1640995200,
+  "version": 100
+}
+```
+
+## Related API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/conversation/sync` | POST | Sync conversation list |
+| `/conversation/setUnread` | POST | Set unread count |
+| `/conversation/clearUnread` | POST | Clear unread count |
+| `/conversation/delete` | POST | Delete conversation |
+
+## EasySDK Code Examples
+
+### Conversation Management
+
+<CodeGroup>
+```javascript Web
+import { WKIM, WKIMEvent } from 'easyjssdk';
+
+// Listen for conversation updates
+im.on(WKIMEvent.ConversationUpdate, (conversations) => {
+  console.log('Conversations updated:', conversations);
+  
+  // Update UI conversation list
+  conversations.forEach(conversation => {
+    console.log(`Channel: ${conversation.channel_id}, Unread: ${conversation.unread}`);
+  });
+});
+
+// Get conversation list
+const conversations = await im.getConversations();
+console.log('Current conversations:', conversations);
+```
+
+```swift iOS
+import WuKongEasySDK
+
+// Listen for conversation updates
+easySDK.onConversationUpdate { conversations in
+    print("Conversations updated:", conversations)
+    
+    // Update UI conversation list
+    conversations.forEach { conversation in
+        print("Channel: \(conversation.channelId), Unread: \(conversation.unread)")
+    }
+}
+
+// Get conversation list
+Task {
+    let conversations = await easySDK.getConversations()
+    print("Current conversations:", conversations)
+}
+```
+
+```kotlin Android
+import com.githubim.easysdk.WuKongEvent
+import com.githubim.easysdk.listener.WuKongEventListener
+
+// Listen for conversation updates
+easySDK.addEventListener(WuKongEvent.CONVERSATION_UPDATE, object : WuKongEventListener<List<Conversation>> {
+    override fun onEvent(conversations: List<Conversation>) {
+        Log.d("WuKong", "Conversations updated: $conversations")
+        
+        // Update UI conversation list
+        conversations.forEach { conversation ->
+            Log.d("WuKong", "Channel: ${conversation.channelId}, Unread: ${conversation.unread}")
+        }
+    }
+})
+
+// Get conversation list
+lifecycleScope.launch {
+    val conversations = easySDK.getConversations()
+    Log.d("WuKong", "Current conversations: $conversations")
+}
+```
+
+```dart Flutter
+import 'package:wukong_easy_sdk/wukong_easy_sdk.dart';
+
+// Listen for conversation updates
+easySDK.addEventListener(WuKongEvent.conversationUpdate, (List<Conversation> conversations) {
+  print('Conversations updated: $conversations');
+  
+  // Update UI conversation list
+  conversations.forEach((conversation) {
+    print('Channel: ${conversation.channelId}, Unread: ${conversation.unread}');
+  });
+});
+
+// Get conversation list
+final conversations = await easySDK.getConversations();
+print('Current conversations: $conversations');
+```
+</CodeGroup>
+
+### Clear Unread Messages
+
+<CodeGroup>
+```javascript Web
+// Clear unread count for specific conversation
+await im.clearUnread("group123", 2); // channel_id, channel_type
+console.log("Unread count cleared");
+```
+
+```swift iOS
+// Clear unread count for specific conversation
+Task {
+    try await easySDK.clearUnread(channelId: "group123", channelType: 2)
+    print("Unread count cleared")
+}
+```
+
+```kotlin Android
+// Clear unread count for specific conversation
+lifecycleScope.launch {
+    try {
+        easySDK.clearUnread("group123", 2) // channel_id, channel_type
+        Log.d("WuKong", "Unread count cleared")
+    } catch (e: Exception) {
+        Log.e("WuKong", "Failed to clear unread: $e")
+    }
+}
+```
+
+```dart Flutter
+// Clear unread count for specific conversation
+try {
+  await easySDK.clearUnread("group123", 2); // channel_id, channel_type
+  print("Unread count cleared");
+} catch (e) {
+  print("Failed to clear unread: $e");
+}
+```
+</CodeGroup>
+
+<Note>
+  Conversations are sorted by last message time and serve as the fundamental data structure for chat lists in user interfaces.
+</Note>

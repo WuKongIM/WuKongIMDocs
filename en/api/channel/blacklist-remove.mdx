@@ -1,0 +1,229 @@
+---
+title: "Remove Channel Blacklist"
+description: "Remove specific users from channel blacklist"
+api: "POST /channel/blacklist_remove"
+---
+
+## Overview
+
+Remove specific users from channel blacklist. Removed users will regain normal permissions and can send and receive channel messages again. Related conversations will be restored if applicable.
+
+## Request Body
+
+### Required Parameters
+
+<ParamField body="channel_id" type="string" required>
+Channel ID, cannot be empty or contain special characters
+</ParamField>
+
+<ParamField body="channel_type" type="integer" required>
+Channel type
+- `1` - Person channel
+- `2` - Group channel
+</ParamField>
+
+<ParamField body="uids" type="array" required>
+List of user IDs to remove from blacklist
+<ParamField body="uids[]" type="string">
+User ID
+</ParamField>
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "http://localhost:5001/channel/blacklist_remove" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "channel_id": "group123",
+    "channel_type": 2,
+    "uids": ["user1", "user2"]
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5001/channel/blacklist_remove', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    channel_id: 'group123',
+    channel_type: 2,
+    uids: ['user1', 'user2']
+  })
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+
+data = {
+    "channel_id": "group123",
+    "channel_type": 2,
+    "uids": ["user1", "user2"]
+}
+
+response = requests.post('http://localhost:5001/channel/blacklist_remove', json=data)
+result = response.json()
+print(result)
+```
+
+```go Go
+package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    data := map[string]interface{}{
+        "channel_id":   "group123",
+        "channel_type": 2,
+        "uids":         []string{"user1", "user2"},
+    }
+    
+    jsonData, _ := json.Marshal(data)
+    
+    resp, err := http.Post(
+        "http://localhost:5001/channel/blacklist_remove",
+        "application/json",
+        bytes.NewBuffer(jsonData),
+    )
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    var result map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Printf("%+v\n", result)
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json Success Response
+{
+  "status": "ok"
+}
+```
+</ResponseExample>
+
+## Response Fields
+
+<ResponseField name="status" type="string" required>
+Operation status, returns `"ok"` on success
+</ResponseField>
+
+## Status Codes
+
+| Status Code | Description |
+|-------------|-------------|
+| 200 | Users removed from blacklist successfully |
+| 400 | Request parameter error |
+| 403 | No management permission |
+| 404 | Channel does not exist |
+| 500 | Internal server error |
+
+## Functionality
+
+### Remove Operation
+
+The remove operation performs the following steps:
+
+1. **Verify Users**: Check if specified users are in the blacklist
+2. **Remove Entries**: Delete specified users from channel blacklist
+3. **Restore Permissions**: Users regain ability to send and receive messages
+4. **Restore Conversations**: Restore user's related conversations if applicable
+
+### Permission Restoration
+
+Removed users will regain:
+
+| Permission | Description | Effective Time |
+|------------|-------------|----------------|
+| Send Messages | Can send messages to the channel | Immediately |
+| Receive Messages | Can receive channel messages | Immediately |
+| Conversation Access | Restore channel conversations (if applicable) | Immediately |
+| Normal Interaction | Restore all normal channel interaction permissions | Immediately |
+
+## Special Cases
+
+### Live Channels
+
+- **No Conversation Restoration**: Live channels do not automatically restore conversations
+- **Permissions Take Effect Immediately**: Users can still immediately regain send and receive permissions
+
+### Person Channels
+
+- **Blacklist Not Supported**: Person channels do not support blacklist operations
+- **Returns Error**: Attempting operations will return corresponding error messages
+
+## Use Cases
+
+### Lift Mistaken Ban
+
+```bash
+# Remove users mistakenly added to blacklist
+curl -X POST "/channel/blacklist_remove" -d '{
+  "channel_id": "group123",
+  "channel_type": 2,
+  "uids": ["innocent_user"]
+}'
+```
+
+### Batch Restoration
+
+```bash
+# Batch remove multiple users
+curl -X POST "/channel/blacklist_remove" -d '{
+  "channel_id": "group123",
+  "channel_type": 2,
+  "uids": ["user1", "user2", "user3"]
+}'
+```
+
+### Temporary Unban
+
+```bash
+# Temporarily lift user restrictions
+curl -X POST "/channel/blacklist_remove" -d '{
+  "channel_id": "group123",
+  "channel_type": 2,
+  "uids": ["temp_banned_user"]
+}'
+```
+
+## Best Practices
+
+1. **Permission Verification**: Ensure operator has sufficient management permissions
+2. **Operation Recording**: Record all blacklist change operations
+3. **Notification Mechanism**: Notify relevant administrators and users
+4. **Progressive Unbanning**: For serious violators, consider progressive permission restoration
+5. **Monitoring Mechanism**: Continue monitoring user behavior after removal
+6. **Backup Strategy**: Backup current blacklist state before bulk operations
+
+## Error Handling
+
+### Common Errors
+
+| Error Message | Cause | Solution |
+|---------------|-------|----------|
+| Channel ID cannot be empty | No channel ID provided | Ensure valid channel ID is provided |
+| Channel type cannot be 0 | Invalid channel type | Use valid channel type (1 or 2) |
+| uids cannot be empty | No user list provided | Provide list of user IDs to remove |
+| Remove blacklist failed | Remove operation failed | Check if users are in blacklist |
+| Add conversation failed | Conversation restoration failed | Check conversation system status |
+
+## Related APIs
+
+- [Add Channel Blacklist](/en/api/channel/blacklist) - Add users to blacklist
+- [Set Channel Blacklist](/en/api/channel/blacklist-set) - Set complete blacklist
+- [Add Channel Whitelist](/en/api/channel/whitelist) - Manage whitelist users
+- [Remove Channel Whitelist](/en/api/channel/whitelist-remove) - Remove whitelist users

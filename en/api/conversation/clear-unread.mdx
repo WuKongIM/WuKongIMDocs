@@ -1,0 +1,306 @@
+---
+title: "Clear Unread Messages"
+description: "Clear the unread message count for a conversation"
+api: "POST /conversations/clearUnread"
+---
+
+## Overview
+
+Clear the unread message count for a specified conversation, resetting the unread count to 0.
+
+## Request Body
+
+### Required Parameters
+
+<ParamField body="uid" type="string" required>
+User ID
+</ParamField>
+
+<ParamField body="channel_id" type="string" required>
+Channel ID
+</ParamField>
+
+<ParamField body="channel_type" type="integer" required>
+Channel type
+- `1` - Personal channel
+- `2` - Group channel
+</ParamField>
+
+### Optional Parameters
+
+<ParamField body="message_seq" type="integer">
+Message sequence number, specifies up to which message to clear
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "http://localhost:5001/conversations/clearUnread" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "uid": "user123",
+    "channel_id": "group123",
+    "channel_type": 2,
+    "message_seq": 1001
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5001/conversations/clearUnread', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    uid: 'user123',
+    channel_id: 'group123',
+    channel_type: 2,
+    message_seq: 1001
+  })
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+
+data = {
+    "uid": "user123",
+    "channel_id": "group123",
+    "channel_type": 2,
+    "message_seq": 1001
+}
+
+response = requests.post('http://localhost:5001/conversations/clearUnread', json=data)
+result = response.json()
+print(result)
+```
+
+```go Go
+package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    data := map[string]interface{}{
+        "uid":          "user123",
+        "channel_id":   "group123",
+        "channel_type": 2,
+        "message_seq":  1001,
+    }
+    
+    jsonData, _ := json.Marshal(data)
+    
+    resp, err := http.Post(
+        "http://localhost:5001/conversations/clearUnread",
+        "application/json",
+        bytes.NewBuffer(jsonData),
+    )
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    var result map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Printf("%+v\n", result)
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json Success Response
+{
+  "status": "ok"
+}
+```
+</ResponseExample>
+
+## Response Fields
+
+<ResponseField name="status" type="string" required>
+Operation status, returns `"ok"` on success
+</ResponseField>
+
+## Status Codes
+
+| Status Code | Description |
+|-------------|-------------|
+| 200 | Unread messages cleared successfully |
+| 400 | Request parameter error |
+| 403 | No operation permission |
+| 404 | Conversation does not exist |
+| 500 | Internal server error |
+
+## Use Cases
+
+### Chat Interface Integration
+
+**Mark Messages as Read**:
+```javascript
+// Clear unread when user opens a conversation
+async function openConversation(channelId, channelType, userId) {
+    try {
+        // Clear unread count
+        await clearUnreadMessages({
+            uid: userId,
+            channel_id: channelId,
+            channel_type: channelType
+        });
+        
+        // Update UI to remove unread badge
+        updateUnreadBadge(channelId, 0);
+        
+        console.log('Conversation opened and unread cleared');
+    } catch (error) {
+        console.error('Failed to clear unread messages:', error);
+    }
+}
+```
+
+**Mark Read Up to Specific Message**:
+```javascript
+// Clear unread up to a specific message when user scrolls
+async function markReadUpToMessage(channelId, channelType, userId, messageSeq) {
+    try {
+        await clearUnreadMessages({
+            uid: userId,
+            channel_id: channelId,
+            channel_type: channelType,
+            message_seq: messageSeq
+        });
+        
+        console.log(`Marked read up to message ${messageSeq}`);
+    } catch (error) {
+        console.error('Failed to mark messages as read:', error);
+    }
+}
+```
+
+### Batch Operations
+
+**Clear Multiple Conversations**:
+```javascript
+// Clear unread for multiple conversations
+async function clearMultipleConversations(userId, conversations) {
+    const results = [];
+    
+    for (const conv of conversations) {
+        try {
+            await clearUnreadMessages({
+                uid: userId,
+                channel_id: conv.channel_id,
+                channel_type: conv.channel_type
+            });
+            
+            results.push({ 
+                channel_id: conv.channel_id, 
+                success: true 
+            });
+        } catch (error) {
+            results.push({ 
+                channel_id: conv.channel_id, 
+                success: false, 
+                error: error.message 
+            });
+        }
+    }
+    
+    return results;
+}
+```
+
+### Auto-Read Functionality
+
+**Auto-mark as Read on Focus**:
+```javascript
+// Automatically clear unread when window gains focus
+class AutoReadManager {
+    constructor(userId) {
+        this.userId = userId;
+        this.activeConversation = null;
+        this.setupEventListeners();
+    }
+    
+    setupEventListeners() {
+        // Clear unread when window gains focus
+        window.addEventListener('focus', () => {
+            if (this.activeConversation) {
+                this.clearUnreadForActive();
+            }
+        });
+        
+        // Clear unread when user is actively typing
+        document.addEventListener('keydown', () => {
+            if (this.activeConversation) {
+                this.clearUnreadForActive();
+            }
+        });
+    }
+    
+    setActiveConversation(channelId, channelType) {
+        this.activeConversation = { channelId, channelType };
+        this.clearUnreadForActive();
+    }
+    
+    async clearUnreadForActive() {
+        if (!this.activeConversation) return;
+        
+        try {
+            await clearUnreadMessages({
+                uid: this.userId,
+                channel_id: this.activeConversation.channelId,
+                channel_type: this.activeConversation.channelType
+            });
+        } catch (error) {
+            console.error('Auto-read failed:', error);
+        }
+    }
+}
+```
+
+### Read Receipt Integration
+
+**Combine with Read Receipts**:
+```javascript
+// Clear unread and send read receipt
+async function markAsReadWithReceipt(channelId, channelType, userId, messageSeq) {
+    try {
+        // Clear unread count
+        await clearUnreadMessages({
+            uid: userId,
+            channel_id: channelId,
+            channel_type: channelType,
+            message_seq: messageSeq
+        });
+        
+        // Send read receipt to other participants
+        await sendReadReceipt({
+            channel_id: channelId,
+            channel_type: channelType,
+            message_seq: messageSeq,
+            reader_uid: userId
+        });
+        
+        console.log('Messages marked as read with receipt sent');
+    } catch (error) {
+        console.error('Failed to mark as read with receipt:', error);
+    }
+}
+```
+
+## Best Practices
+
+1. **User Intent**: Only clear unread when user actually views the messages
+2. **Batch Operations**: Use batch clearing for better performance when possible
+3. **Error Handling**: Handle network errors gracefully without affecting UI
+4. **Real-time Updates**: Combine with WebSocket events for real-time unread updates
+5. **Offline Support**: Queue clear operations when offline and sync when reconnected
+6. **Performance**: Avoid excessive API calls by debouncing clear operations
+7. **User Experience**: Provide visual feedback when clearing unread counts

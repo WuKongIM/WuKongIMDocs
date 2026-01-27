@@ -1,0 +1,191 @@
+---
+title: "SDK Source Code List"
+description: "WuKongIM official SDK source code repository list, including open source implementations for all platforms"
+icon: "code-xml"
+---
+
+WuKongIM provides complete open source SDK implementations, supporting multiple platforms and development languages. All SDK source code is open sourced on GitHub and Gitee, making it convenient for developers to learn, use and contribute.
+
+## WuKongEasySDK Series
+
+WuKongEasySDK is a lightweight quick integration solution that can be integrated in 5 minutes.
+
+| SDK Name | Repository | Example Code | Description |
+|----------|------------|--------------|-------------|
+| WuKongEasySDK-JS | [GitHub](https://github.com/WuKongIM/WuKongEasySDK-JS) | [GitHub](https://github.com/WuKongIM/WuKongEasySDK-JS/tree/main/example) | Web SDK, supports JavaScript/TypeScript |
+| WuKongEasySDK-iOS | [GitHub](https://github.com/WuKongIM/WuKongEasySDK-iOS) | [GitHub](https://github.com/WuKongIM/WuKongEasySDK-iOS/tree/main/Examples) | iOS SDK, supports Swift/Objective-C |
+| WuKongEasySDK-Android | [GitHub](https://github.com/WuKongIM/WuKongEasySDK-Android) | [GitHub](https://github.com/WuKongIM/WuKongEasySDK-Android/tree/main/example) | Android SDK, supports Kotlin/Java |
+| WuKongEasySDK-Flutter | [GitHub](https://github.com/WuKongIM/WuKongEasySDK-Flutter) | [GitHub](https://github.com/WuKongIM/WuKongEasySDK-Flutter/tree/main/example) | Flutter cross-platform SDK, supports iOS, Android, Web, Desktop |
+
+## WuKongIMSDK Series
+
+WuKongIMSDK is a feature-complete enterprise-grade SDK providing comprehensive instant messaging functionality.
+
+| SDK Name | Repository | Example Code | Description |
+|----------|------------|--------------|-------------|
+| WuKongIMiOSSDK | [GitHub](https://github.com/WuKongIM/WuKongIMiOSSDK) | [GitHub](https://github.com/WuKongIM/WuKongIMiOSSDK/tree/main/Example) | iOS SDK |
+| WuKongIMAndroidSDK | [GitHub](https://github.com/WuKongIM/WuKongIMAndroidSDK) | [GitHub](https://github.com/WuKongIM/WuKongIMAndroidSDK/tree/master/app) | Android SDK |
+| WuKongIMFlutterSDK | [GitHub](https://github.com/WuKongIM/WuKongIMFlutterSDK) | [GitHub](https://github.com/WuKongIM/WuKongIMFlutterSDK/tree/master/example) | Flutter SDK |
+| WuKongIMHarmonySDK | [GitHub](https://github.com/WuKongIM/WuKongIMHarmonyOSSDK) | [GitHub](https://github.com/WuKongIM/WuKongIMHarmonyOSSDK/tree/main/entry) | HarmonyOS SDK |
+| WuKongIMJSSDK | [GitHub](https://github.com/WuKongIM/WuKongIMJSSDK) | [GitHub](https://github.com/WuKongIM/WuKongIMJSSDK/tree/main/examples) | JavaScript SDK, supports Web, WeChat Mini Program, Uniapp |
+
+## Open Source License
+
+All WuKongIM SDKs use the **Apache 2.0** open source license, which allows you to:
+
+- ✅ **Commercial Use**: Can be used in commercial projects
+- ✅ **Modify Code**: Can modify source code according to needs
+- ✅ **Distribute Code**: Can redistribute modified code
+- ✅ **Patent Grant**: Obtain usage rights for related patents
+- ⚠️ **Retain Notice**: Must retain original copyright and license notices
+
+## Contribution Guide
+
+We welcome community contributions! Ways to participate:
+
+1. **Report Issues**: Submit Issues in the corresponding repository
+2. **Submit Code**: Fork repository and submit Pull Requests
+3. **Improve Documentation**: Help improve documentation and examples
+4. **Share Experience**: Share usage experience in the community
+
+<Tip>
+  **Selection Recommendations**:
+  - Non-IM applications: Choose EasySDK series
+  - IM applications: Choose WuKongIMSDK series
+</Tip>
+
+## Technical Support
+
+- **Documentation Center**: [https://docs.githubim.com](https://docs.githubim.com)
+- **GitHub Issues**: Issues page of each repository
+- **Community Discussion**: GitHub Discussions
+- **Official Website**: [https://githubim.com](https://githubim.com)
+
+## SDK Feature Comparison
+
+### EasySDK vs WuKongIMSDK
+
+| Feature | EasySDK | WuKongIMSDK |
+|---------|---------|-------------|
+| **Integration Time** | 5 minutes | 30+ minutes |
+| **Code Complexity** | Simple | Comprehensive |
+| **Message Types** | Text, Image, File | All message types |
+| **Custom Messages** | Limited | Full support |
+| **Offline Messages** | Basic | Advanced |
+| **Message Reactions** | ❌ | ✅ |
+| **Message Replies** | ❌ | ✅ |
+| **Message Receipts** | ❌ | ✅ |
+| **Channel Management** | Basic | Advanced |
+| **User Management** | Basic | Advanced |
+| **Real-time Typing** | ❌ | ✅ |
+| **Message Search** | ❌ | ✅ |
+| **File Size** | Small | Large |
+| **Use Case** | Quick prototyping, simple chat | Enterprise IM, complex applications |
+
+### Platform Support Matrix
+
+| Platform | EasySDK | WuKongIMSDK | Notes |
+|----------|---------|-------------|-------|
+| **iOS** | ✅ | ✅ | Swift/Objective-C |
+| **Android** | ✅ | ✅ | Kotlin/Java |
+| **Web** | ✅ | ✅ | JavaScript/TypeScript |
+| **Flutter** | ✅ | ✅ | Cross-platform |
+| **HarmonyOS** | ❌ | ✅ | ArkTS |
+| **WeChat Mini Program** | ❌ | ✅ | JavaScript |
+| **Uniapp** | ❌ | ✅ | Vue.js |
+| **React Native** | 🚧 | 🚧 | Coming soon |
+| **Unity** | 🚧 | 🚧 | Coming soon |
+
+## Getting Started
+
+### Quick Start with EasySDK
+
+```bash
+# JavaScript/Web
+npm install @wukongim/easysdk-js
+
+# iOS (CocoaPods)
+pod 'WuKongEasySDK'
+
+# Android (Gradle)
+implementation 'com.wukongim:easysdk-android:latest'
+
+# Flutter
+flutter pub add wukongim_easysdk
+```
+
+### Enterprise SDK Installation
+
+```bash
+# JavaScript/Web
+npm install @wukongim/sdk-js
+
+# iOS (CocoaPods)
+pod 'WuKongIMSDK'
+
+# Android (Gradle)
+implementation 'com.wukongim:sdk-android:latest'
+
+# Flutter
+flutter pub add wukongim_flutter_sdk
+```
+
+## Community and Ecosystem
+
+### Official Repositories
+
+- **Main Server**: [WuKongIM](https://github.com/WuKongIM/WuKongIM)
+- **Documentation**: [WuKongIM Docs](https://github.com/WuKongIM/WuKongIM-Docs)
+- **Demo Applications**: [WuKongIM Demo](https://github.com/WuKongIM/WuKongIMDemo)
+
+### Community Projects
+
+- **UI Components**: Community-contributed UI libraries
+- **Plugins**: Third-party plugins and extensions
+- **Templates**: Project templates and boilerplates
+- **Tools**: Development tools and utilities
+
+### Contributing
+
+1. **Fork** the repository you want to contribute to
+2. **Create** a feature branch: `git checkout -b feature/amazing-feature`
+3. **Commit** your changes: `git commit -m 'Add amazing feature'`
+4. **Push** to the branch: `git push origin feature/amazing-feature`
+5. **Open** a Pull Request
+
+### Code of Conduct
+
+We are committed to providing a welcoming and inclusive environment for all contributors. Please read our [Code of Conduct](https://github.com/WuKongIM/WuKongIM/blob/main/CODE_OF_CONDUCT.md) before contributing.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Quick Start Guide"
+    icon="rocket"
+    href="/en/getting-started/quick-start"
+  >
+    Get started with WuKongIM in 5 minutes
+  </Card>
+  <Card
+    title="SDK Documentation"
+    icon="book"
+    href="/en/sdk/introduction"
+  >
+    Comprehensive SDK documentation
+  </Card>
+  <Card
+    title="API Reference"
+    icon="code"
+    href="/en/api/introduction"
+  >
+    Complete API documentation
+  </Card>
+  <Card
+    title="Examples"
+    icon="lightbulb"
+    href="/en/examples/best-practices"
+  >
+    Best practices and examples
+  </Card>
+</CardGroup>

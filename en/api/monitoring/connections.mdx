@@ -1,0 +1,201 @@
+---
+title: "Get Connection Information"
+description: "Get current server connection statistics including connection count and user distribution"
+api: "GET /connz"
+---
+
+## Overview
+
+Get current server connection statistics, including connection count, user distribution and other monitoring data.
+
+## Query Parameters
+
+<ParamField query="offset" type="integer" default={0}>
+Offset for pagination
+</ParamField>
+
+<ParamField query="limit" type="integer" default={20}>
+Limit for pagination
+</ParamField>
+
+<ParamField query="subs" type="integer" default={0}>
+Whether to include subscription information
+- `0` - Do not include subscription information
+- `1` - Include subscription information
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X GET "http://localhost:5001/connz?offset=0&limit=50&subs=1"
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5001/connz?offset=0&limit=50&subs=1');
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+
+params = {
+    'offset': 0,
+    'limit': 50,
+    'subs': 1
+}
+
+response = requests.get('http://localhost:5001/connz', params=params)
+data = response.json()
+print(data)
+```
+
+```go Go
+package main
+
+import (
+    "encoding/json"
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    resp, err := http.Get("http://localhost:5001/connz?offset=0&limit=50&subs=1")
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    var result map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Printf("%+v\n", result)
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json Success Response
+{
+  "now": "2024-01-15T10:30:00Z",
+  "num_connections": 1250,
+  "total": 1250,
+  "offset": 0,
+  "limit": 50,
+  "connections": [
+    {
+      "cid": 12345,
+      "uid": "user123",
+      "ip": "192.168.1.100",
+      "port": 54321,
+      "start": "2024-01-15T09:15:30Z",
+      "last_activity": "2024-01-15T10:29:45Z",
+      "uptime": "1h14m15s",
+      "idle": "15s",
+      "pending_bytes": 0,
+      "in_msgs": 156,
+      "out_msgs": 203,
+      "in_bytes": 15680,
+      "out_bytes": 25440,
+      "subscriptions": 8,
+      "device_flag": 1,
+      "device_level": 1,
+      "version": "1.0.0"
+    }
+  ]
+}
+```
+</ResponseExample>
+
+## Response Fields
+
+<ResponseField name="now" type="string" required>
+Current server time (ISO 8601 format)
+</ResponseField>
+
+<ResponseField name="num_connections" type="integer" required>
+Current number of connections
+</ResponseField>
+
+<ResponseField name="total" type="integer" required>
+Total number of connections
+</ResponseField>
+
+<ResponseField name="offset" type="integer" required>
+Current offset
+</ResponseField>
+
+<ResponseField name="limit" type="integer" required>
+Current limit
+</ResponseField>
+
+<ResponseField name="connections" type="array" required>
+Connection details list
+<Expandable title="connections fields">
+<ResponseField name="connections[].cid" type="integer">
+Connection ID
+</ResponseField>
+<ResponseField name="connections[].uid" type="string">
+User ID
+</ResponseField>
+<ResponseField name="connections[].ip" type="string">
+Client IP address
+</ResponseField>
+<ResponseField name="connections[].port" type="integer">
+Client port
+</ResponseField>
+<ResponseField name="connections[].start" type="string">
+Connection start time
+</ResponseField>
+<ResponseField name="connections[].last_activity" type="string">
+Last activity time
+</ResponseField>
+<ResponseField name="connections[].uptime" type="string">
+Connection duration
+</ResponseField>
+<ResponseField name="connections[].idle" type="string">
+Idle time
+</ResponseField>
+<ResponseField name="connections[].pending_bytes" type="integer">
+Pending bytes to send
+</ResponseField>
+<ResponseField name="connections[].in_msgs" type="integer">
+Number of received messages
+</ResponseField>
+<ResponseField name="connections[].out_msgs" type="integer">
+Number of sent messages
+</ResponseField>
+<ResponseField name="connections[].in_bytes" type="integer">
+Number of received bytes
+</ResponseField>
+<ResponseField name="connections[].out_bytes" type="integer">
+Number of sent bytes
+</ResponseField>
+<ResponseField name="connections[].subscriptions" type="integer">
+Number of subscriptions
+</ResponseField>
+<ResponseField name="connections[].device_flag" type="integer">
+Device flag
+</ResponseField>
+<ResponseField name="connections[].device_level" type="integer">
+Device level
+</ResponseField>
+<ResponseField name="connections[].version" type="string">
+Client version
+</ResponseField>
+</Expandable>
+</ResponseField>
+
+## Status Codes
+
+| Status Code | Description |
+|-------------|-------------|
+| 200 | Successfully retrieved connection information |
+| 500 | Internal server error |
+
+## Best Practices
+
+1. **Paginated Queries**: Use pagination for large numbers of connections to avoid performance issues
+2. **Regular Monitoring**: Set reasonable monitoring intervals, avoid excessive frequency
+3. **Alert Mechanisms**: Set alerts for key metrics like connection count and activity
+4. **Data Export**: Support export and analysis of connection data
+5. **Performance Optimization**: Monitor connection performance metrics to identify issues promptly
+6. **Security Monitoring**: Pay attention to connections from abnormal IPs

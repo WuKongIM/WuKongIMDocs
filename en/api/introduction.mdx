@@ -1,0 +1,143 @@
+---
+title: "API Introduction"
+description: "Complete guide to WuKongIM REST API, including security specifications, request formats, and response standards"
+icon: "book-open"
+---
+
+## Overview
+
+WuKongIM provides a complete REST API interface for managing all aspects of the instant messaging system, including message sending, channel management, user management, conversation management, and other functions.
+
+<Warning>
+  **Important Security Notice**: WuKongIM API is designed for internal business systems only. It must not be exposed to external networks to prevent security issues.
+</Warning>
+
+## Security Considerations
+
+### 🔒 Internal Use Restrictions
+
+- **Internal use only**: All API interfaces are for internal business system calls only
+- **No external exposure**: Strictly prohibit exposing API services to public networks or external networks
+- **Port protection**: Must block external network access to port 5001
+- **Network isolation**: Recommended to deploy and use in internal network environments
+
+### 🛡️ Security Best Practices
+
+- Block external access to port 5001 in firewall
+- Use VPN or internal network environment for API calls
+- Regularly review network access permissions and logs
+- Avoid exposing API endpoint information in public documentation
+
+## Basic Information
+
+### Server Address
+
+```bash
+# Internal network environment (recommended)
+http://localhost:5001
+
+# Or internal IP
+http://192.168.1.100:5001
+```
+
+### Authentication Mechanism
+
+WuKongIM API **does not require Token authentication** because it is designed for internal systems only. All API calls are direct access without additional authentication headers.
+
+## API Standards and Rules
+
+### 📊 HTTP Status Code Standards
+
+WuKongIM API follows standard HTTP status code specifications:
+
+#### ✅ Success Response (200)
+- **HTTP 200**: Indicates successful request execution
+- Some interfaces only need to check HTTP 200 status code without parsing JSON response
+- Success responses may contain data or just return status confirmation
+
+#### ❌ Failure Response (non-200)
+- **HTTP 400**: Request parameter error
+- **HTTP 500**: Internal server error
+
+### 🔧 Request Format Specifications
+
+#### Content-Type
+All POST requests must use JSON format:
+
+```bash
+Content-Type: application/json
+```
+
+#### Request Body Example
+```json
+{
+  "channel_id": "group123",
+  "channel_type": 2,
+  "from_uid": "user123",
+  "payload": "SGVsbG8gV29ybGQ="
+}
+```
+
+### 📋 Response Format Specifications
+
+#### Success Response Example
+```json
+{
+  "message_id": 123456789,
+  "message_seq": 1001,
+  "client_msg_no": "client_msg_123"
+}
+```
+
+#### Error Response Format (HTTP 400)
+```json
+{
+  "msg": "channel_id parameter cannot be empty",
+  "status": 400
+}
+```
+
+<Note>
+  **Documentation Note**: This documentation only shows parameter descriptions for success responses. Error response format is unified as shown above.
+</Note>
+
+## Core Data Types
+
+### 📁 Channel Type (channel_type)
+
+| Value | Type | Description |
+|-------|------|-------------|
+| 1 | Personal Channel | One-on-one private chat channel |
+| 2 | Group Channel | Multi-user group chat channel |
+
+### 📱 Device Flag (device_flag)
+
+| Flag Value | Device Type | Description |
+|------------|-------------|-------------|
+| 0 | App | Android, iPhone, iPad devices |
+| 1 | Web | Browser, Web applications |
+| 2 | Desktop | Desktop applications |
+
+### 💬 Message Format
+
+Message content is transmitted using **Base64 encoding**:
+
+```json
+{
+  "payload": "SGVsbG8gV29ybGQ=",  // Base64 encoded message content
+  "from_uid": "user123",
+  "channel_id": "group123",
+  "channel_type": 2
+}
+```
+
+### 🔑 Important Parameter Specifications
+
+#### channel_id Usage Specifications
+- **Direct use**: `channel_id` parameter should be used directly without adding `@` prefix
+- **Correct example**: `"channel_id": "group123"`
+- **Incorrect example**: `"channel_id": "@group123"`
+
+<Warning>
+  Do not add `@` symbol before `channel_id` parameter, use the original ID value directly.
+</Warning>

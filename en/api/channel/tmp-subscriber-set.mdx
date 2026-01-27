@@ -1,0 +1,184 @@
+---
+title: "Set Temporary Channel Subscribers"
+description: "Set subscribers for a temporary channel (Internal API)"
+api: "POST /tmpchannel/subscriber_set"
+---
+
+<Warning>
+This interface is primarily used for internal system calls and cluster node communication. External direct use is not recommended.
+</Warning>
+
+## Overview
+
+Set subscribers for a temporary channel. This is an internal API used for cluster node communication to manage temporary channel subscriptions. Temporary channels are used for special scenarios such as temporary groups or sessions, and automatically create and manage channel tags.
+
+## Request Body
+
+### Required Parameters
+
+<ParamField body="channel_id" type="string" required>
+Temporary channel ID, cannot contain special characters
+</ParamField>
+
+<ParamField body="uids" type="array" required>
+List of user IDs to set as subscribers for the temporary channel
+<ParamField body="uids[]" type="string">
+User ID
+</ParamField>
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "http://localhost:5001/tmpchannel/subscriber_set" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "channel_id": "tmp_channel_123",
+    "uids": ["user1", "user2", "user3"]
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5001/tmpchannel/subscriber_set', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    channel_id: 'tmp_channel_123',
+    uids: ['user1', 'user2', 'user3']
+  })
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+
+data = {
+    "channel_id": "tmp_channel_123",
+    "uids": ["user1", "user2", "user3"]
+}
+
+response = requests.post('http://localhost:5001/tmpchannel/subscriber_set', json=data)
+result = response.json()
+print(result)
+```
+
+```go Go
+package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    data := map[string]interface{}{
+        "channel_id": "tmp_channel_123",
+        "uids":       []string{"user1", "user2", "user3"},
+    }
+    
+    jsonData, _ := json.Marshal(data)
+    
+    resp, err := http.Post(
+        "http://localhost:5001/tmpchannel/subscriber_set",
+        "application/json",
+        bytes.NewBuffer(jsonData),
+    )
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    var result map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Printf("%+v\n", result)
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json Success Response
+{
+  "status": "ok"
+}
+```
+</ResponseExample>
+
+## Response Fields
+
+<ResponseField name="status" type="string" required>
+Operation status, returns `"ok"` on success
+</ResponseField>
+
+## Status Codes
+
+| Status Code | Description |
+|-------------|-------------|
+| 200 | Temporary channel subscribers set successfully |
+| 400 | Request parameter error |
+| 500 | Internal server error |
+
+## Temporary Channel Mechanism
+
+### Temporary Channel Features
+
+- **Temporary Nature**: Used for special scenarios like temporary groups or sessions
+- **Auto Management**: System automatically creates and manages channel tags
+- **Cluster Communication**: Primarily used for internal communication between cluster nodes
+- **Subscription Management**: Supports dynamic setting of subscriber lists
+
+### Use Cases
+
+| Scenario | Description | Applicable Situation |
+|----------|-------------|---------------------|
+| Temporary Groups | Create temporary discussion groups | Short-term project collaboration |
+| Session Migration | Migrate sessions between cluster nodes | Load balancing |
+| System Maintenance | Temporarily reorganize channel structure | System upgrades |
+
+## Important Notes
+
+<Warning>
+**Internal API Warning**
+
+This interface is designed for internal system calls. Direct use may cause:
+- Data inconsistency
+- Cluster state anomalies
+- Unexpected system behavior
+
+It is recommended to use standard channel management interfaces for regular operations.
+</Warning>
+
+### Parameter Restrictions
+
+- **Channel ID**: Cannot be empty, cannot contain special characters
+- **User List**: Must contain at least one user ID
+- **Character Length**: Channel ID maximum 64 characters
+
+### Error Handling
+
+| Error Message | Cause | Solution |
+|---------------|-------|----------|
+| channel_id cannot be empty | No channel ID provided | Ensure valid channel ID is provided |
+| uids cannot be empty | User list is empty | Provide at least one user ID |
+| Channel ID cannot contain special characters | Invalid channel ID format | Use alphanumeric characters and underscores |
+| Failed to get channel's cluster node | Cluster communication error | Check cluster status |
+| Failed to create tag | Tag system error | Check tag service status |
+
+## Best Practices
+
+1. **Internal Use Only**: Avoid calling directly in client applications
+2. **Parameter Validation**: Ensure all parameters are correctly formatted
+3. **Error Handling**: Implement comprehensive error handling mechanisms
+4. **Monitor Logs**: Record API calls for troubleshooting
+5. **Cluster Status**: Ensure cluster status is normal before calling
+
+## Related APIs
+
+- [Create Channel](/en/api/channel/create) - Create standard channels
+- [Add Channel Subscribers](/en/api/channel/add-subscribers) - Add standard channel subscribers
+- [Remove Channel Subscribers](/en/api/channel/remove-subscribers) - Remove standard channel subscribers

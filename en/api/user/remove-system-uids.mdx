@@ -1,0 +1,394 @@
+---
+title: "Remove System User IDs"
+description: "Remove users from the system user ID list"
+api: "POST /user/systemuids_remove"
+---
+
+## Overview
+
+Remove specified users from the system user ID list, revoking their special system user privileges and identification.
+
+## Request Body
+
+### Required Parameters
+
+<ParamField body="uids" type="array" required>
+Array of user IDs to remove from the system user list
+<ParamField body="uids[]" type="string">
+User ID
+</ParamField>
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "http://localhost:5001/user/systemuids_remove" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "uids": ["old_bot", "deprecated_service"]
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5001/user/systemuids_remove', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    uids: ['old_bot', 'deprecated_service']
+  })
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+
+data = {
+    "uids": ["old_bot", "deprecated_service"]
+}
+
+response = requests.post('http://localhost:5001/user/systemuids_remove', json=data)
+result = response.json()
+print(result)
+```
+
+```go Go
+package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    data := map[string]interface{}{
+        "uids": []string{"old_bot", "deprecated_service"},
+    }
+    
+    jsonData, _ := json.Marshal(data)
+    
+    resp, err := http.Post(
+        "http://localhost:5001/user/systemuids_remove",
+        "application/json",
+        bytes.NewBuffer(jsonData),
+    )
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    var result map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Printf("%+v\n", result)
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json Success Response
+{
+  "status": "ok"
+}
+```
+</ResponseExample>
+
+## Response Fields
+
+<ResponseField name="status" type="string" required>
+Operation status, returns `"ok"` on success
+</ResponseField>
+
+## Status Codes
+
+| Status Code | Description |
+|-------------|-------------|
+| 200 | System user IDs removed successfully |
+| 400 | Request parameter error |
+| 403 | No administrative permission |
+| 404 | Specified user not in system user list |
+| 500 | Internal server error |
+
+## Impact of Removal
+
+### Revoked Privileges
+
+When users are removed from the system user list, they lose:
+
+| Privilege | Impact | Immediate Effect |
+|-----------|--------|------------------|
+| Bypass Validation | Must pass standard validation | Message sending restrictions apply |
+| System Channels | Lose access to system-only channels | Cannot access restricted channels |
+| Rate Limit Exemption | Subject to standard rate limits | API calls limited |
+| Priority Processing | Normal priority in message queue | Standard message delivery |
+
+### Transition Period
+
+- **Immediate**: System user status revoked
+- **Active Connections**: Existing connections remain but lose privileges
+- **Cached Permissions**: May take up to 5 minutes to fully propagate
+- **Message Queue**: Messages in queue processed with new permissions
+
+## Use Cases
+
+### Service Decommissioning
+
+**Decommission Old Bot Services**:
+```javascript
+// Remove deprecated bot services
+async function decommissionBotServices() {
+    const deprecatedBots = [
+        'old_chatbot_v1',
+        'legacy_assistant',
+        'deprecated_analyzer'
+    ];
+    
+    try {
+        // Remove system user privileges
+        await removeSystemUIDs(deprecatedBots);
+        
+        // Disable bot services
+        for (const bot of deprecatedBots) {
+            await disableBotService(bot);
+            await revokeAPIKeys(bot);
+        }
+        
+        console.log('Bot services decommissioned successfully');
+    } catch (error) {
+        console.error('Failed to decommission bot services:', error);
+    }
+}
+```
+
+### Security Incident Response
+
+**Emergency Privilege Revocation**:
+```javascript
+// Emergency removal of compromised system users
+async function emergencyPrivilegeRevocation(compromisedUIDs) {
+    try {
+        // Immediately revoke system privileges
+        await removeSystemUIDs(compromisedUIDs);
+        
+        // Force disconnect all sessions
+        for (const uid of compromisedUIDs) {
+            await forceDeviceQuit(uid);
+        }
+        
+        // Log security incident
+        await logSecurityIncident({
+            type: 'privilege_revocation',
+            affected_users: compromisedUIDs,
+            timestamp: new Date().toISOString(),
+            reason: 'security_incident'
+        });
+        
+        // Notify security team
+        await notifySecurityTeam(compromisedUIDs);
+        
+    } catch (error) {
+        console.error('Emergency revocation failed:', error);
+        // Escalate to manual intervention
+        await escalateToManualIntervention(compromisedUIDs);
+    }
+}
+```
+
+### Cleanup Operations
+
+**Regular Cleanup of Unused System Users**:
+```javascript
+// Regular cleanup of inactive system users
+async function cleanupInactiveSystemUsers() {
+    try {
+        // Get current system users
+        const systemUIDs = await getSystemUIDs();
+        
+        // Check activity for each system user
+        const inactiveUsers = [];
+        for (const uid of systemUIDs) {
+            const lastActivity = await getLastActivity(uid);
+            const daysSinceActivity = (Date.now() - lastActivity) / (1000 * 60 * 60 * 24);
+            
+            if (daysSinceActivity > 90) { // 90 days inactive
+                inactiveUsers.push(uid);
+            }
+        }
+        
+        if (inactiveUsers.length > 0) {
+            // Request approval for removal
+            const approved = await requestCleanupApproval(inactiveUsers);
+            
+            if (approved) {
+                await removeSystemUIDs(inactiveUsers);
+                console.log(`Cleaned up ${inactiveUsers.length} inactive system users`);
+            }
+        }
+        
+    } catch (error) {
+        console.error('Cleanup operation failed:', error);
+    }
+}
+
+// Schedule regular cleanup
+setInterval(cleanupInactiveSystemUsers, 7 * 24 * 60 * 60 * 1000); // Weekly
+```
+
+### Migration and Upgrades
+
+**Service Migration**:
+```javascript
+// Migrate from old service to new service
+async function migrateSystemService(oldServiceUID, newServiceUID) {
+    try {
+        // Add new service as system user
+        await addSystemUIDs([newServiceUID]);
+        
+        // Configure new service with same permissions
+        await migrateServiceConfiguration(oldServiceUID, newServiceUID);
+        
+        // Test new service functionality
+        const testResult = await testServiceFunctionality(newServiceUID);
+        
+        if (testResult.success) {
+            // Remove old service from system users
+            await removeSystemUIDs([oldServiceUID]);
+            
+            // Gracefully shutdown old service
+            await gracefulServiceShutdown(oldServiceUID);
+            
+            console.log(`Successfully migrated from ${oldServiceUID} to ${newServiceUID}`);
+        } else {
+            // Rollback if test fails
+            await removeSystemUIDs([newServiceUID]);
+            throw new Error('Service migration test failed');
+        }
+        
+    } catch (error) {
+        console.error('Service migration failed:', error);
+        // Ensure old service remains functional
+        await ensureServiceHealth(oldServiceUID);
+    }
+}
+```
+
+### Batch Operations
+
+**Bulk Removal with Validation**:
+```javascript
+// Safely remove multiple system users with validation
+async function bulkRemoveSystemUsers(uidsToRemove, options = {}) {
+    const { 
+        validateBeforeRemoval = true,
+        requireApproval = true,
+        batchSize = 5 
+    } = options;
+    
+    try {
+        if (validateBeforeRemoval) {
+            // Validate each user before removal
+            const validationResults = await validateUsersForRemoval(uidsToRemove);
+            const invalidUsers = validationResults.filter(r => !r.canRemove);
+            
+            if (invalidUsers.length > 0) {
+                console.warn('Cannot remove users:', invalidUsers.map(u => u.uid));
+                uidsToRemove = validationResults
+                    .filter(r => r.canRemove)
+                    .map(r => r.uid);
+            }
+        }
+        
+        if (requireApproval) {
+            const approved = await requestBulkRemovalApproval(uidsToRemove);
+            if (!approved) {
+                throw new Error('Bulk removal not approved');
+            }
+        }
+        
+        // Process in batches
+        const batches = chunkArray(uidsToRemove, batchSize);
+        const results = [];
+        
+        for (const batch of batches) {
+            try {
+                await removeSystemUIDs(batch);
+                results.push({ batch, success: true });
+                
+                // Small delay between batches
+                await delay(500);
+            } catch (error) {
+                results.push({ batch, success: false, error: error.message });
+            }
+        }
+        
+        return results;
+        
+    } catch (error) {
+        console.error('Bulk removal operation failed:', error);
+        throw error;
+    }
+}
+```
+
+## Security Considerations
+
+### Pre-removal Validation
+
+```javascript
+// Validate users before removal
+async function validateUserForRemoval(uid) {
+    const checks = {
+        isSystemUser: await isInSystemUserList(uid),
+        hasActiveConnections: await hasActiveConnections(uid),
+        hasCriticalServices: await hasCriticalServices(uid),
+        hasRecentActivity: await hasRecentActivity(uid, 24), // 24 hours
+        isProtectedUser: await isProtectedUser(uid)
+    };
+    
+    const canRemove = checks.isSystemUser && 
+                     !checks.isProtectedUser && 
+                     !checks.hasCriticalServices;
+    
+    return {
+        uid,
+        canRemove,
+        checks,
+        warnings: generateRemovalWarnings(checks)
+    };
+}
+```
+
+### Audit and Compliance
+
+```javascript
+// Comprehensive audit logging
+async function auditSystemUserRemoval(uids, adminUser, reason) {
+    const auditEntry = {
+        action: 'system_user_removal',
+        timestamp: new Date().toISOString(),
+        admin_user: adminUser,
+        affected_users: uids,
+        reason: reason,
+        system_state_before: await captureSystemState(),
+        ip_address: await getClientIP(),
+        user_agent: await getClientUserAgent()
+    };
+    
+    await writeAuditLog(auditEntry);
+    await notifyComplianceTeam(auditEntry);
+}
+```
+
+## Best Practices
+
+1. **Validation First**: Always validate users before removal
+2. **Approval Process**: Implement approval workflows for system user changes
+3. **Gradual Rollout**: Remove privileges gradually for critical services
+4. **Monitoring**: Monitor system behavior after privilege removal
+5. **Rollback Plan**: Have a rollback plan in case of issues
+6. **Documentation**: Document reasons for removal
+7. **Notification**: Notify relevant teams about privilege changes

@@ -1,0 +1,456 @@
+---
+title: "Conversation Management"
+description: "WuKongIM Flutter SDK conversation management functionality, including recent conversation retrieval, listening and operations"
+icon: "messages-square"
+---
+
+## Get Recent Conversations
+
+### All Recent Conversations
+
+```dart
+// Query all recent conversations
+WKIM.shared.conversationManager.getAll();
+```
+
+## New Message Listening
+
+Only when opening the app for the first time, you need to sync the recent conversation list. Subsequent changes to the recent conversation list are obtained through listening.
+
+```dart
+// Listen for refresh messages
+WKIM.shared.conversationManager.addOnRefreshMsgListener('key', (wkUIConversationMsg, isEnd) {
+    // wkUIConversationMsg: recent conversation message content
+    // If UI already has this conversation, update it; otherwise add to UI
+    // isEnd: to prevent frequent UI refreshes, refresh UI only when isEnd is true
+    if (isEnd) {
+        // Update UI
+        _updateConversationUI(wkUIConversationMsg);
+    }
+});
+
+// Remove listener
+WKIM.shared.conversationManager.removeOnRefreshMsg('key');
+```
+
+## Delete Recent Conversations
+
+```dart
+// Delete recent conversation
+WKIM.shared.conversationManager.deleteMsg(channelId, channelType);
+```
+
+## Common Methods
+
+```dart
+// Set red dot
+WKIM.shared.conversationManager.updateRedDot(channelId, channelType, count);
+
+// Delete all recent conversations
+WKIM.shared.conversationManager.clearAll();
+```
+
+## Complete Conversation Management Example
+
+```dart
+class ConversationManager {
+  static final ConversationManager _instance = ConversationManager._internal();
+  factory ConversationManager() => _instance;
+  ConversationManager._internal();
+  
+  final List<WKConversationMsg> _conversations = [];
+  final StreamController<List<WKConversationMsg>> _conversationsController = StreamController.broadcast();
+  final StreamController<WKConversationMsg> _conversationUpdateController = StreamController.broadcast();
+  
+  // Streams for UI to listen
+  Stream<List<WKConversationMsg>> get conversationsStream => _conversationsController.stream;
+  Stream<WKConversationMsg> get conversationUpdateStream => _conversationUpdateController.stream;
+  
+  void initialize() {
+    _setupConversationListeners();
+    _loadInitialConversations();
+  }
+  
+  void _setupConversationListeners() {
+    // Listen for conversation refresh
+    WKIM.shared.conversationManager.addOnRefreshMsgListener('global', (conversation, isEnd) {
+      if (isEnd) {
+        _handleConversationUpdate(conversation);
+      }
+    });
+    
+    // Listen for conversation deletion
+    WKIM.shared.conversationManager.addOnDeleteMsgListener('global', (channelID, channelType) {
+      _handleConversationDeleted(channelID, channelType);
+    });
+  }
+  
+  void _loadInitialConversations() {
+    try {
+      final conversations = WKIM.shared.conversationManager.getAll();
+      _conversations.clear();
+      _conversations.addAll(conversations);
+      
+      // Sort by timestamp
+      _conversations.sort((a, b) => b.lastMsgTimestamp.compareTo(a.lastMsgTimestamp));
+      
+      _conversationsController.add(List.from(_conversations));
+    } catch (e) {
+      print('Failed to load conversations: $e');
+    }
+  }
+  
+  void _handleConversationUpdate(WKConversationMsg conversation) {
+    final existingIndex = _conversations.indexWhere(
+      (c) => c.channelID == conversation.channelID && c.channelType == conversation.channelType,
+    );
+    
+    if (existingIndex >= 0) {
+      // Update existing conversation
+      _conversations[existingIndex] = conversation;
+    } else {
+      // Add new conversation
+      _conversations.add(conversation);
+    }
+    
+    // Sort by timestamp
+    _conversations.sort((a, b) => b.lastMsgTimestamp.compareTo(a.lastMsgTimestamp));
+    
+    // Notify listeners
+    _conversationsController.add(List.from(_conversations));
+    _conversationUpdateController.add(conversation);
+  }
+  
+  void _handleConversationDeleted(String channelID, int channelType) {
+    _conversations.removeWhere(
+      (c) => c.channelID == channelID && c.channelType == channelType,
+    );
+    
+    _conversationsController.add(List.from(_conversations));
+  }
+  
+  // Public methods
+  List<WKConversationMsg> getAllConversations() {
+    return List.from(_conversations);
+  }
+  
+  WKConversationMsg? getConversation(String channelID, int channelType) {
+    try {
+      return _conversations.firstWhere(
+        (c) => c.channelID == channelID && c.channelType == channelType,
+      );
+    } catch (e) {
+      return null;
+    }
+  }
+  
+  Future<void> deleteConversation(String channelID, int channelType) async {
+    try {
+      await WKIM.shared.conversationManager.deleteMsg(channelID, channelType);
+    } catch (e) {
+      print('Failed to delete conversation: $e');
+      rethrow;
+    }
+  }
+  
+  Future<void> updateRedDot(String channelID, int channelType, int count) async {
+    try {
+      await WKIM.shared.conversationManager.updateRedDot(channelID, channelType, count);
+    } catch (e) {
+      print('Failed to update red dot: $e');
+      rethrow;
+    }
+  }
+  
+  Future<void> clearAllConversations() async {
+    try {
+      await WKIM.shared.conversationManager.clearAll();
+      _conversations.clear();
+      _conversationsController.add([]);
+    } catch (e) {
+      print('Failed to clear conversations: $e');
+      rethrow;
+    }
+  }
+  
+  // Get total unread count
+  int getTotalUnreadCount() {
+    return _conversations.fold(0, (sum, conversation) => sum + conversation.unreadCount);
+  }
+  
+  // Get conversations by type
+  List<WKConversationMsg> getConversationsByType(int channelType) {
+    return _conversations.where((c) => c.channelType == channelType).toList();
+  }
+  
+  // Search conversations
+  List<WKConversationMsg> searchConversations(String keyword) {
+    if (keyword.isEmpty) return getAllConversations();
+    
+    return _conversations.where((conversation) {
+      // You can implement search logic based on channel name, last message content, etc.
+      // This would require getting channel info for each conversation
+      return conversation.channelID.toLowerCase().contains(keyword.toLowerCase());
+    }).toList();
+  }
+  
+  void dispose() {
+    _conversationsController.close();
+    _conversationUpdateController.close();
+    
+    // Remove listeners
+    WKIM.shared.conversationManager.removeOnRefreshMsg('global');
+    WKIM.shared.conversationManager.removeOnDeleteMsgListener('global');
+  }
+}
+```
+
+## UI Integration Example
+
+```dart
+class ConversationListPage extends StatefulWidget {
+  @override
+  _ConversationListPageState createState() => _ConversationListPageState();
+}
+
+class _ConversationListPageState extends State<ConversationListPage> {
+  late StreamSubscription<List<WKConversationMsg>> _conversationsSubscription;
+  List<WKConversationMsg> _conversations = [];
+  
+  @override
+  void initState() {
+    super.initState();
+    _setupListeners();
+    _loadConversations();
+  }
+  
+  void _setupListeners() {
+    _conversationsSubscription = ConversationManager().conversationsStream.listen((conversations) {
+      setState(() {
+        _conversations = conversations;
+      });
+    });
+  }
+  
+  void _loadConversations() {
+    _conversations = ConversationManager().getAllConversations();
+  }
+  
+  @override
+  void dispose() {
+    _conversationsSubscription.cancel();
+    super.dispose();
+  }
+  
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Conversations'),
+        actions: [
+          _buildUnreadBadge(),
+        ],
+      ),
+      body: _buildConversationList(),
+    );
+  }
+  
+  Widget _buildUnreadBadge() {
+    final totalUnread = ConversationManager().getTotalUnreadCount();
+    if (totalUnread == 0) return SizedBox.shrink();
+    
+    return Container(
+      margin: EdgeInsets.only(right: 16),
+      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.red,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        totalUnread > 99 ? '99+' : totalUnread.toString(),
+        style: TextStyle(color: Colors.white, fontSize: 12),
+      ),
+    );
+  }
+  
+  Widget _buildConversationList() {
+    if (_conversations.isEmpty) {
+      return Center(
+        child: Text('No conversations'),
+      );
+    }
+    
+    return ListView.builder(
+      itemCount: _conversations.length,
+      itemBuilder: (context, index) {
+        final conversation = _conversations[index];
+        return _buildConversationItem(conversation);
+      },
+    );
+  }
+  
+  Widget _buildConversationItem(WKConversationMsg conversation) {
+    return ListTile(
+      leading: CircleAvatar(
+        child: Text(conversation.channelID.substring(0, 1).toUpperCase()),
+      ),
+      title: Text(conversation.channelID),
+      subtitle: Text(_getLastMessageText(conversation)),
+      trailing: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(_formatTimestamp(conversation.lastMsgTimestamp)),
+          if (conversation.unreadCount > 0)
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.red,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                conversation.unreadCount > 99 ? '99+' : conversation.unreadCount.toString(),
+                style: TextStyle(color: Colors.white, fontSize: 10),
+              ),
+            ),
+        ],
+      ),
+      onTap: () => _openChat(conversation),
+      onLongPress: () => _showConversationOptions(conversation),
+    );
+  }
+  
+  String _getLastMessageText(WKConversationMsg conversation) {
+    // You would need to get the actual last message content
+    // This is a simplified version
+    return 'Last message...';
+  }
+  
+  String _formatTimestamp(int timestamp) {
+    final date = DateTime.fromMillisecondsSinceEpoch(timestamp * 1000);
+    final now = DateTime.now();
+    
+    if (date.day == now.day && date.month == now.month && date.year == now.year) {
+      return DateFormat('HH:mm').format(date);
+    } else {
+      return DateFormat('MM/dd').format(date);
+    }
+  }
+  
+  void _openChat(WKConversationMsg conversation) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ChatPage(
+          channelID: conversation.channelID,
+          channelType: conversation.channelType,
+        ),
+      ),
+    );
+  }
+  
+  void _showConversationOptions(WKConversationMsg conversation) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            leading: Icon(Icons.delete),
+            title: Text('Delete Conversation'),
+            onTap: () {
+              Navigator.pop(context);
+              _deleteConversation(conversation);
+            },
+          ),
+          ListTile(
+            leading: Icon(Icons.notifications_off),
+            title: Text('Mute'),
+            onTap: () {
+              Navigator.pop(context);
+              // Implement mute functionality
+            },
+          ),
+        ],
+      ),
+    );
+  }
+  
+  void _deleteConversation(WKConversationMsg conversation) async {
+    try {
+      await ConversationManager().deleteConversation(
+        conversation.channelID,
+        conversation.channelType,
+      );
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Conversation deleted')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to delete conversation')),
+      );
+    }
+  }
+}
+```
+
+## Data Structure Description
+
+```dart
+class WKConversationMsg {
+  // Channel ID
+  String channelID = '';
+  // Channel type
+  int channelType = WKChannelType.personal;
+  // Last message local ID
+  String lastClientMsgNO = '';
+  // Whether deleted
+  int isDeleted = 0;
+  // Server sync version number
+  int version = 0;
+  // Last message timestamp
+  int lastMsgTimestamp = 0;
+  // Unread message count
+  int unreadCount = 0;
+  // Last message sequence number
+  int lastMsgSeq = 0;
+  // Extension fields
+  dynamic localExtraMap;
+  WKConversationMsgExtra? msgExtra;
+  String parentChannelID = '';
+  int parentChannelType = 0;
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Channel Management"
+    icon="hash"
+    href="/en/sdk/wukongim/flutter/channel"
+  >
+    Learn how to manage channels and groups
+  </Card>
+  <Card
+    title="Data Source Configuration"
+    icon="database"
+    href="/en/sdk/wukongim/flutter/datasource"
+  >
+    Configure conversation data sources
+  </Card>
+  <Card
+    title="Message Management"
+    icon="message-circle"
+    href="/en/sdk/wukongim/flutter/message"
+  >
+    Return to message handling functionality
+  </Card>
+  <Card
+    title="Advanced Features"
+    icon="cog"
+    href="/en/sdk/wukongim/flutter/advance"
+  >
+    Explore advanced features and custom messages
+  </Card>
+</CardGroup>

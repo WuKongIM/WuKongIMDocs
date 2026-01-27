@@ -1,0 +1,167 @@
+---
+title: "创建频道"
+description: "创建新的聊天频道"
+api: "POST /channel"
+---
+
+## 概述
+
+创建新的聊天频道，支持个人频道和群组频道的创建。
+
+## 请求体
+
+### 必传参数
+
+<ParamField body="channel_id" type="string" required>
+频道 ID，必须唯一
+</ParamField>
+
+<ParamField body="channel_type" type="integer" required>
+频道类型
+- `1` - 个人频道
+- `2` - 群组频道
+</ParamField>
+
+### 可选参数
+
+<ParamField body="ban" type="integer" default={0}>
+是否禁言
+- `0` - 允许发言
+- `1` - 全员禁言
+</ParamField>
+
+<ParamField body="disband" type="integer" default={0}>
+是否解散频道
+- `1` - 解散频道（不可逆）
+</ParamField>
+
+<ParamField body="send_ban" type="integer" default={0}>
+是否禁止发送消息 （0.不禁止 1.禁止），禁止后，频道内所有成员都不能发送消息,个人频道能收消息，但不能发消息
+</ParamField>
+
+<ParamField body="allow_stranger" type="integer" default={0}>
+是否允许陌生人发送消息（0.不允许 1.允许）（此配置目前只支持个人频道）
+个人频道：如果AllowStranger为1，则陌生人可以给当前用户发消息，比如：当前账号需要接受陌生人消息，channel_id为当前用户的uid
+</ParamField>
+
+<ParamField body="subscribers" type="array">
+订阅者列表
+<ParamField body="subscribers[]" type="string">
+订阅者用户 ID
+</ParamField>
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "http://localhost:5001/channel" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "channel_id": "group123",
+    "channel_type": 2,
+    "large": 0,
+    "ban": 0,
+    "subscribers": ["user1", "user2", "user3"]
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5001/channel', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    channel_id: 'group123',
+    channel_type: 2,
+    large: 0,
+    ban: 0,
+    subscribers: ['user1', 'user2', 'user3']
+  })
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+
+data = {
+    "channel_id": "group123",
+    "channel_type": 2,
+    "large": 0,
+    "ban": 0,
+    "subscribers": ["user1", "user2", "user3"]
+}
+
+response = requests.post('http://localhost:5001/channel', json=data)
+result = response.json()
+print(result)
+```
+
+```go Go
+package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    data := map[string]interface{}{
+        "channel_id":   "group123",
+        "channel_type": 2,
+        "large":        0,
+        "ban":          0,
+        "subscribers":  []string{"user1", "user2", "user3"},
+    }
+    
+    jsonData, _ := json.Marshal(data)
+    
+    resp, err := http.Post(
+        "http://localhost:5001/channel",
+        "application/json",
+        bytes.NewBuffer(jsonData),
+    )
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    var result map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Printf("%+v\n", result)
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json 成功响应
+{
+  "status": "ok"
+}
+```
+</ResponseExample>
+
+## 响应字段
+
+<ResponseField name="status" type="string" required>
+操作状态，成功时返回 `"ok"`
+</ResponseField>
+
+## 状态码
+
+| 状态码 | 说明 |
+|--------|------|
+| 200 | 频道创建成功 |
+| 400 | 请求参数错误 |
+| 409 | 频道 ID 已存在 |
+| 500 | 服务器内部错误 |
+
+## 最佳实践
+
+1. **频道 ID 唯一性**：确保频道 ID 在系统中唯一
+2. **成员管理**：合理设置初始订阅者列表
+4. **权限控制**：根据需要设置禁言状态

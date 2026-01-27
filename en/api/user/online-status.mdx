@@ -1,0 +1,196 @@
+---
+title: "Get User Online Status"
+description: "Get online status information for multiple users"
+api: "POST /user/onlinestatus"
+---
+
+## Overview
+
+Get online status information for multiple users, including whether they are online and device type.
+
+## Request Body
+
+The request body is an array of user ID strings:
+
+```json
+["user1", "user2", "user3"]
+```
+
+<RequestExample>
+```bash cURL
+curl -X POST "http://localhost:5001/user/onlinestatus" \
+  -H "Content-Type: application/json" \
+  -d '["user1", "user2", "user3"]'
+```
+
+```javascript JavaScript
+const userIds = ["user1", "user2", "user3"];
+
+const response = await fetch('http://localhost:5001/user/onlinestatus', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify(userIds)
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+
+user_ids = ["user1", "user2", "user3"]
+
+response = requests.post('http://localhost:5001/user/onlinestatus', json=user_ids)
+data = response.json()
+print(data)
+```
+
+```go Go
+package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    userIds := []string{"user1", "user2", "user3"}
+    jsonData, _ := json.Marshal(userIds)
+    
+    resp, err := http.Post(
+        "http://localhost:5001/user/onlinestatus",
+        "application/json",
+        bytes.NewBuffer(jsonData),
+    )
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    var result []map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Printf("%+v\n", result)
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json Success Response
+[
+  {
+    "uid": "user1",
+    "online": 1,
+    "device_flag": 1
+  },
+  {
+    "uid": "user2",
+    "online": 0,
+    "device_flag": 0
+  },
+  {
+    "uid": "user3",
+    "online": 1,
+    "device_flag": 2
+  }
+]
+```
+</ResponseExample>
+
+## Response Fields
+
+The response is an array, each element contains the following fields:
+
+<ResponseField name="uid" type="string" required>
+User ID
+</ResponseField>
+
+<ResponseField name="online" type="integer" required>
+Online status
+- `0` - Offline
+- `1` - Online
+</ResponseField>
+
+<ResponseField name="device_flag" type="integer" required>
+Device identifier
+- `0` - App (Android, iPhone, iPad devices)
+- `1` - Web (Browser, Web applications)
+- `2` - Desktop (Desktop applications)
+</ResponseField>
+
+## Status Codes
+
+| Status Code | Description |
+|-------------|-------------|
+| 200 | Successfully retrieved user online status |
+| 400 | Request parameter error |
+| 500 | Internal server error |
+
+## Use Cases
+
+### Contact List Status
+
+Display online status indicators in contact lists:
+
+```javascript
+// Get online status for contact list
+const contactIds = ["friend1", "friend2", "colleague1"];
+const statuses = await getUserOnlineStatus(contactIds);
+
+// Update UI with status indicators
+statuses.forEach(status => {
+  updateContactStatus(status.uid, status.online, status.device_flag);
+});
+```
+
+### Group Member Status
+
+Check online status of group members:
+
+```javascript
+// Get group member online status
+const groupMembers = ["member1", "member2", "member3"];
+const memberStatuses = await getUserOnlineStatus(groupMembers);
+
+// Show online member count
+const onlineCount = memberStatuses.filter(s => s.online === 1).length;
+console.log(`${onlineCount} members online`);
+```
+
+### Presence Indicators
+
+Implement presence indicators in chat interfaces:
+
+```javascript
+// Real-time presence updates
+function updatePresenceIndicators(userStatuses) {
+  userStatuses.forEach(status => {
+    const indicator = document.querySelector(`[data-user="${status.uid}"] .presence`);
+    if (indicator) {
+      indicator.className = status.online ? 'presence online' : 'presence offline';
+      indicator.title = getDeviceTypeName(status.device_flag);
+    }
+  });
+}
+
+function getDeviceTypeName(deviceFlag) {
+  const deviceTypes = {
+    0: 'Mobile App',
+    1: 'Web Browser', 
+    2: 'Desktop App'
+  };
+  return deviceTypes[deviceFlag] || 'Unknown';
+}
+```
+
+## Best Practices
+
+1. **Batch Requests**: Query multiple users in a single request to reduce API calls
+2. **Caching**: Cache online status for a short period to avoid excessive requests
+3. **Real-time Updates**: Combine with WebSocket events for real-time status updates
+4. **UI Optimization**: Update UI efficiently when status changes
+5. **Privacy**: Respect user privacy settings for status visibility

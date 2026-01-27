@@ -1,0 +1,369 @@
+---
+title: "5-Minute Web Integration"
+description: "Quickly integrate WuKongIM Web EasySDK and implement chat functionality in 5 minutes"
+icon: "panel-top"
+---
+
+## Overview
+
+WuKongIM Web EasySDK is a lightweight JavaScript SDK that enables you to add real-time chat functionality to your web application in just 5 minutes. This guide will take you through the complete process from installation to sending your first message.
+
+<Note>
+  **System Requirements**: Supports modern browsers (Chrome 60+, Firefox 55+, Safari 11+, Edge 79+)
+</Note>
+
+## Step 1: Install SDK
+
+Choose any of the following methods to install EasyJSSDK:
+
+<Tabs>
+  <Tab title="npm">
+    ```bash
+    npm install easyjssdk
+    ```
+  </Tab>
+  <Tab title="yarn">
+    ```bash
+    yarn add easyjssdk
+    ```
+  </Tab>
+  <Tab title="CDN">
+    ```html
+    <script src="https://unpkg.com/easyjssdk@latest/dist/easyjssdk.min.js"></script>
+    ```
+  </Tab>
+</Tabs>
+
+## Step 2: Basic Integration
+
+### 2.1 Import SDK
+
+<Tabs>
+  <Tab title="ES6 Modules">
+    ```javascript
+    import { WKIM, WKIMChannelType, WKIMEvent } from 'easyjssdk';
+    ```
+  </Tab>
+  <Tab title="CommonJS">
+    ```javascript
+    const { WKIM, WKIMChannelType, WKIMEvent } = require('easyjssdk');
+    ```
+  </Tab>
+  <Tab title="CDN (Global Variables)">
+    ```javascript
+    // After loading SDK via CDN, use global variables directly
+    const { WKIM, WKIMChannelType, WKIMEvent } = window.EasyJSSDK;
+    ```
+  </Tab>
+</Tabs>
+
+### 2.2 Initialize SDK
+
+```javascript
+// 1. Initialize SDK
+const im = WKIM.init("ws://your-wukongim-server.com:5200", {
+    uid: "your_user_id",        // Your user ID
+    token: "your_auth_token"    // Your authentication token
+    // deviceId: "optional_device_id", // Optional: Device ID
+    // deviceFlag: 2 // Optional: Device flag (1:APP, 2:WEB, default is 2)
+});
+```
+
+### 2.3 Listen for Messages
+
+```javascript
+// 2. Listen for various events
+im.on(WKIMEvent.Connect, (result) => {
+    console.log("Event: Connected!", result);
+    // Connection successful, can start sending messages
+    updateUI(true);
+});
+
+im.on(WKIMEvent.Disconnect, (disconnectInfo) => {
+    console.log("Event: Disconnected.", disconnectInfo);
+    console.log("Disconnect code:", disconnectInfo.code, "reason:", disconnectInfo.reason);
+    // Connection lost, update UI status
+    updateUI(false);
+});
+
+im.on(WKIMEvent.Message, (message) => {
+    console.log("Event: Message Received", message);
+    // Handle received messages
+    displayMessage(message);
+});
+
+im.on(WKIMEvent.Error, (error) => {
+    console.log("Event: Error Occurred", error.message || error);
+    // Handle errors, may need to update UI or reconnect
+});
+
+// You can add multiple listeners for the same event
+im.on(WKIMEvent.Message, (message) => {
+    console.log("Second listener also received message:", message.messageId);
+    // Add different processing logic here
+});
+```
+
+### 2.4 Remove Event Listeners
+
+In some cases, you may need to remove event listeners to avoid memory leaks or duplicate processing. EasyJSSDK provides the `off` method to remove event listeners.
+
+<Note>
+  **Important Reminder**: Both `eventName` and `callback` parameters are required for the `off` method. The `callback` reference must be exactly the same as the one used when adding the listener with `on()`.
+</Note>
+
+#### Syntax
+
+```javascript
+im.off(eventName, callback)
+```
+
+**Parameter Description:**
+- `eventName` (Event): The event name to remove the listener for (required)
+- `callback` (EventHandler): The specific callback function to remove (required)
+
+#### Correct Usage
+
+```javascript
+// ✅ Correct: Use named functions
+function handleMessage(message) {
+    console.log('Handle message:', message);
+}
+
+function handleConnect(result) {
+    console.log('Connection successful:', result);
+}
+
+function handleError(error) {
+    console.log('Error occurred:', error);
+}
+
+// Add event listeners
+im.on(WKIMEvent.Message, handleMessage);
+im.on(WKIMEvent.Connect, handleConnect);
+im.on(WKIMEvent.Error, handleError);
+
+// Remove specific event listeners - use the same function reference
+im.off(WKIMEvent.Message, handleMessage);
+im.off(WKIMEvent.Connect, handleConnect);
+im.off(WKIMEvent.Error, handleError);
+```
+
+#### Incorrect Usage
+
+```javascript
+// ❌ Incorrect: Using anonymous functions cannot be properly removed
+im.on(WKIMEvent.Message, (message) => {
+    console.log('Handle message:', message);
+});
+
+// This cannot remove the above listener because the function reference is different
+im.off(WKIMEvent.Message, (message) => {
+    console.log('Handle message:', message);
+});
+```
+
+#### Practical Application Example
+
+```javascript
+class ChatManager {
+    constructor() {
+        // Bind methods to instance to ensure correct 'this' context
+        this.handleMessage = this.handleMessage.bind(this);
+        this.handleConnect = this.handleConnect.bind(this);
+        this.handleDisconnect = this.handleDisconnect.bind(this);
+        this.handleError = this.handleError.bind(this);
+    }
+
+    init() {
+        // Initialize SDK
+        this.im = WKIM.init("ws://your-server.com:5200", {
+            uid: "user123",
+            token: "user-token"
+        });
+
+        // Add event listeners
+        this.im.on(WKIMEvent.Message, this.handleMessage);
+        this.im.on(WKIMEvent.Connect, this.handleConnect);
+        this.im.on(WKIMEvent.Disconnect, this.handleDisconnect);
+        this.im.on(WKIMEvent.Error, this.handleError);
+    }
+
+    destroy() {
+        if (this.im) {
+            // Remove event listeners - use the same method references
+            this.im.off(WKIMEvent.Message, this.handleMessage);
+            this.im.off(WKIMEvent.Connect, this.handleConnect);
+            this.im.off(WKIMEvent.Disconnect, this.handleDisconnect);
+            this.im.off(WKIMEvent.Error, this.handleError);
+
+            this.im = null;
+        }
+    }
+
+    handleMessage(message) {
+        console.log('Message received:', message);
+    }
+
+    handleConnect(result) {
+        console.log('Connection successful:', result);
+    }
+
+    handleDisconnect(disconnectInfo) {
+        console.log('Connection lost:', disconnectInfo);
+        console.log('Disconnect code:', disconnectInfo.code, 'reason:', disconnectInfo.reason);
+    }
+
+    handleError(error) {
+        console.log('Error occurred:', error);
+    }
+}
+
+// Usage example
+const chatManager = new ChatManager();
+chatManager.init();
+
+// Cleanup when page unloads
+window.addEventListener('beforeunload', () => {
+    chatManager.destroy();
+});
+```
+
+#### Framework Integration Best Practices
+
+**React Example:**
+
+```javascript
+import React, { useEffect, useRef } from 'react';
+import { WKIM, WKIMEvent } from 'easyjssdk';
+
+function ChatComponent() {
+    const imRef = useRef(null);
+
+    useEffect(() => {
+        // Define event handler functions
+        const handleMessage = (message) => {
+            console.log('Message received:', message);
+        };
+
+        const handleConnect = (result) => {
+            console.log('Connection successful:', result);
+        };
+
+        // Initialize SDK
+        const im = WKIM.init("ws://your-server.com:5200", {
+            uid: "user123",
+            token: "user-token"
+        });
+        imRef.current = im;
+
+        // Add event listeners
+        im.on(WKIMEvent.Message, handleMessage);
+        im.on(WKIMEvent.Connect, handleConnect);
+
+        // Cleanup function: remove listeners when component unmounts
+        return () => {
+            if (imRef.current) {
+                imRef.current.off(WKIMEvent.Message, handleMessage);
+                imRef.current.off(WKIMEvent.Connect, handleConnect);
+            }
+        };
+    }, []);
+
+    return <div>Chat Component</div>;
+}
+```
+
+**Vue Example:**
+
+```javascript
+export default {
+    data() {
+        return {
+            im: null
+        };
+    },
+
+    mounted() {
+        // Define event handler functions
+        this.handleMessage = (message) => {
+            console.log('Message received:', message);
+        };
+
+        this.handleConnect = (result) => {
+            console.log('Connection successful:', result);
+        };
+
+        // Initialize SDK
+        this.im = WKIM.init("ws://your-server.com:5200", {
+            uid: "user123",
+            token: "user-token"
+        });
+
+        // Add event listeners
+        this.im.on(WKIMEvent.Message, this.handleMessage);
+        this.im.on(WKIMEvent.Connect, this.handleConnect);
+    },
+
+    beforeUnmount() {
+        // Remove listeners before component destruction
+        if (this.im) {
+            this.im.off(WKIMEvent.Message, this.handleMessage);
+            this.im.off(WKIMEvent.Connect, this.handleConnect);
+        }
+    }
+};
+```
+
+<Tip>
+  **Source Code Reference**: You can check the [EasyJSSDK source code](https://github.com/WuKongIM/EasyJSSDK/blob/main/src/index.ts) to understand the specific implementation details of the `off` method.
+</Tip>
+
+### 2.5 Connect to Server
+
+```javascript
+// 4. Connect to server
+try {
+    await im.connect();
+    console.log("Connection successful!");
+} catch (error) {
+    console.error("Connection failed:", error);
+}
+```
+
+### 2.6 Send Messages
+
+```javascript
+// 5. Send message example
+async function sendMessage() {
+    const targetChannelID = "friend_user_id"; // Target user ID
+    const messagePayload = { 
+        type: 1, 
+        content: "Hello from EasyJSSDK!" 
+    }; // Your custom message payload
+    
+    try {
+        const result = await im.send(targetChannelID, WKIMChannelType.Person, messagePayload);
+        console.log("Message sent successfully:", result);
+    } catch (error) {
+        console.error("Message sending failed:", error);
+    }
+}
+```
+
+## Related Resources
+
+<CardGroup cols={2}>
+  <Card title="Complete Example Code" icon="code" href="https://github.com/WuKongIM/EasyJSSDK/blob/main/example/app.js">
+    View complete example code and more feature demonstrations
+  </Card>
+  <Card title="Complete Protocol Documentation" icon="file-text" href="https://github.com/WuKongIM/WuKongIM/blob/main/pkg/jsonrpc/wukongim_rpc_schema.json">
+    View WuKongIM's complete protocol documentation
+  </Card>
+  <Card title="GitHub Repository" icon="github" href="https://github.com/WuKongIM/EasyJSSDK">
+    Visit EasyJSSDK's GitHub repository
+  </Card>
+  <Card title="Issue Feedback" icon="bug" href="https://github.com/WuKongIM/EasyJSSDK/issues">
+    Report issues or provide suggestions
+  </Card>
+</CardGroup>

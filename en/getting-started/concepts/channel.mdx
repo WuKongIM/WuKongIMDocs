@@ -1,0 +1,221 @@
+---
+title: "Channel"
+description: "Core structure and management methods of WuKongIM channels"
+icon: "hash"
+---
+
+## Concept Explanation
+
+### What is a Channel?
+
+A Channel is the carrier for message transmission in WuKongIM, defining the target and scope of message delivery. Each channel has a unique identifier and type, used to organize and manage different communication scenarios.
+
+### Why are Channels Important?
+
+- **Message Routing**: Channels determine where messages are sent, forming the foundation of message transmission
+- **Permission Control**: Different channel types have different permissions and management rules
+- **Scenario Differentiation**: Channel types distinguish between different scenarios like one-on-one chat and group chat
+
+### Relationship with Other Concepts
+
+- **Message**: All messages must specify a target channel to be sent
+- **User**: Users communicate through channels, can be channel creators or participants
+- **Conversation**: Each conversation corresponds to a channel; the conversation list is actually the list of channels a user participates in
+
+## Core Structure
+
+Channels are the carriers of message transmission, containing the following core attributes:
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `channel_id` | string | Channel unique identifier |
+| `channel_type` | integer | Channel type (1=personal, 2=group) |
+| `large` | integer | Large channel identifier (0=no, 1=yes) |
+| `ban` | integer | Disabled status (0=no, 1=yes) |
+| `disband` | integer | Disbanded status (0=no, 1=yes) |
+
+### Channel Types
+
+- **Personal Channel (1)**: One-on-one private chat
+- **Group Channel (2)**: Multi-user group chat
+- **Customer Service Channel (3)**: Customer service channel, no permission checks
+- **Community Channel (4)**: Community channel, similar to Discord channels
+- **Community Topic Channel (5)**: Community topic channel, similar to Discord sub-channels
+- **News Channel (6)**: News channel (with temporary subscriber concept, join temporary subscription when viewing news, exit when leaving)
+- **Live Channel (9)**: Live channel (live channels don't save recent conversation data)
+- **Visitor Channel (10)**: Visitor channel (channel ID is visitor ID, supports only one visitor subscriber and multiple customer service subscribers, can replace customer service channels for customer service scenarios)
+- **Personal Agent Channel (11)**: Personal Agent channel (AI Agent channel, channel ID structure is UID@AgentID, similar to personal chat channel, optimized for AI Agent scenarios)
+- **Group Agent Channel (12)**: Group Agent channel (AI Agent group chat channel, similar to group chat channel, optimized for multi-Agent collaboration scenarios)
+
+### Channel Example
+
+```json
+{
+  "channel_id": "group123",
+  "channel_type": 2,
+  "large": 1,
+  "ban": 0,
+  "disband": 0
+}
+```
+
+## Related API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/channel` | POST | Create channel |
+| `/channel/info` | POST | Get channel information |
+| `/channel/delete` | DELETE | Delete channel |
+| `/channel/subscriber_add` | POST | Add subscribers |
+| `/channel/subscriber_remove` | POST | Remove subscribers |
+| `/channel/messagesync` | POST | Sync channel messages |
+
+## EasySDK Code Examples
+
+### Send Messages to Different Channel Types
+
+<CodeGroup>
+```javascript Web
+import { WKIM, WKIMChannelType } from 'easyjssdk';
+
+const im = WKIM.init("ws://your-server.com:5200", {
+  uid: "your_user_id",
+  token: "your_token"
+});
+
+// Send to personal channel (one-on-one chat)
+const personalPayload = {
+  type: 1,
+  content: "Hello!"
+};
+await im.send("user123", WKIMChannelType.Person, personalPayload);
+
+// Send to group channel (group chat)
+const groupPayload = {
+  type: 1,
+  content: "Hello everyone!"
+};
+await im.send("group123", WKIMChannelType.Group, groupPayload);
+```
+
+```swift iOS
+import WuKongEasySDK
+
+let config = WuKongConfig(
+    serverUrl: "ws://your-server.com:5200",
+    uid: "your_user_id",
+    token: "your_token"
+)
+let easySDK = WuKongEasySDK(config: config)
+
+// Send to personal channel (one-on-one chat)
+let personalPayload = MessagePayload(
+    type: 1,
+    content: "Hello!"
+)
+try await easySDK.send(
+    channelId: "user123",
+    channelType: .person,
+    payload: personalPayload
+)
+
+// Send to group channel (group chat)
+let groupPayload = MessagePayload(
+    type: 1,
+    content: "Hello everyone!"
+)
+try await easySDK.send(
+    channelId: "group123",
+    channelType: .group,
+    payload: groupPayload
+)
+```
+
+```kotlin Android
+import com.githubim.easysdk.WuKongEasySDK
+import com.githubim.easysdk.WuKongConfig
+import com.githubim.easysdk.WuKongChannelType
+
+val config = WuKongConfig.Builder()
+    .serverUrl("ws://your-server.com:5200")
+    .uid("your_user_id")
+    .token("your_token")
+    .build()
+val easySDK = WuKongEasySDK.getInstance()
+easySDK.init(this, config)
+
+// Send to personal channel (one-on-one chat)
+val personalPayload = MessagePayload(
+    type = 1,
+    content = "Hello!"
+)
+easySDK.send(
+    channelId = "user123",
+    channelType = WuKongChannelType.PERSON,
+    payload = personalPayload
+)
+
+// Send to group channel (group chat)
+val groupPayload = MessagePayload(
+    type = 1,
+    content = "Hello everyone!"
+)
+easySDK.send(
+    channelId = "group123",
+    channelType = WuKongChannelType.GROUP,
+    payload = groupPayload
+)
+```
+
+```dart Flutter
+import 'package:wukong_easy_sdk/wukong_easy_sdk.dart';
+
+final config = WuKongConfig(
+  serverUrl: "ws://your-server.com:5200",
+  uid: "your_user_id",
+  token: "your_token",
+);
+final easySDK = WuKongEasySDK.getInstance();
+await easySDK.init(config);
+
+// Send to personal channel (one-on-one chat)
+final personalPayload = MessagePayload(
+  type: 1,
+  content: "Hello!",
+);
+await easySDK.send(
+  channelId: "user123",
+  channelType: WuKongChannelType.person,
+  payload: personalPayload,
+);
+
+// Send to group channel (group chat)
+final groupPayload = MessagePayload(
+  type: 1,
+  content: "Hello everyone!",
+);
+await easySDK.send(
+  channelId: "group123",
+  channelType: WuKongChannelType.group,
+  payload: groupPayload,
+);
+```
+</CodeGroup>
+
+### Channel Type Description
+
+<Note>
+**Personal Channel (person)**:
+- `channelId` is the other user's ID
+- Used for one-on-one private chat
+- Example: To send to user "user123", channelId is "user123"
+
+**Group Channel (group)**:
+- `channelId` is the group's ID
+- Used for multi-user group chat
+- Example: To send to group "group123", channelId is "group123"
+</Note>
+
+<Note>
+  Channels are uniquely identified by the combination of `channel_id` and `channel_type`, serving as the fundamental carrier for message transmission.
+</Note>

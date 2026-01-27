@@ -1,0 +1,397 @@
+---
+title: "Data Source Configuration"
+description: "WuKongIM Android SDK data source configuration, including file upload/download, conversation sync, channel information and message sync"
+icon: "database"
+---
+
+Data source management is one of the core functions of WuKongIM SDK, responsible for handling key business logic such as file upload/download, conversation sync, channel information retrieval, and message sync.
+
+## File Management
+
+### Listen for Attachment Upload
+
+When sending custom attachment messages, the message sent to the recipient is a network address, not the actual file. In this case, we need to listen for attachment uploads.
+
+<CodeGroup>
+```java Java
+WKIM.getInstance().getMsgManager().addOnUploadAttachListener(new IUploadAttachmentListener() {
+    @Override
+    public void onUploadAttachmentListener(WKMsg wkMsg, IUploadAttacResultListener listener) {
+        // Upload unuploaded files to server and return to SDK
+        if(wkMsg.type == WKMsgContentType.WK_IMAGE){
+            WKMediaMessageContent mediaMessageContent = (WKMediaMessageContent) wkMsg.baseContentMsgModel;
+            if (TextUtils.isEmpty(mediaMessageContent.url)) {
+                // TODO: Upload file
+                // ...
+                mediaMessageContent.url = "xxxxxx"; // Set network address and return to SDK
+                listener.onUploadResult(true, mediaMessageContent);
+            }
+        }
+    }
+});
+```
+
+```kotlin Kotlin
+WKIM.getInstance().msgManager.addOnUploadAttachListener { wkMsg, listener ->
+    // Upload unuploaded files to server and return to SDK
+    if (wkMsg.type == WKMsgContentType.WK_IMAGE) {
+        val mediaMessageContent = wkMsg.baseContentMsgModel as WKMediaMessageContent
+        if (TextUtils.isEmpty(mediaMessageContent.url)) {
+            // TODO: Upload file
+            // ...
+            mediaMessageContent.url = "xxxxxx" // Set network address and return to SDK
+            listener.onUploadResult(true, mediaMessageContent)
+        }
+    }
+}
+```
+</CodeGroup>
+
+### Listen for Attachment Download
+
+The SDK will not actively download message attachments. When receiving messages with attachments, the app needs to download them as needed. After the app completes the download, it can change the local file address to avoid repeated downloads.
+
+<CodeGroup>
+```java Java
+/**
+ * Update message content
+ *
+ * @param clientMsgNo       Client message ID
+ * @param messageContent    Message module - save local address in messageContent
+ * @param isRefreshUI       Whether to notify UI to refresh corresponding message
+ */
+WKIM.getInstance().getMsgManager().updateContent(String clientMsgNo, WKMessageContent messageContent, boolean isRefreshUI);
+```
+
+```kotlin Kotlin
+WKIM.getInstance().msgManager.updateContent(clientMsgNo, messageContent)
+```
+</CodeGroup>
+
+### Complete File Management Example
+
+```java
+public class FileManager {
+    
+    private static final String TAG = "FileManager";
+    
+    public void initialize() {
+        // Set file upload listener
+        WKIM.getInstance().getMsgManager().addOnUploadAttachListener(this::handleFileUpload);
+    }
+    
+    private void handleFileUpload(WKMsg wkMsg, IUploadAttacResultListener listener) {
+        switch (wkMsg.type) {
+            case WKMsgContentType.WK_IMAGE:
+                uploadImage(wkMsg, listener);
+                break;
+            case WKMsgContentType.WK_VIDEO:
+                uploadVideo(wkMsg, listener);
+                break;
+            case WKMsgContentType.WK_VOICE:
+                uploadVoice(wkMsg, listener);
+                break;
+            case WKMsgContentType.WK_FILE:
+                uploadFile(wkMsg, listener);
+                break;
+            default:
+                listener.onUploadResult(false, null);
+                break;
+        }
+    }
+    
+    private void uploadImage(WKMsg wkMsg, IUploadAttacResultListener listener) {
+        WKImageContent imageContent = (WKImageContent) wkMsg.baseContentMsgModel;
+        
+        if (!TextUtils.isEmpty(imageContent.url)) {
+            // Already has network address, return directly
+            listener.onUploadResult(true, imageContent);
+            return;
+        }
+        
+        // Upload image to server
+        String localPath = imageContent.localPath;
+        if (TextUtils.isEmpty(localPath)) {
+            listener.onUploadResult(false, null);
+            return;
+        }
+        
+        // Async upload
+        uploadFileToServer(localPath, "image", new UploadCallback() {
+            @Override
+            public void onSuccess(String url) {
+                imageContent.url = url;
+                listener.onUploadResult(true, imageContent);
+            }
+            
+            @Override
+            public void onError(String error) {
+                Log.e(TAG, "Image upload failed: " + error);
+                listener.onUploadResult(false, null);
+            }
+        });
+    }
+    
+    private void uploadVideo(WKMsg wkMsg, IUploadAttacResultListener listener) {
+        WKVideoContent videoContent = (WKVideoContent) wkMsg.baseContentMsgModel;
+        
+        if (!TextUtils.isEmpty(videoContent.url)) {
+            listener.onUploadResult(true, videoContent);
+            return;
+        }
+        
+        String localPath = videoContent.localPath;
+        if (TextUtils.isEmpty(localPath)) {
+            listener.onUploadResult(false, null);
+            return;
+        }
+        
+        // Upload video and thumbnail
+        uploadFileToServer(localPath, "video", new UploadCallback() {
+            @Override
+            public void onSuccess(String url) {
+                videoContent.url = url;
+                
+                // If there's a thumbnail, upload it too
+                if (!TextUtils.isEmpty(videoContent.coverLocalPath)) {
+                    uploadFileToServer(videoContent.coverLocalPath, "image", new UploadCallback() {
+                        @Override
+                        public void onSuccess(String coverUrl) {
+                            videoContent.cover = coverUrl;
+                            listener.onUploadResult(true, videoContent);
+                        }
+                        
+                        @Override
+                        public void onError(String error) {
+                            // Thumbnail upload failed, but video upload succeeded
+                            listener.onUploadResult(true, videoContent);
+                        }
+                    });
+                } else {
+                    listener.onUploadResult(true, videoContent);
+                }
+            }
+            
+            @Override
+            public void onError(String error) {
+                Log.e(TAG, "Video upload failed: " + error);
+                listener.onUploadResult(false, null);
+            }
+        });
+    }
+    
+    // File upload to server implementation
+    private void uploadFileToServer(String localPath, String fileType, UploadCallback callback) {
+        // Implement specific file upload logic here
+        // Can use OkHttp, Retrofit or other network libraries
+        
+        File file = new File(localPath);
+        if (!file.exists()) {
+            callback.onError("File does not exist");
+            return;
+        }
+        
+        // Example: Using OkHttp to upload file
+        RequestBody fileBody = RequestBody.create(MediaType.parse("application/octet-stream"), file);
+        MultipartBody.Part filePart = MultipartBody.Part.createFormData("file", file.getName(), fileBody);
+        
+        ApiService.uploadFile(filePart)
+                .enqueue(new Callback<UploadResponse>() {
+                    @Override
+                    public void onResponse(Call<UploadResponse> call, Response<UploadResponse> response) {
+                        if (response.isSuccessful() && response.body() != null) {
+                            callback.onSuccess(response.body().getUrl());
+                        } else {
+                            callback.onError("Upload failed: " + response.message());
+                        }
+                    }
+                    
+                    @Override
+                    public void onFailure(Call<UploadResponse> call, Throwable t) {
+                        callback.onError("Network error: " + t.getMessage());
+                    }
+                });
+    }
+    
+    // Download file and update message content
+    public void downloadAndUpdateMessage(WKMsg message) {
+        if (message.baseContentMsgModel instanceof WKMediaMessageContent) {
+            WKMediaMessageContent mediaContent = (WKMediaMessageContent) message.baseContentMsgModel;
+            
+            if (!TextUtils.isEmpty(mediaContent.url) && TextUtils.isEmpty(mediaContent.localPath)) {
+                downloadFile(mediaContent.url, new DownloadCallback() {
+                    @Override
+                    public void onSuccess(String localPath) {
+                        mediaContent.localPath = localPath;
+                        
+                        // Update message content
+                        WKIM.getInstance().getMsgManager().updateContent(
+                                message.clientMsgNO, 
+                                mediaContent, 
+                                true // Refresh UI
+                        );
+                    }
+                    
+                    @Override
+                    public void onError(String error) {
+                        Log.e(TAG, "File download failed: " + error);
+                    }
+                });
+            }
+        }
+    }
+    
+    // Callback interfaces
+    interface UploadCallback {
+        void onSuccess(String url);
+        void onError(String error);
+    }
+    
+    interface DownloadCallback {
+        void onSuccess(String localPath);
+        void onError(String error);
+    }
+}
+```
+
+## Recent Conversation Data Source
+
+<CodeGroup>
+```java Java
+WKIM.getInstance().getConversationManager().addOnSyncConversationListener(new ISyncConversationChat() {
+    @Override
+    public void syncConversationChat(String last_msg_seqs, int msg_count, long version, ISyncConversationChatBack iSyncConversationChatBack) {
+        /**
+         * Sync conversations
+         *
+         * @param last_msg_seqs     Recent conversation list msg_seq collection
+         * @param msg_count         Message sync count in conversations
+         * @param version           Maximum version number
+         * @param iSyncConvChatBack Callback
+         */
+        // Need to request business interface and return data to SDK
+        syncConversationsFromServer(last_msg_seqs, msg_count, version, iSyncConversationChatBack);
+    }
+});
+```
+
+```kotlin Kotlin
+WKIM.getInstance().conversationManager.addOnSyncConversationListener { last_msg_seqs, msg_count, version, iSyncConversationChatBack ->
+    // TODO: Sync recent conversation data
+    syncConversationsFromServer(last_msg_seqs, msg_count, version, iSyncConversationChatBack)
+}
+```
+</CodeGroup>
+
+## Channel Information Data Source
+
+<CodeGroup>
+```java Java
+// Listen for getting channel information
+WKIM.getInstance().getChannelManager().addOnGetChannelInfoListener(new IGetChannelInfo() {
+    @Override
+    public WKChannel onGetChannelInfo(String channelID, byte channelType, IChannelInfoListener iChannelInfoListener) {
+        // Whether to get personal or group info can be distinguished by channelType
+        // If app has local channel info, return data directly; otherwise get network data and return via iChannelInfoListener
+        return getChannelFromCache(channelID, channelType, iChannelInfoListener);
+    }
+});
+```
+
+```kotlin Kotlin
+// Listen for getting channel information
+WKIM.getInstance().channelManager.addOnGetChannelInfoListener { channelID, channelType, iChannelInfoListener ->
+    // Whether to get personal or group info can be distinguished by channelType
+    // If app has local channel info, return data directly; otherwise get network data and return via iChannelInfoListener
+    getChannelFromCache(channelID, channelType, iChannelInfoListener)
+}
+```
+</CodeGroup>
+
+<Note>
+Built-in channel types in SDK can be viewed through `WKChannelType`
+</Note>
+
+## Channel Member Data Source
+
+<CodeGroup>
+```java Java
+// Listen for getting channel member information
+WKIM.getInstance().getChannelMembersManager().addOnGetChannelMembersListener((channelID, channelType, keyword, page, limit, iChannelMemberListResult) -> {
+    // Get channel members and return to SDK via iChannelMembersListener
+    fetchChannelMembers(channelID, channelType, keyword, page, limit, iChannelMemberListResult);
+});
+```
+
+```kotlin Kotlin
+// Listen for getting channel member information
+WKIM.getInstance().channelMembersManager.addOnGetChannelMembersListener { channelID, channelType, keyword, page, limit, back ->
+    // Get channel members and return to SDK via iChannelMembersListener
+    fetchChannelMembers(channelID, channelType, keyword, page, limit, back)
+}
+```
+</CodeGroup>
+
+## Channel Message Data Source
+
+<CodeGroup>
+```java Java
+WKIM.getInstance().getMsgManager().addOnSyncChannelMsgListener(new ISyncChannelMsgListener() {
+    @Override
+    public void syncChannelMsgs(String channelID, byte channelType, long startMessageSeq, long endMessageSeq, int limit, int pullMode, ISyncChannelMsgBack iSyncChannelMsgBack) {
+        /**
+         * Sync messages for a channel
+         *
+         * @param channelID           Channel ID
+         * @param channelType         Channel type
+         * @param startMessageSeq     Start message sequence (result includes start_message_seq message)
+         * @param endMessageSeq       End message sequence (result excludes end_message_seq message)
+         * @param limit               Message count limit
+         * @param pullMode            Pull mode 0: pull down 1: pull up
+         * @param iSyncChannelMsgBack Request return
+         */
+        syncMessagesFromServer(channelID, channelType, startMessageSeq, endMessageSeq, limit, pullMode, iSyncChannelMsgBack);
+    }
+});
+```
+
+```kotlin Kotlin
+WKIM.getInstance().msgManager.addOnSyncChannelMsgListener { channelID, channelType, startMessageSeq, endMessageSeq, limit, pullMode, iSyncChannelMsgBack ->
+    // Call interface to get channel history messages
+    syncMessagesFromServer(channelID, channelType, startMessageSeq, endMessageSeq, limit, pullMode, iSyncChannelMsgBack)
+}
+```
+</CodeGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Advanced Features"
+    icon="cog"
+    href="/en/sdk/wukongim/android/advance"
+  >
+    Explore advanced features and optimization
+  </Card>
+  <Card
+    title="Channel Member Management"
+    icon="user-group"
+    href="/en/sdk/wukongim/android/channel-member"
+  >
+    Return to channel member management
+  </Card>
+  <Card
+    title="Integration Guide"
+    icon="rocket"
+    href="/en/sdk/wukongim/android/integration"
+  >
+    Return to integration guide
+  </Card>
+  <Card
+    title="Message Management"
+    icon="message-circle"
+    href="/en/sdk/wukongim/android/message"
+  >
+    Return to message management functionality
+  </Card>
+</CardGroup>

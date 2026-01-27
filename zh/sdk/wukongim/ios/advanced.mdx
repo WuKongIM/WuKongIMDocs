@@ -1,0 +1,671 @@
+---
+title: "高级功能"
+description: "WuKongIM iOS SDK 高级功能，包括自定义消息类型和扩展功能"
+icon: "settings"
+---
+
+高级功能为开发者提供了扩展 WuKongIM iOS SDK 的能力，包括自定义消息类型、附件消息处理等企业级功能。
+
+## 自定义消息
+
+### 自定义普通消息
+
+我们以自定义一个 GIF 消息为例，展示如何创建自定义消息类型。
+
+#### 第一步：继承 WKMessageContent 和定义消息结构
+
+<CodeGroup>
+```objc Objective-C
+@interface WKGIFContent : WKMessageContent
+
+// GIF的地址
+@property(nonatomic, copy) NSString *url;
+// 宽度
+@property(nonatomic, assign) NSInteger width;
+// 高度
+@property(nonatomic, assign) NSInteger height;
+
+@end
+```
+
+```swift Swift
+class WKGIFContent: WKMessageContent {
+    
+    // GIF的地址
+    var url: String?
+    // 宽度
+    var width: Int = 0
+    // 高度
+    var height: Int = 0
+}
+```
+</CodeGroup>
+
+#### 第二步：编码和解码
+
+最终传递的消息内容为 `{"type":3,"url":"xxxx","width":xxx,"height":xxx}`
+
+<CodeGroup>
+```objc Objective-C
+@implementation WKGIFContent
+
+// 定义消息正文类型
+- (NSNumber*)contentType {
+    return @(3);
+}
+
+// 发送消息时对消息内容编码
+- (NSDictionary *)encodeWithJSON {
+    NSMutableDictionary *dataDict = [NSMutableDictionary dictionary];
+    [dataDict setObject:self.url ?: @"" forKey:@"url"];
+    [dataDict setObject:@(self.width) forKey:@"width"];
+    [dataDict setObject:@(self.height) forKey:@"height"];
+    return dataDict;
+}
+
+// 收到消息时对消息内容解码
+- (void)decodeWithJSON:(NSDictionary *)contentDic {
+    self.url = contentDic[@"url"];
+    self.width = contentDic[@"width"] ? [contentDic[@"width"] integerValue] : 100;
+    self.height = contentDic[@"height"] ? [contentDic[@"height"] integerValue] : 100;
+}
+
+// 最近会话显示的内容
+- (NSString *)conversationDigest {
+    return @"[GIF表情]";
+}
+
+@end
+```
+
+```swift Swift
+extension WKGIFContent {
+    
+    // 定义消息正文类型
+    override func contentType() -> NSNumber {
+        return NSNumber(value: 3)
+    }
+    
+    // 发送消息时对消息内容编码
+    override func encodeWithJSON() -> [String: Any] {
+        var dataDict: [String: Any] = [:]
+        dataDict["url"] = url ?? ""
+        dataDict["width"] = width
+        dataDict["height"] = height
+        return dataDict
+    }
+    
+    // 收到消息时对消息内容解码
+    override func decodeWithJSON(_ contentDic: [String: Any]) {
+        url = contentDic["url"] as? String
+        width = (contentDic["width"] as? Int) ?? 100
+        height = (contentDic["height"] as? Int) ?? 100
+    }
+    
+    // 最近会话显示的内容
+    override func conversationDigest() -> String {
+        return "[GIF表情]"
+    }
+}
+```
+</CodeGroup>
+
+#### 第三步：注册
+
+<CodeGroup>
+```objc Objective-C
+[[WKSDK shared] registerMessageContent:WKGIFContent.class];
+```
+
+```swift Swift
+WKSDK.shared().registerMessageContent(WKGIFContent.self)
+```
+</CodeGroup>
+
+### 完整 GIF 消息实现示例
+
+```objc
+@interface WKGIFContent : WKMessageContent
+
+@property(nonatomic, copy) NSString *url;
+@property(nonatomic, assign) NSInteger width;
+@property(nonatomic, assign) NSInteger height;
+@property(nonatomic, copy) NSString *thumbnail; // 缩略图
+@property(nonatomic, assign) NSTimeInterval duration; // 动画时长
+@property(nonatomic, assign) NSInteger fileSize; // 文件大小
+
+@end
+
+@implementation WKGIFContent
+
+- (NSNumber*)contentType {
+    return @(3);
+}
+
+- (NSDictionary *)encodeWithJSON {
+    NSMutableDictionary *dataDict = [NSMutableDictionary dictionary];
+    [dataDict setObject:self.url ?: @"" forKey:@"url"];
+    [dataDict setObject:@(self.width) forKey:@"width"];
+    [dataDict setObject:@(self.height) forKey:@"height"];
+    
+    if (self.thumbnail) {
+        [dataDict setObject:self.thumbnail forKey:@"thumbnail"];
+    }
+    if (self.duration > 0) {
+        [dataDict setObject:@(self.duration) forKey:@"duration"];
+    }
+    if (self.fileSize > 0) {
+        [dataDict setObject:@(self.fileSize) forKey:@"file_size"];
+    }
+    
+    return dataDict;
+}
+
+- (void)decodeWithJSON:(NSDictionary *)contentDic {
+    self.url = contentDic[@"url"];
+    self.width = contentDic[@"width"] ? [contentDic[@"width"] integerValue] : 100;
+    self.height = contentDic[@"height"] ? [contentDic[@"height"] integerValue] : 100;
+    self.thumbnail = contentDic[@"thumbnail"];
+    self.duration = contentDic[@"duration"] ? [contentDic[@"duration"] doubleValue] : 0;
+    self.fileSize = contentDic[@"file_size"] ? [contentDic[@"file_size"] integerValue] : 0;
+}
+
+- (NSString *)conversationDigest {
+    return @"[GIF动图]";
+}
+
+// 搜索关键词
+- (NSString *)searchableWord {
+    return @"[GIF] [动图] [表情]";
+}
+
+// 验证消息内容
+- (BOOL)isValid {
+    return self.url.length > 0 && self.width > 0 && self.height > 0;
+}
+
+@end
+
+// 注册 GIF 消息类型
+[[WKSDK shared] registerMessageContent:WKGIFContent.class];
+
+// 发送 GIF 消息
+- (void)sendGIFMessage:(WKChannel *)channel gifURL:(NSString *)gifURL width:(NSInteger)width height:(NSInteger)height {
+    WKGIFContent *gifContent = [[WKGIFContent alloc] init];
+    gifContent.url = gifURL;
+    gifContent.width = width;
+    gifContent.height = height;
+    
+    if ([gifContent isValid]) {
+        [[WKSDK shared].chatManager sendMessage:gifContent channel:channel];
+    }
+}
+```
+
+### 自定义附件消息
+
+自定义附件消息的流程与普通消息差异不大，我们以图片消息为例。
+
+#### 第一步：继承 WKMediaMessageContent
+
+<Note>
+注意这里是继承 WKMediaMessageContent 不是 WKMessageContent
+</Note>
+
+最终传递的消息内容为 `{"type":4,"url":"xxxx","width":xxx,"height":xxx}`
+
+<CodeGroup>
+```objc Objective-C
+@interface WKImageContent : WKMediaMessageContent
+
+@property(nonatomic, assign) CGFloat width; // 图片宽度
+@property(nonatomic, assign) CGFloat height; // 图片高度
+@property(nonatomic, strong) NSData *imageData; // 图片数据
+
+@end
+```
+
+```swift Swift
+class WKImageContent: WKMediaMessageContent {
+    
+    var width: CGFloat = 0 // 图片宽度
+    var height: CGFloat = 0 // 图片高度
+    var imageData: Data? // 图片数据
+}
+```
+</CodeGroup>
+
+#### 第二步：编码解码和将需要上传的数据写入本地路径
+
+<CodeGroup>
+```objc Objective-C
+@implementation WKImageContent
+
+// 定义消息正文类型
+- (NSNumber*)contentType {
+    return @(4);
+}
+
+// 将图片数据写入到本地路径，这样后面的上传任务会将此路径的附件上传到服务器
+- (void)writeDataToLocalPath {
+    [super writeDataToLocalPath];
+    [self.imageData writeToFile:self.localPath atomically:YES];
+}
+
+// 附件消息当附件上传成功后会获取到上传后的self.remoteUrl下载地址，我们只需要将此下载地址编码到json里
+// 附件的上传任务进度管理请查看 [WKSDK shared].mediaManager
+- (NSDictionary *)encodeWithJSON {
+    NSMutableDictionary *dataDict = [NSMutableDictionary dictionary];
+    [dataDict setObject:self.remoteUrl ?: @"" forKey:@"url"];
+    [dataDict setObject:@(self.width) forKey:@"width"];
+    [dataDict setObject:@(self.height) forKey:@"height"];
+    return dataDict;
+}
+
+// 当收到消息需要解码，这时候我们只需要将下载地址url赋值给self.remoteUrl后
+// 下载任务会通过self.remoteUrl的下载地址进行下载附件
+// 附件的下载任务进度管理请查看 [WKSDK shared].mediaManager
+- (void)decodeWithJSON:(NSDictionary *)contentDic {
+    self.remoteUrl = contentDic[@"url"];
+    self.width = contentDic[@"width"] ? [contentDic[@"width"] floatValue] : 0;
+    self.height = contentDic[@"height"] ? [contentDic[@"height"] floatValue] : 0;
+}
+
+- (NSString *)conversationDigest {
+    return @"[图片]";
+}
+
+@end
+```
+
+```swift Swift
+extension WKImageContent {
+    
+    // 定义消息正文类型
+    override func contentType() -> NSNumber {
+        return NSNumber(value: 4)
+    }
+    
+    // 将图片数据写入到本地路径
+    override func writeDataToLocalPath() {
+        super.writeDataToLocalPath()
+        if let data = imageData, let path = localPath {
+            try? data.write(to: URL(fileURLWithPath: path))
+        }
+    }
+    
+    // 编码消息内容
+    override func encodeWithJSON() -> [String: Any] {
+        var dataDict: [String: Any] = [:]
+        dataDict["url"] = remoteUrl ?? ""
+        dataDict["width"] = width
+        dataDict["height"] = height
+        return dataDict
+    }
+    
+    // 解码消息内容
+    override func decodeWithJSON(_ contentDic: [String: Any]) {
+        remoteUrl = contentDic["url"] as? String
+        width = (contentDic["width"] as? CGFloat) ?? 0
+        height = (contentDic["height"] as? CGFloat) ?? 0
+    }
+    
+    override func conversationDigest() -> String {
+        return "[图片]"
+    }
+}
+```
+</CodeGroup>
+
+#### 第三步：注册
+
+<CodeGroup>
+```objc Objective-C
+[[WKSDK shared] registerMessageContent:WKImageContent.class];
+```
+
+```swift Swift
+WKSDK.shared().registerMessageContent(WKImageContent.self)
+```
+</CodeGroup>
+
+### 完整图片消息实现示例
+
+```objc
+@interface WKCustomImageContent : WKMediaMessageContent
+
+@property(nonatomic, assign) CGFloat width;
+@property(nonatomic, assign) CGFloat height;
+@property(nonatomic, strong) NSData *imageData;
+@property(nonatomic, copy) NSString *thumbnail; // 缩略图
+@property(nonatomic, assign) NSInteger originalSize; // 原始文件大小
+@property(nonatomic, assign) NSInteger compressedSize; // 压缩后大小
+
+@end
+
+@implementation WKCustomImageContent
+
+- (NSNumber*)contentType {
+    return @(104); // 自定义图片消息类型
+}
+
+- (void)writeDataToLocalPath {
+    [super writeDataToLocalPath];
+    
+    if (self.imageData && self.localPath) {
+        // 保存原始图片
+        [self.imageData writeToFile:self.localPath atomically:YES];
+        
+        // 生成缩略图
+        [self generateThumbnail];
+    }
+}
+
+- (void)generateThumbnail {
+    if (!self.imageData) return;
+    
+    UIImage *image = [UIImage imageWithData:self.imageData];
+    if (!image) return;
+    
+    // 生成缩略图
+    CGSize thumbnailSize = CGSizeMake(200, 200);
+    UIGraphicsBeginImageContextWithOptions(thumbnailSize, NO, 0.0);
+    [image drawInRect:CGRectMake(0, 0, thumbnailSize.width, thumbnailSize.height)];
+    UIImage *thumbnailImage = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    
+    if (thumbnailImage) {
+        NSData *thumbnailData = UIImageJPEGRepresentation(thumbnailImage, 0.7);
+        self.thumbnail = [thumbnailData base64EncodedStringWithOptions:0];
+    }
+}
+
+- (NSDictionary *)encodeWithJSON {
+    NSMutableDictionary *dataDict = [NSMutableDictionary dictionary];
+    [dataDict setObject:self.remoteUrl ?: @"" forKey:@"url"];
+    [dataDict setObject:@(self.width) forKey:@"width"];
+    [dataDict setObject:@(self.height) forKey:@"height"];
+    
+    if (self.thumbnail) {
+        [dataDict setObject:self.thumbnail forKey:@"thumbnail"];
+    }
+    if (self.originalSize > 0) {
+        [dataDict setObject:@(self.originalSize) forKey:@"original_size"];
+    }
+    if (self.compressedSize > 0) {
+        [dataDict setObject:@(self.compressedSize) forKey:@"compressed_size"];
+    }
+    
+    return dataDict;
+}
+
+- (void)decodeWithJSON:(NSDictionary *)contentDic {
+    self.remoteUrl = contentDic[@"url"];
+    self.width = contentDic[@"width"] ? [contentDic[@"width"] floatValue] : 0;
+    self.height = contentDic[@"height"] ? [contentDic[@"height"] floatValue] : 0;
+    self.thumbnail = contentDic[@"thumbnail"];
+    self.originalSize = contentDic[@"original_size"] ? [contentDic[@"original_size"] integerValue] : 0;
+    self.compressedSize = contentDic[@"compressed_size"] ? [contentDic[@"compressed_size"] integerValue] : 0;
+}
+
+- (NSString *)conversationDigest {
+    return @"[图片]";
+}
+
+- (NSString *)searchableWord {
+    return @"[图片] [照片] [image]";
+}
+
+- (BOOL)isValid {
+    return (self.imageData != nil || self.remoteUrl.length > 0) && self.width > 0 && self.height > 0;
+}
+
+@end
+
+// 注册自定义图片消息类型
+[[WKSDK shared] registerMessageContent:WKCustomImageContent.class];
+
+// 发送自定义图片消息
+- (void)sendCustomImageMessage:(WKChannel *)channel image:(UIImage *)image {
+    WKCustomImageContent *imageContent = [[WKCustomImageContent alloc] init];
+    imageContent.imageData = UIImageJPEGRepresentation(image, 0.8);
+    imageContent.width = image.size.width;
+    imageContent.height = image.size.height;
+    imageContent.originalSize = imageContent.imageData.length;
+    
+    if ([imageContent isValid]) {
+        [[WKSDK shared].chatManager sendMessage:imageContent channel:channel];
+    }
+}
+```
+
+## 高级消息类型示例
+
+### 位置消息
+
+```objc
+@interface WKLocationContent : WKMessageContent
+
+@property(nonatomic, assign) double latitude;   // 纬度
+@property(nonatomic, assign) double longitude;  // 经度
+@property(nonatomic, copy) NSString *address;   // 地址描述
+@property(nonatomic, copy) NSString *title;     // 位置标题
+
+@end
+
+@implementation WKLocationContent
+
+- (NSNumber*)contentType {
+    return @(102);
+}
+
+- (NSDictionary *)encodeWithJSON {
+    NSMutableDictionary *dataDict = [NSMutableDictionary dictionary];
+    [dataDict setObject:@(self.latitude) forKey:@"latitude"];
+    [dataDict setObject:@(self.longitude) forKey:@"longitude"];
+    [dataDict setObject:self.address ?: @"" forKey:@"address"];
+    if (self.title) {
+        [dataDict setObject:self.title forKey:@"title"];
+    }
+    return dataDict;
+}
+
+- (void)decodeWithJSON:(NSDictionary *)contentDic {
+    self.latitude = contentDic[@"latitude"] ? [contentDic[@"latitude"] doubleValue] : 0;
+    self.longitude = contentDic[@"longitude"] ? [contentDic[@"longitude"] doubleValue] : 0;
+    self.address = contentDic[@"address"];
+    self.title = contentDic[@"title"];
+}
+
+- (NSString *)conversationDigest {
+    return [NSString stringWithFormat:@"[位置] %@", self.title ?: self.address];
+}
+
+- (BOOL)isValid {
+    return self.latitude != 0 && self.longitude != 0 && self.address.length > 0;
+}
+
+@end
+
+// 注册位置消息
+[[WKSDK shared] registerMessageContent:WKLocationContent.class];
+```
+
+### 名片消息
+
+```objc
+@interface WKContactCardContent : WKMessageContent
+
+@property(nonatomic, copy) NSString *uid;        // 用户ID
+@property(nonatomic, copy) NSString *name;       // 用户名称
+@property(nonatomic, copy) NSString *avatar;     // 用户头像
+@property(nonatomic, copy) NSString *phone;      // 电话号码
+@property(nonatomic, copy) NSString *email;      // 邮箱地址
+
+@end
+
+@implementation WKContactCardContent
+
+- (NSNumber*)contentType {
+    return @(103);
+}
+
+- (NSDictionary *)encodeWithJSON {
+    NSMutableDictionary *dataDict = [NSMutableDictionary dictionary];
+    [dataDict setObject:self.uid ?: @"" forKey:@"uid"];
+    [dataDict setObject:self.name ?: @"" forKey:@"name"];
+    [dataDict setObject:self.avatar ?: @"" forKey:@"avatar"];
+    if (self.phone) {
+        [dataDict setObject:self.phone forKey:@"phone"];
+    }
+    if (self.email) {
+        [dataDict setObject:self.email forKey:@"email"];
+    }
+    return dataDict;
+}
+
+- (void)decodeWithJSON:(NSDictionary *)contentDic {
+    self.uid = contentDic[@"uid"];
+    self.name = contentDic[@"name"];
+    self.avatar = contentDic[@"avatar"];
+    self.phone = contentDic[@"phone"];
+    self.email = contentDic[@"email"];
+}
+
+- (NSString *)conversationDigest {
+    return [NSString stringWithFormat:@"[名片] %@", self.name];
+}
+
+- (BOOL)isValid {
+    return self.uid.length > 0 && self.name.length > 0;
+}
+
+@end
+
+// 注册名片消息
+[[WKSDK shared] registerMessageContent:WKContactCardContent.class];
+```
+
+## 消息类型管理器
+
+```objc
+@interface MessageTypeManager : NSObject
+
++ (instancetype)sharedManager;
+- (void)registerMessageType:(Class)messageClass;
+- (void)registerMultipleMessageTypes:(NSArray<Class> *)messageClasses;
+- (NSArray<NSNumber *> *)getRegisteredTypes;
+- (BOOL)isTypeRegistered:(NSInteger)type;
+
+@end
+
+@implementation MessageTypeManager
+
++ (instancetype)sharedManager {
+    static MessageTypeManager *instance = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        instance = [[MessageTypeManager alloc] init];
+    });
+    return instance;
+}
+
+- (instancetype)init {
+    self = [super init];
+    if (self) {
+        _registeredTypes = [NSMutableSet set];
+    }
+    return self;
+}
+
+- (void)registerMessageType:(Class)messageClass {
+    if ([messageClass isSubclassOfClass:[WKMessageContent class]]) {
+        [[WKSDK shared] registerMessageContent:messageClass];
+        
+        // 获取消息类型
+        WKMessageContent *content = [[messageClass alloc] init];
+        NSNumber *type = [content contentType];
+        [self.registeredTypes addObject:type];
+        
+        NSLog(@"注册消息类型: %@ (type: %@)", NSStringFromClass(messageClass), type);
+    }
+}
+
+- (void)registerMultipleMessageTypes:(NSArray<Class> *)messageClasses {
+    for (Class messageClass in messageClasses) {
+        [self registerMessageType:messageClass];
+    }
+}
+
+- (NSArray<NSNumber *> *)getRegisteredTypes {
+    return [self.registeredTypes allObjects];
+}
+
+- (BOOL)isTypeRegistered:(NSInteger)type {
+    return [self.registeredTypes containsObject:@(type)];
+}
+
+@end
+
+// 使用示例
+MessageTypeManager *manager = [MessageTypeManager sharedManager];
+
+// 批量注册自定义消息类型
+[manager registerMultipleMessageTypes:@[
+    WKGIFContent.class,
+    WKLocationContent.class,
+    WKCustomImageContent.class,
+    WKContactCardContent.class
+]];
+
+// 检查消息类型
+NSArray *registeredTypes = [manager getRegisteredTypes];
+NSLog(@"已注册的消息类型: %@", registeredTypes);
+```
+
+## 下一步
+
+<CardGroup cols={2}>
+  <Card
+    title="多媒体管理"
+    icon="file-image"
+    href="/zh/sdk/wukongim/ios/media"
+  >
+    回到多媒体管理功能
+  </Card>
+  <Card
+    title="会话管理"
+    icon="users"
+    href="/zh/sdk/wukongim/ios/conversation"
+  >
+    回到会话管理功能
+  </Card>
+  <Card
+    title="频道管理"
+    icon="hash"
+    href="/zh/sdk/wukongim/ios/channel"
+  >
+    回到频道管理功能
+  </Card>
+  <Card
+    title="聊天管理"
+    icon="message-circle"
+    href="/zh/sdk/wukongim/ios/chat"
+  >
+    回到聊天管理功能
+  </Card>
+</CardGroup>
+
+## 总结
+
+iOS SDK 现已完成所有核心功能文档：
+
+✅ **集成指南** - 完整的安装和配置指导  
+✅ **连接管理** - 连接状态和网络管理  
+✅ **聊天管理** - 消息收发和历史消息  
+✅ **频道管理** - 频道信息和成员管理  
+✅ **会话管理** - 会话列表和未读消息  
+✅ **多媒体管理** - 文件上传下载和进度管理  
+✅ **高级功能** - 自定义消息和扩展特性  
+
+iOS SDK 文档已全面完成，为开发者提供了从入门到高级的完整技术指导！🎉

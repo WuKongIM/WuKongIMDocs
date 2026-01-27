@@ -1,0 +1,409 @@
+---
+title: "Channel Management"
+description: "WuKongIM Android SDK channel management functionality, including channel information retrieval, updates and monitoring"
+icon: "hash"
+---
+
+Channel is an abstract concept in WuKongIM. Messages are first sent to channels, and channels deliver messages according to their configuration rules. Channels are divided into channel and channel details.
+
+<Note>
+Need to implement channel information data source: [Channel Information Data Source](/en/sdk/wukongim/android/datasource#channel-information-data-source)
+</Note>
+
+## Channel Information Management
+
+### Get Channel Information
+
+Get channel information, first from memory, then from database if not available:
+
+<CodeGroup>
+```java Java
+// Get channel information - first from memory, then from database if not available
+WKIM.getInstance().getChannelManager().getChannel(String channelID, byte channelType);
+```
+
+```kotlin Kotlin
+// Get channel information - first from memory, then from database if not available
+WKIM.getInstance().channelManager.getChannel(channelID, channelType)
+```
+</CodeGroup>
+
+### Force Refresh Channel Information
+
+Get channel information from remote server:
+
+<CodeGroup>
+```java Java
+// Get channel information from remote server
+WKIM.getInstance().getChannelManager().fetchChannelInfo(String channelID, byte channelType);
+```
+
+```kotlin Kotlin
+// Get channel information from remote server
+WKIM.getInstance().channelManager.fetchChannelInfo(channelID, channelType)
+```
+</CodeGroup>
+
+### Complete Usage Example
+
+```java
+public class ChatActivity extends AppCompatActivity {
+    
+    private String channelID;
+    private byte channelType;
+    private WKChannel currentChannel;
+    
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_chat);
+        
+        // Add channel refresh listener
+        WKIM.getInstance().getChannelManager().addOnRefreshChannelInfo("ChatActivity", new IRefreshChannel() {
+            @Override
+            public void onRefreshChannel(WKChannel channel, boolean isEnd) {
+                if (channel.channelID.equals(channelID) && channel.channelType == channelType) {
+                    runOnUiThread(() -> {
+                        currentChannel = channel;
+                        updateChannelUI();
+                    });
+                }
+            }
+        });
+        
+        // Load channel information
+        loadChannelInfo();
+    }
+    
+    private void loadChannelInfo() {
+        // First get from local
+        currentChannel = WKIM.getInstance().getChannelManager().getChannel(channelID, channelType);
+        
+        if (currentChannel != null) {
+            // Local data available, use directly
+            updateChannelUI();
+        } else {
+            // No local data, fetch from server
+            WKIM.getInstance().getChannelManager().fetchChannelInfo(channelID, channelType);
+            showLoadingState();
+        }
+    }
+    
+    private void updateChannelUI() {
+        // Update title
+        setTitle(currentChannel.channelRemark != null ? currentChannel.channelRemark : currentChannel.channelName);
+        
+        // Update avatar
+        loadAvatar(currentChannel.avatar);
+        
+        // Update top status
+        updateTopStatus(currentChannel.top == 1);
+        
+        // Update mute status
+        updateMuteStatus(currentChannel.mute == 1);
+        
+        hideLoadingState();
+    }
+    
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        // Remove listeners
+        WKIM.getInstance().getChannelManager().removeRefreshChannelInfo("ChatActivity");
+    }
+}
+```
+
+## Event Listening
+
+### Channel Information Refresh Listener
+
+<CodeGroup>
+```java Java
+// Listen for channel refresh events
+WKIM.getInstance().getChannelManager().addOnRefreshChannelInfo("key", new IRefreshChannel() {
+    @Override
+    public void onRefreshChannel(WKChannel channel, boolean isEnd) {
+        // Handle channel information update
+        runOnUiThread(() -> {
+            updateChannelInfo(channel);
+        });
+    }
+});
+
+// Remove listener
+WKIM.getInstance().getChannelManager().removeRefreshChannelInfo("key");
+```
+
+```kotlin Kotlin
+// Listen for channel refresh events
+WKIM.getInstance().channelManager.addOnRefreshChannelInfo("key", object : IRefreshChannel {
+    override fun onRefreshChannel(channel: WKChannel, isEnd: Boolean) {
+        // Handle channel information update
+        runOnUiThread {
+            updateChannelInfo(channel)
+        }
+    }
+})
+
+// Remove listener
+WKIM.getInstance().channelManager.removeRefreshChannelInfo("key")
+```
+</CodeGroup>
+
+<Note>
+key is the unique identifier for the listener, can be any string. The same key must be passed when adding and removing listeners
+</Note>
+
+### Channel Avatar Update Listener
+
+<CodeGroup>
+```java Java
+// Listen for channel avatar update events
+WKIM.getInstance().getChannelManager().addOnRefreshChannelAvatar(new IRefreshChannelAvatar() {
+    @Override
+    public void onRefreshChannelAvatar(String channelID, byte channelType) {
+        // Avatar needs local modification
+        String key = UUID.randomUUID().toString().replace("-", "");
+        WKIM.getInstance().getChannelManager().updateAvatarCacheKey(channelID, channelType, key);
+        
+        // Refresh avatar in UI
+        runOnUiThread(() -> {
+            refreshChannelAvatar(channelID, channelType);
+        });
+    }
+});
+```
+
+```kotlin Kotlin
+// Listen for channel avatar update events
+WKIM.getInstance().channelManager.addOnUpdateChannelAvatar("key", object : IRefreshChannelAvatar {
+    override fun onRefreshChannelAvatar(channelID: String, channelType: Int) {
+        // Avatar needs local modification
+        val key = UUID.randomUUID().toString().replace("-", "")
+        WKIM.getInstance().channelManager.updateAvatarCacheKey(channelID, channelType, key)
+        
+        // Refresh avatar in UI
+        runOnUiThread {
+            refreshChannelAvatar(channelID, channelType)
+        }
+    }
+})
+
+// Remove listener
+WKIM.getInstance().channelManager.removeUpdateChannelAvatar("key")
+```
+</CodeGroup>
+
+## Common Operations
+
+### Update Remark
+
+<CodeGroup>
+```java Java
+// Update channel remark
+WKIM.getInstance().getChannelManager().updateRemark(String channelID, byte channelType, String remark);
+```
+
+```kotlin Kotlin
+// Update channel remark
+WKIM.getInstance().channelManager.updateRemark(channelID, channelType, remark)
+```
+</CodeGroup>
+
+### Pin/Unpin Channel
+
+<CodeGroup>
+```java Java
+// Pin channel: 1=pin, 0=unpin
+WKIM.getInstance().getChannelManager().updateTop(String channelID, byte channelType, int isTop);
+```
+
+```kotlin Kotlin
+// Pin channel
+WKIM.getInstance().channelManager.setTopChannel(channelID, channelType, isTop)
+```
+</CodeGroup>
+
+### Save Channel Information
+
+<CodeGroup>
+```java Java
+// Save channel information
+WKIM.getInstance().getChannelManager().saveOrUpdateChannel(WKChannel channel);
+
+// Batch save channel information
+WKIM.getInstance().getChannelManager().saveOrUpdateChannels(List<WKChannel> list);
+```
+
+```kotlin Kotlin
+// Save channel information
+WKIM.getInstance().channelManager.saveOrUpdateChannel(channel)
+
+// Batch save channel information
+WKIM.getInstance().channelManager.saveOrUpdateChannels(list)
+```
+</CodeGroup>
+
+## WKChannel Data Structure
+
+### Channel Properties
+
+```java
+public class WKChannel {
+    // Channel ID
+    public String channelID;
+    
+    // Channel type: 1=personal chat, 2=group chat
+    public byte channelType;
+    
+    // Channel name
+    public String channelName;
+    
+    // Channel remark (personal remark or group alias)
+    public String channelRemark;
+    
+    // Channel avatar
+    public String avatar;
+    
+    // Is pinned
+    public int top;
+    
+    // Do not disturb
+    public int mute;
+    
+    // Is forbidden
+    public int forbidden;
+    
+    // Remote extensions
+    public HashMap remoteExtraMap;
+    
+    // Local extension fields
+    public HashMap extraMap;
+}
+```
+
+### Property Description
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `channelID` | String | Channel unique identifier |
+| `channelType` | byte | Channel type (1=personal, 2=group) |
+| `channelName` | String | Channel name |
+| `channelRemark` | String | Channel remark (personal remark or group alias) |
+| `avatar` | String | Channel avatar URL |
+| `top` | int | Is pinned (1=pinned, 0=not pinned) |
+| `mute` | int | Do not disturb (1=muted, 0=not muted) |
+| `forbidden` | int | Is forbidden (1=forbidden, 0=not forbidden) |
+| `remoteExtraMap` | HashMap | Remote extension fields |
+| `extraMap` | HashMap | Local extension fields |
+
+## Best Practices
+
+### 1. Channel Information Caching Strategy
+
+```java
+public class ChannelInfoManager {
+    
+    private Map<String, WKChannel> channelCache = new ConcurrentHashMap<>();
+    
+    public WKChannel getChannelWithCache(String channelID, byte channelType) {
+        String key = channelID + "_" + channelType;
+        
+        // First get from memory cache
+        WKChannel channel = channelCache.get(key);
+        if (channel != null) {
+            return channel;
+        }
+        
+        // Get from SDK
+        channel = WKIM.getInstance().getChannelManager().getChannel(channelID, channelType);
+        if (channel != null) {
+            channelCache.put(key, channel);
+            return channel;
+        }
+        
+        // Trigger network request
+        WKIM.getInstance().getChannelManager().fetchChannelInfo(channelID, channelType);
+        return null;
+    }
+    
+    public void updateChannelCache(WKChannel channel) {
+        String key = channel.channelID + "_" + channel.channelType;
+        channelCache.put(key, channel);
+    }
+    
+    public void clearCache() {
+        channelCache.clear();
+    }
+}
+```
+
+### 2. Channel Status Management
+
+```java
+public class ChannelStatusHelper {
+    
+    public static String getDisplayName(WKChannel channel) {
+        // Prioritize remark, show name if no remark
+        return !TextUtils.isEmpty(channel.channelRemark) ? 
+               channel.channelRemark : channel.channelName;
+    }
+    
+    public static boolean isTopChannel(WKChannel channel) {
+        return channel.top == 1;
+    }
+    
+    public static boolean isMuteChannel(WKChannel channel) {
+        return channel.mute == 1;
+    }
+    
+    public static boolean isForbiddenChannel(WKChannel channel) {
+        return channel.forbidden == 1;
+    }
+    
+    public static String getChannelTypeText(byte channelType) {
+        switch (channelType) {
+            case 1:
+                return "Personal";
+            case 2:
+                return "Group";
+            default:
+                return "Unknown";
+        }
+    }
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Channel Member Management"
+    icon="user-group"
+    href="/en/sdk/wukongim/android/channel-member"
+  >
+    Learn how to manage channel members
+  </Card>
+  <Card
+    title="Conversation Management"
+    icon="users"
+    href="/en/sdk/wukongim/android/conversation"
+  >
+    Handle conversation lists and unread messages
+  </Card>
+  <Card
+    title="Data Source Configuration"
+    icon="database"
+    href="/en/sdk/wukongim/android/datasource"
+  >
+    Configure channel data sources
+  </Card>
+  <Card
+    title="Message Management"
+    icon="message-circle"
+    href="/en/sdk/wukongim/android/message"
+  >
+    Return to message handling functionality
+  </Card>
+</CardGroup>

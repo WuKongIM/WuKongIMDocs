@@ -1,0 +1,504 @@
+---
+title: "5分钟集成 Flutter"
+description: "快速集成 WuKongIM Flutter EasySDK，5分钟实现聊天功能"
+icon: "clock"
+---
+
+## 概述
+
+WuKongIM Flutter EasySDK 是一个轻量级的 Flutter SDK，让您能够在 5 分钟内为 Flutter 应用添加实时聊天功能。本指南将带您快速完成从安装到发送第一条消息的全过程。
+
+<Note>
+  **系统要求**：Flutter 3.0.0 或更高版本，Dart 2.17.0 或更高版本
+</Note>
+
+## 步骤 1：安装 SDK
+
+在 `pubspec.yaml` 中添加依赖：
+
+```yaml
+dependencies:
+  flutter:
+    sdk: flutter
+  wukong_easy_sdk: ^1.0.0
+```
+
+然后运行：
+
+```bash
+flutter pub get
+```
+
+## 步骤 2：基本集成
+
+### 2.1 导入 SDK
+
+```dart
+import 'package:wukong_easy_sdk/wukong_easy_sdk.dart';
+```
+
+### 2.2 初始化 SDK
+
+```dart
+// 1. 初始化 SDK
+final config = WuKongConfig(
+  serverUrl: "ws://your-wukongim-server.com:5200",
+  uid: "your_user_id",        // 您的用户 ID
+  token: "your_auth_token",   // 您的认证 Token
+  // deviceId: "optional_device_id", // 可选：设备 ID
+  // deviceFlag: WuKongDeviceFlag.app, // 可选：设备标识，默认为 app
+);
+
+final easySDK = WuKongEasySDK.getInstance();
+await easySDK.init(config);
+```
+
+### 2.3 监听事件
+
+```dart
+// 2. 监听各种事件
+easySDK.addEventListener(WuKongEvent.connect, (ConnectResult result) {
+  print("Event: Connected! $result");
+  // 连接成功，可以开始发送消息
+  updateUI(true);
+});
+
+easySDK.addEventListener(WuKongEvent.disconnect, (DisconnectInfo disconnectInfo) {
+  print("Event: Disconnected. $disconnectInfo");
+  print("Disconnect code: ${disconnectInfo.code}, reason: ${disconnectInfo.reason}");
+  // 连接断开，更新UI状态
+  updateUI(false);
+});
+
+easySDK.addEventListener(WuKongEvent.message, (Message message) {
+  print("Event: Message Received $message");
+  // 处理接收到的消息
+  displayMessage(message);
+});
+
+easySDK.addEventListener(WuKongEvent.error, (WuKongError error) {
+  print("Event: Error Occurred ${error.message}");
+  // 处理错误，可能需要更新UI或重连
+  handleError(error);
+});
+
+// 可以为同一事件添加多个监听器
+easySDK.addEventListener(WuKongEvent.message, (Message message) {
+  print("Second listener also received message: ${message.messageId}");
+  // 在这里可以添加不同的处理逻辑
+});
+```
+
+### 2.4 移除事件监听器
+
+在某些情况下，您可能需要移除事件监听器以避免内存泄漏或重复处理。Flutter EasySDK 提供了移除监听器的方法。
+
+<Note>
+  **重要提醒**：在 Flutter 中，事件监听器的移除需要保持对监听器的引用。建议使用类属性来存储监听器引用，以便后续移除。
+</Note>
+
+#### 正确的使用方式
+
+```dart
+class ChatPage extends StatefulWidget {
+  @override
+  _ChatPageState createState() => _ChatPageState();
+}
+
+class _ChatPageState extends State<ChatPage> {
+  late WuKongEasySDK easySDK;
+  
+  // 保存监听器引用
+  WuKongEventListener<Message>? messageListener;
+  WuKongEventListener<ConnectResult>? connectListener;
+  WuKongEventListener<DisconnectInfo>? disconnectListener;
+  WuKongEventListener<WuKongError>? errorListener;
+  
+  @override
+  void initState() {
+    super.initState();
+    easySDK = WuKongEasySDK.getInstance();
+    setupEventListeners();
+    connectToServer();
+  }
+  
+  void setupEventListeners() {
+    // ✅ 正确：保存监听器引用
+    messageListener = (Message message) {
+      print("处理消息: $message");
+      if (mounted) {
+        setState(() {
+          handleMessage(message);
+        });
+      }
+    };
+    
+    connectListener = (ConnectResult result) {
+      print("连接成功: $result");
+      if (mounted) {
+        setState(() {
+          handleConnect(result);
+        });
+      }
+    };
+    
+    disconnectListener = (DisconnectInfo disconnectInfo) {
+      print("连接断开: $disconnectInfo");
+      print("断开代码: ${disconnectInfo.code}, 原因: ${disconnectInfo.reason}");
+      if (mounted) {
+        setState(() {
+          handleDisconnect(disconnectInfo);
+        });
+      }
+    };
+    
+    errorListener = (WuKongError error) {
+      print("发生错误: $error");
+      if (mounted) {
+        setState(() {
+          handleError(error);
+        });
+      }
+    };
+    
+    // 添加事件监听器
+    easySDK.addEventListener(WuKongEvent.message, messageListener!);
+    easySDK.addEventListener(WuKongEvent.connect, connectListener!);
+    easySDK.addEventListener(WuKongEvent.disconnect, disconnectListener!);
+    easySDK.addEventListener(WuKongEvent.error, errorListener!);
+  }
+  
+  void removeEventListeners() {
+    // 移除特定的事件监听器 - 使用保存的引用
+    if (messageListener != null) {
+      easySDK.removeEventListener(WuKongEvent.message, messageListener!);
+      messageListener = null;
+    }
+    
+    if (connectListener != null) {
+      easySDK.removeEventListener(WuKongEvent.connect, connectListener!);
+      connectListener = null;
+    }
+    
+    if (disconnectListener != null) {
+      easySDK.removeEventListener(WuKongEvent.disconnect, disconnectListener!);
+      disconnectListener = null;
+    }
+    
+    if (errorListener != null) {
+      easySDK.removeEventListener(WuKongEvent.error, errorListener!);
+      errorListener = null;
+    }
+  }
+  
+  @override
+  void dispose() {
+    // Widget 销毁时清理监听器
+    removeEventListeners();
+    super.dispose();
+  }
+  
+  void handleMessage(Message message) {
+    // 处理消息逻辑
+  }
+  
+  void handleConnect(ConnectResult result) {
+    // 处理连接成功逻辑
+  }
+  
+  void handleDisconnect(DisconnectInfo disconnectInfo) {
+    // 处理连接断开逻辑
+    print("处理断开事件 - 代码: ${disconnectInfo.code}, 原因: ${disconnectInfo.reason}");
+  }
+  
+  void handleError(WuKongError error) {
+    // 处理错误逻辑
+  }
+  
+  Future<void> connectToServer() async {
+    try {
+      await easySDK.connect();
+      print("连接成功！");
+    } catch (e) {
+      print("连接失败: $e");
+    }
+  }
+  
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text("聊天")),
+      body: Container(
+        // 聊天界面
+      ),
+    );
+  }
+}
+```
+
+#### 错误的使用方式
+
+```dart
+// ❌ 错误：没有保存监听器引用，无法正确移除
+class BadChatPage extends StatefulWidget {
+  @override
+  _BadChatPageState createState() => _BadChatPageState();
+}
+
+class _BadChatPageState extends State<BadChatPage> {
+  late WuKongEasySDK easySDK;
+
+  void setupEventListeners() {
+    // 这样添加的监听器无法被移除，因为没有保存引用
+    easySDK.addEventListener(WuKongEvent.message, (Message message) {
+      print("处理消息: $message");
+    });
+
+    easySDK.addEventListener(WuKongEvent.connect, (ConnectResult result) {
+      print("连接成功: $result");
+    });
+  }
+
+  void removeEventListeners() {
+    // 无法移除上面添加的监听器，因为没有引用
+    // 只能移除所有监听器
+    easySDK.removeAllEventListeners();
+  }
+}
+```
+
+#### Provider 状态管理集成示例
+
+```dart
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+class ChatProvider extends ChangeNotifier {
+  late WuKongEasySDK easySDK;
+
+  // 保存监听器引用
+  WuKongEventListener<Message>? messageListener;
+  WuKongEventListener<ConnectResult>? connectListener;
+
+  List<Message> messages = [];
+  bool isConnected = false;
+
+  ChatProvider() {
+    easySDK = WuKongEasySDK.getInstance();
+    setupEventListeners();
+  }
+
+  void setupEventListeners() {
+    messageListener = (Message message) {
+      messages.add(message);
+      notifyListeners();
+    };
+
+    connectListener = (ConnectResult result) {
+      isConnected = true;
+      notifyListeners();
+    };
+
+    // 添加监听器
+    easySDK.addEventListener(WuKongEvent.message, messageListener!);
+    easySDK.addEventListener(WuKongEvent.connect, connectListener!);
+  }
+
+  @override
+  void dispose() {
+    // Provider 销毁时清理监听器
+    if (messageListener != null) {
+      easySDK.removeEventListener(WuKongEvent.message, messageListener!);
+    }
+
+    if (connectListener != null) {
+      easySDK.removeEventListener(WuKongEvent.connect, connectListener!);
+    }
+
+    super.dispose();
+  }
+
+  Future<void> sendMessage(String content) async {
+    try {
+      final messagePayload = MessagePayload(
+        type: 1,
+        content: content,
+      );
+
+      await easySDK.send(
+        channelId: "friend_user_id",
+        channelType: WuKongChannelType.person,
+        payload: messagePayload,
+      );
+    } catch (e) {
+      print("发送消息失败: $e");
+    }
+  }
+}
+
+// 使用示例
+class ChatApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (context) => ChatProvider(),
+      child: MaterialApp(
+        home: ChatPage(),
+      ),
+    );
+  }
+}
+```
+
+### 2.5 连接服务器
+
+```dart
+// 4. 连接到服务器
+try {
+  await easySDK.connect();
+  print("连接成功！");
+} catch (e) {
+  print("连接失败: $e");
+}
+```
+
+### 2.6 发送消息
+
+```dart
+// 5. 发送消息示例
+Future<void> sendMessage() async {
+  final targetChannelID = "friend_user_id"; // 目标用户 ID
+  final messagePayload = MessagePayload(
+    type: 1,
+    content: "Hello from Flutter EasySDK!",
+  ); // 您的自定义消息载荷
+
+  try {
+    final result = await easySDK.send(
+      channelId: targetChannelID,
+      channelType: WuKongChannelType.person,
+      payload: messagePayload,
+    );
+    print("消息发送成功: $result");
+  } catch (e) {
+    print("消息发送失败: $e");
+  }
+}
+```
+
+## 步骤 3：错误处理和最佳实践
+
+### 3.1 错误处理
+
+<Note>
+  **SDK 内置自动重连**：Flutter EasySDK 内置了智能重连机制，无需手动实现重连逻辑。SDK 会在连接断开时自动尝试重连。
+</Note>
+
+```dart
+// 正确的连接状态监听
+easySDK.addEventListener(WuKongEvent.connect, (ConnectResult result) {
+  print("连接成功: $result");
+  // 更新UI状态，启用发送功能
+  if (mounted) {
+    setState(() {
+      updateConnectionUI(true);
+    });
+  }
+});
+
+easySDK.addEventListener(WuKongEvent.disconnect, (DisconnectInfo disconnectInfo) {
+  print("连接断开: $disconnectInfo");
+  print("断开代码: ${disconnectInfo.code}, 原因: ${disconnectInfo.reason}");
+  // 更新UI状态，禁用发送功能
+  if (mounted) {
+    setState(() {
+      updateConnectionUI(false);
+    });
+  }
+  // SDK 会自动尝试重连，无需手动处理
+});
+
+easySDK.addEventListener(WuKongEvent.error, (WuKongError error) {
+  print("发生错误: $error");
+
+  // 根据错误类型进行处理
+  if (mounted) {
+    setState(() {
+      switch (error.code) {
+        case WuKongErrorCode.authFailed:
+          // 认证失败，需要重新获取token
+          handleAuthError();
+          break;
+        case WuKongErrorCode.networkError:
+          // 网络错误，显示网络提示
+          showNetworkError();
+          break;
+        default:
+          // 其他错误
+          showGeneralError(error.message);
+          break;
+      }
+    });
+  }
+});
+
+// 消息发送错误处理
+Future<void> sendMessageWithErrorHandling(String targetId, String content) async {
+  try {
+    final messagePayload = MessagePayload(type: 1, content: content);
+    final result = await easySDK.send(
+      channelId: targetId,
+      channelType: WuKongChannelType.person,
+      payload: messagePayload,
+    );
+    print("消息发送成功: $result");
+  } catch (e) {
+    print("消息发送失败: $e");
+
+    // 根据错误类型提供用户友好的提示
+    String errorMessage;
+    if (e is WuKongNotConnectedException) {
+      errorMessage = "未连接到服务器，请检查网络连接";
+    } else if (e is WuKongInvalidChannelException) {
+      errorMessage = "目标用户不存在或无权限发送消息";
+    } else if (e is WuKongMessageTooLargeException) {
+      errorMessage = "消息内容过大，请减少内容长度";
+    } else {
+      errorMessage = "发送失败: ${e.toString()}";
+    }
+
+    throw Exception(errorMessage);
+  }
+}
+```
+
+## 相关资源
+
+<CardGroup cols={2}>
+  <Card title="完整示例代码" icon="code" href="https://github.com/WuKongIM/EasyJSSDK/blob/main/example/app.js">
+    查看完整的示例代码和更多功能演示
+  </Card>
+  <Card title="协议完整文档" icon="file-text" href="https://github.com/WuKongIM/WuKongIM/blob/main/pkg/jsonrpc/wukongim_rpc_schema.json">
+    查看 WuKongIM 的完整协议文档
+  </Card>
+  <Card title="GitHub 仓库" icon="github" href="https://github.com/WuKongIM/EasyJSSDK">
+    访问 EasyJSSDK 的 GitHub 仓库
+  </Card>
+  <Card title="问题反馈" icon="bug" href="https://github.com/WuKongIM/EasyJSSDK/issues">
+    报告问题或提出建议
+  </Card>
+</CardGroup>
+
+## 下一步
+
+恭喜！您已经成功集成了 WuKongIM Flutter EasySDK。现在您可以：
+
+1. **扩展功能**：添加群组聊天、文件传输等功能
+2. **自定义 UI**：根据您的应用设计定制聊天界面
+3. **集成到项目**：将聊天功能集成到您的现有项目中
+4. **性能优化**：根据实际使用情况优化性能
+
+<Tip>
+  如果您需要更复杂的功能或更高的性能要求，建议考虑使用完整版的 WuKongIMSDK。
+</Tip>
+```

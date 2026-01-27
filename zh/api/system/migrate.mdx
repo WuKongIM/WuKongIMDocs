@@ -1,0 +1,116 @@
+---
+title: "获取迁移结果"
+description: "获取数据迁移过程的结果状态"
+api: "GET /migrate/result"
+---
+
+## 概述
+
+获取数据迁移过程的结果状态，用于监控数据迁移的进度和状态。
+
+<RequestExample>
+```bash cURL
+curl -X GET "http://localhost:5001/migrate/result"
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5001/migrate/result');
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+
+response = requests.get('http://localhost:5001/migrate/result')
+data = response.json()
+print(data)
+```
+
+```go Go
+package main
+
+import (
+    "encoding/json"
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    resp, err := http.Get("http://localhost:5001/migrate/result")
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    var result map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Printf("%+v\n", result)
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json 迁移完成
+{
+  "status": "completed",
+  "step": "message",
+  "last_err": null,
+  "try_count": 1
+}
+```
+
+```json 迁移进行中
+{
+  "status": "running",
+  "step": "user",
+  "last_err": null,
+  "try_count": 2
+}
+```
+
+```json 迁移已完成（历史状态）
+{
+  "status": "migrated",
+  "step": "channel",
+  "last_err": null,
+  "try_count": 1
+}
+```
+</ResponseExample>
+
+## 响应字段
+
+<ResponseField name="status" type="string" required>
+迁移状态：
+- `running` - 迁移正在进行中
+- `completed` - 迁移已完成
+- `migrated` - 迁移已完成（历史状态）
+</ResponseField>
+
+<ResponseField name="step" type="string" required>
+当前迁移步骤，例如：`message`、`user`、`channel` 等
+</ResponseField>
+
+<ResponseField name="last_err" type="string" nullable>
+最后一次错误信息，如果没有错误则为 `null`
+</ResponseField>
+
+<ResponseField name="try_count" type="integer" required>
+尝试次数
+</ResponseField>
+
+## 状态码
+
+| 状态码 | 说明 |
+|--------|------|
+| 200 | 成功获取迁移结果 |
+| 500 | 服务器内部错误 |
+
+## 最佳实践
+
+1. **定期检查**：建议每 5-10 秒检查一次迁移状态
+2. **错误处理**：注意处理网络错误和服务器错误
+3. **状态缓存**：避免状态未变化时的重复处理
+4. **通知机制**：在迁移完成或出错时及时通知相关人员
+5. **日志记录**：记录迁移过程中的关键状态变化

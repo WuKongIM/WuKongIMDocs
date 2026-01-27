@@ -1,0 +1,225 @@
+---
+title: "Get System User IDs"
+description: "Get the list of system user IDs"
+api: "GET /user/systemuids"
+---
+
+## Overview
+
+Get the list of system user IDs, used to identify special built-in user accounts in the system.
+
+<RequestExample>
+```bash cURL
+curl -X GET "http://localhost:5001/user/systemuids"
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5001/user/systemuids');
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+
+response = requests.get('http://localhost:5001/user/systemuids')
+data = response.json()
+print(data)
+```
+
+```go Go
+package main
+
+import (
+    "encoding/json"
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    resp, err := http.Get("http://localhost:5001/user/systemuids")
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    var result []string
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Printf("%+v\n", result)
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json Success Response
+[
+  "system",
+  "admin",
+  "bot",
+  "notification",
+  "webhook"
+]
+```
+</ResponseExample>
+
+## Response Fields
+
+<ResponseField name="uids" type="array" required>
+List of system user IDs
+<ResponseField name="uids[]" type="string">
+System user ID
+</ResponseField>
+</ResponseField>
+
+## Status Codes
+
+| Status Code | Description |
+|-------------|-------------|
+| 200 | Successfully retrieved system user ID list |
+| 500 | Internal server error |
+
+## System User Types
+
+### Common System Users
+
+| User ID | Purpose | Description |
+|---------|---------|-------------|
+| `system` | System Messages | Used for system-generated messages and notifications |
+| `admin` | Administrator | System administrator account |
+| `bot` | Bot Services | Automated bot services and AI assistants |
+| `notification` | Notifications | Push notifications and alerts |
+| `webhook` | Webhook Integration | External system integrations |
+
+## Use Cases
+
+### Message Filtering
+
+**Filter System Messages**:
+```javascript
+// Get system user IDs
+const systemUIDs = await getSystemUIDs();
+
+// Filter out system messages in chat display
+function filterUserMessages(messages) {
+    return messages.filter(message => 
+        !systemUIDs.includes(message.from_uid)
+    );
+}
+
+// Display only user messages
+const userMessages = filterUserMessages(allMessages);
+displayMessages(userMessages);
+```
+
+### Permission Management
+
+**Check System User Permissions**:
+```javascript
+async function isSystemUser(uid) {
+    const systemUIDs = await getSystemUIDs();
+    return systemUIDs.includes(uid);
+}
+
+// Grant special permissions to system users
+async function checkUserPermissions(uid) {
+    if (await isSystemUser(uid)) {
+        return {
+            canSendToAll: true,
+            canBypassLimits: true,
+            canAccessSystemChannels: true
+        };
+    }
+    
+    return {
+        canSendToAll: false,
+        canBypassLimits: false,
+        canAccessSystemChannels: false
+    };
+}
+```
+
+### UI Customization
+
+**Special Display for System Messages**:
+```javascript
+async function renderMessage(message) {
+    const systemUIDs = await getSystemUIDs();
+    
+    if (systemUIDs.includes(message.from_uid)) {
+        // Render system message with special styling
+        return renderSystemMessage(message);
+    } else {
+        // Render regular user message
+        return renderUserMessage(message);
+    }
+}
+
+function renderSystemMessage(message) {
+    return `
+        <div class="system-message">
+            <span class="system-badge">${message.from_uid}</span>
+            <span class="system-content">${message.content}</span>
+        </div>
+    `;
+}
+```
+
+### Analytics and Reporting
+
+**Separate System vs User Activity**:
+```javascript
+async function analyzeMessageActivity(messages) {
+    const systemUIDs = await getSystemUIDs();
+    
+    const userMessages = messages.filter(m => !systemUIDs.includes(m.from_uid));
+    const systemMessages = messages.filter(m => systemUIDs.includes(m.from_uid));
+    
+    return {
+        userActivity: {
+            count: userMessages.length,
+            messages: userMessages
+        },
+        systemActivity: {
+            count: systemMessages.length,
+            messages: systemMessages
+        }
+    };
+}
+```
+
+### Bot Integration
+
+**Identify Bot Messages**:
+```javascript
+async function handleIncomingMessage(message) {
+    const systemUIDs = await getSystemUIDs();
+    
+    if (systemUIDs.includes(message.from_uid)) {
+        // Handle system/bot message
+        if (message.from_uid === 'bot') {
+            await processBotCommand(message);
+        } else if (message.from_uid === 'notification') {
+            await showNotification(message);
+        }
+    } else {
+        // Handle regular user message
+        await processUserMessage(message);
+    }
+}
+```
+
+## Best Practices
+
+1. **Caching**: Cache system user IDs to avoid repeated API calls
+2. **Regular Updates**: Periodically refresh the system user list
+3. **Error Handling**: Handle cases where system users might change
+4. **UI Distinction**: Clearly distinguish system messages from user messages
+5. **Permission Checks**: Always verify system user permissions before granting special access
+6. **Logging**: Log interactions with system users for audit purposes
+
+## Security Considerations
+
+- **Access Control**: Ensure only authorized applications can access system user information
+- **Rate Limiting**: Implement rate limiting to prevent abuse
+- **Audit Logging**: Log all requests to track system user ID access
+- **Validation**: Validate system user IDs before using them in operations

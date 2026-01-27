@@ -1,0 +1,434 @@
+---
+title: "Basic Features"
+description: "WuKongIM Android SDK basic functionality, including initialization, connection management and status monitoring"
+icon: "building"
+---
+
+## Initialization
+
+Initialize the SDK in the Application's onCreate method:
+
+<CodeGroup>
+```java Java
+/**
+ * Initialize IM
+ * @param context Application Context
+ * @param uid Login user ID (uid registered with IM communication end by business server)
+ * @param token Login user token (token registered with IM communication end by business server)
+ */
+WKIM.getInstance().init(context, uid, token);
+```
+
+```kotlin Kotlin
+WKIM.getInstance().init(context, uid, token)
+```
+</CodeGroup>
+
+### Advanced Initialization
+
+You can also initialize with custom options:
+
+<CodeGroup>
+```java Java
+WKIMOptions options = new WKIMOptions();
+options.setLogLevel(WKLogLevel.DEBUG);
+options.setDbPassword("your_db_password");
+options.setFileUploadUrl("https://your-upload-server.com/upload");
+
+WKIM.getInstance().init(context, uid, token, options);
+```
+
+```kotlin Kotlin
+val options = WKIMOptions().apply {
+    logLevel = WKLogLevel.DEBUG
+    dbPassword = "your_db_password"
+    fileUploadUrl = "https://your-upload-server.com/upload"
+}
+
+WKIM.getInstance().init(context, uid, token, options)
+```
+</CodeGroup>
+
+## Server Configuration
+
+Listen for events to get connection server IP and Port:
+
+<CodeGroup>
+```java Java
+WKIM.getInstance().getConnectionManager().addOnGetIpAndPortListener(new IGetIpAndPort() {
+    @Override
+    public void getIP(IGetSocketIpAndPortListener iGetSocketIpAndPortListener) {
+        // Return connection IP and port
+        iGetSocketIpAndPortListener.onGetSocketIpAndPort("xxx.xxx.xxx.xxx", 5100);
+    }
+});
+```
+
+```kotlin Kotlin
+WKIM.getInstance().connectionManager.addOnGetIpAndPortListener { listener ->
+    listener?.onGetSocketIpAndPort(
+        "172.0.0.1",
+        5100
+    )
+}
+```
+</CodeGroup>
+
+<Note>
+Return the IP of the IM communication end and the TCP port of the IM communication end. **For distributed systems, call the interface to get IP and Port before returning**.
+</Note>
+
+## Connection Management
+
+### Connect
+
+<CodeGroup>
+```java Java
+// Connect to IM
+WKIM.getInstance().getConnectionManager().connection();
+```
+
+```kotlin Kotlin
+// Connect to IM
+WKIM.getInstance().connectionManager.connection()
+```
+</CodeGroup>
+
+### Disconnect
+
+<CodeGroup>
+```java Java
+// Disconnect IM
+WKIM.getInstance().getConnectionManager().disconnect(isLogout);
+```
+
+```kotlin Kotlin
+// Disconnect IM
+WKIM.getInstance().connectionManager.disconnect(isLogout)
+```
+</CodeGroup>
+
+**Parameters:**
+- `isLogout`: 
+  - `true`: SDK will no longer reconnect
+  - `false`: SDK maintains reconnection mechanism
+
+### Connection Status Monitoring
+
+<CodeGroup>
+```java Java
+WKIM.getInstance().getConnectionManager().addOnConnectionStatusListener("key", new IConnectionStatus() {
+    @Override
+    public void onStatus(int status, String reason) {
+        switch (status) {
+            case WKConnectStatus.success:
+                // Connection successful
+                break;
+            case WKConnectStatus.failed:
+                // Connection failed
+                break;
+            case WKConnectStatus.connecting:
+                // Connecting
+                break;
+            case WKConnectStatus.syncMsg:
+                // Syncing messages
+                break;
+            case WKConnectStatus.noNetwork:
+                // No network
+                break;
+            case WKConnectStatus.kicked:
+                // Kicked offline - need to exit app and return to login page
+                break;
+        }
+    }
+});
+```
+
+```kotlin Kotlin
+WKIM.getInstance().connectionManager.addOnConnectionStatusListener("key") { status, reason ->
+    when (status) {
+        WKConnectStatus.success -> {
+            // Connection successful
+        }
+        WKConnectStatus.failed -> {
+            // Connection failed
+        }
+        WKConnectStatus.connecting -> {
+            // Connecting
+        }
+        WKConnectStatus.syncMsg -> {
+            // Syncing messages
+        }
+        WKConnectStatus.noNetwork -> {
+            // No network
+        }
+        WKConnectStatus.kicked -> {
+            // Kicked offline
+        }
+    }
+}
+```
+</CodeGroup>
+
+### Remove Connection Status Listener
+
+<CodeGroup>
+```java Java
+// Remove specific listener
+WKIM.getInstance().getConnectionManager().removeOnConnectionStatusListener("key");
+
+// Remove all listeners
+WKIM.getInstance().getConnectionManager().removeAllOnConnectionStatusListener();
+```
+
+```kotlin Kotlin
+// Remove specific listener
+WKIM.getInstance().connectionManager.removeOnConnectionStatusListener("key")
+
+// Remove all listeners
+WKIM.getInstance().connectionManager.removeAllOnConnectionStatusListener()
+```
+</CodeGroup>
+
+## Connection Status Types
+
+| Status | Description |
+|--------|-------------|
+| `WKConnectStatus.success` | Connection successful |
+| `WKConnectStatus.failed` | Connection failed |
+| `WKConnectStatus.connecting` | Connecting to server |
+| `WKConnectStatus.syncMsg` | Syncing messages |
+| `WKConnectStatus.noNetwork` | No network available |
+| `WKConnectStatus.kicked` | Kicked offline by another device |
+
+## Best Practices
+
+### 1. Application Lifecycle Management
+
+<CodeGroup>
+```java Java
+public class MyApplication extends Application {
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        
+        // Initialize SDK
+        WKIM.getInstance().init(this, "user123", "user-token");
+        
+        // Setup connection listener
+        setupConnectionListener();
+        
+        // Setup server configuration
+        setupServerConfig();
+    }
+    
+    private void setupConnectionListener() {
+        WKIM.getInstance().getConnectionManager().addOnConnectionStatusListener("app", 
+            (status, reason) -> {
+                Log.d("WuKongIM", "Connection status: " + status + ", reason: " + reason);
+                
+                if (status == WKConnectStatus.kicked) {
+                    // Handle being kicked offline
+                    handleKickedOffline();
+                }
+            });
+    }
+    
+    private void setupServerConfig() {
+        WKIM.getInstance().getConnectionManager().addOnGetIpAndPortListener(listener -> {
+            // In production, get from your server
+            listener.onGetSocketIpAndPort("your-server.com", 5100);
+        });
+    }
+    
+    private void handleKickedOffline() {
+        // Redirect to login screen
+        Intent intent = new Intent(this, LoginActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
+    }
+}
+```
+
+```kotlin Kotlin
+class MyApplication : Application() {
+    override fun onCreate() {
+        super.onCreate()
+        
+        // Initialize SDK
+        WKIM.getInstance().init(this, "user123", "user-token")
+        
+        // Setup connection listener
+        setupConnectionListener()
+        
+        // Setup server configuration
+        setupServerConfig()
+    }
+    
+    private fun setupConnectionListener() {
+        WKIM.getInstance().connectionManager.addOnConnectionStatusListener("app") { status, reason ->
+            Log.d("WuKongIM", "Connection status: $status, reason: $reason")
+            
+            if (status == WKConnectStatus.kicked) {
+                // Handle being kicked offline
+                handleKickedOffline()
+            }
+        }
+    }
+    
+    private fun setupServerConfig() {
+        WKIM.getInstance().connectionManager.addOnGetIpAndPortListener { listener ->
+            // In production, get from your server
+            listener?.onGetSocketIpAndPort("your-server.com", 5100)
+        }
+    }
+    
+    private fun handleKickedOffline() {
+        // Redirect to login screen
+        val intent = Intent(this, LoginActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        }
+        startActivity(intent)
+    }
+}
+```
+</CodeGroup>
+
+### 2. Activity Lifecycle Integration
+
+<CodeGroup>
+```java Java
+public class MainActivity extends AppCompatActivity {
+    @Override
+    protected void onResume() {
+        super.onResume();
+        
+        // Connect when app comes to foreground
+        if (!WKIM.getInstance().getConnectionManager().isConnected()) {
+            WKIM.getInstance().getConnectionManager().connection();
+        }
+    }
+    
+    @Override
+    protected void onPause() {
+        super.onPause();
+        
+        // Optionally disconnect when app goes to background
+        // WKIM.getInstance().getConnectionManager().disconnect(false);
+    }
+}
+```
+
+```kotlin Kotlin
+class MainActivity : AppCompatActivity() {
+    override fun onResume() {
+        super.onResume()
+        
+        // Connect when app comes to foreground
+        if (!WKIM.getInstance().connectionManager.isConnected()) {
+            WKIM.getInstance().connectionManager.connection()
+        }
+    }
+    
+    override fun onPause() {
+        super.onPause()
+        
+        // Optionally disconnect when app goes to background
+        // WKIM.getInstance().connectionManager.disconnect(false)
+    }
+}
+```
+</CodeGroup>
+
+### 3. Network State Monitoring
+
+<CodeGroup>
+```java Java
+public class NetworkMonitor extends BroadcastReceiver {
+    @Override
+    public void onReceive(Context context, Intent intent) {
+        ConnectivityManager cm = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
+        boolean isConnected = activeNetwork != null && activeNetwork.isConnectedOrConnecting();
+        
+        if (isConnected) {
+            // Network available, try to connect
+            WKIM.getInstance().getConnectionManager().connection();
+        } else {
+            // Network unavailable
+            Log.d("WuKongIM", "Network unavailable");
+        }
+    }
+}
+```
+
+```kotlin Kotlin
+class NetworkMonitor : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val activeNetwork = cm.activeNetworkInfo
+        val isConnected = activeNetwork?.isConnectedOrConnecting == true
+        
+        if (isConnected) {
+            // Network available, try to connect
+            WKIM.getInstance().connectionManager.connection()
+        } else {
+            // Network unavailable
+            Log.d("WuKongIM", "Network unavailable")
+        }
+    }
+}
+```
+</CodeGroup>
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Connection Failed**
+   - Check if server IP and port are correct
+   - Verify network connectivity
+   - Ensure user credentials are valid
+
+2. **Frequent Disconnections**
+   - Check network stability
+   - Verify server availability
+   - Review connection timeout settings
+
+3. **Kicked Offline**
+   - Handle gracefully by redirecting to login
+   - Clear user session data
+   - Notify user about the logout
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Message Handling"
+    icon="message-circle"
+    href="/en/sdk/wukongim/android/message"
+  >
+    Learn how to handle message sending and receiving
+  </Card>
+  <Card
+    title="Channel Management"
+    icon="hash"
+    href="/en/sdk/wukongim/android/channel"
+  >
+    Manage channels and groups
+  </Card>
+  <Card
+    title="Conversation Management"
+    icon="users"
+    href="/en/sdk/wukongim/android/conversation"
+  >
+    Handle conversation lists
+  </Card>
+  <Card
+    title="Advanced Features"
+    icon="cog"
+    href="/en/sdk/wukongim/android/advance"
+  >
+    Explore advanced features and configuration
+  </Card>
+</CardGroup>

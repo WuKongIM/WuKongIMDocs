@@ -1,0 +1,158 @@
+---
+title: "Manager Login"
+description: "Manager user login to obtain access token"
+api: "POST /manager/login"
+---
+
+## Overview
+
+Manager user login interface for obtaining access tokens for the management backend.
+
+## Request Body
+
+### Required Parameters
+
+<ParamField body="username" type="string" required>
+Manager username
+</ParamField>
+
+<ParamField body="password" type="string" required>
+Manager password
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "http://localhost:5001/manager/login" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "admin",
+    "password": "your_password"
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5001/manager/login', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    username: 'admin',
+    password: 'your_password'
+  })
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+
+data = {
+    "username": "admin",
+    "password": "your_password"
+}
+
+response = requests.post('http://localhost:5001/manager/login', json=data)
+result = response.json()
+print(result)
+```
+
+```go Go
+package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    data := map[string]string{
+        "username": "admin",
+        "password": "your_password",
+    }
+    
+    jsonData, _ := json.Marshal(data)
+    
+    resp, err := http.Post(
+        "http://localhost:5001/manager/login",
+        "application/json",
+        bytes.NewBuffer(jsonData),
+    )
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    var result map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Printf("%+v\n", result)
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json Success Response
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "expire": 3600,
+  "user": {
+    "username": "admin",
+    "role": "administrator",
+    "permissions": ["read", "write", "admin"]
+  }
+}
+```
+
+```json Error Response
+{
+  "error": "Invalid username or password"
+}
+```
+</ResponseExample>
+
+## Response Fields
+
+<ResponseField name="token" type="string" required>
+Access token for authentication in subsequent API calls
+</ResponseField>
+
+<ResponseField name="expire" type="integer" required>
+Token expiration time (seconds)
+</ResponseField>
+
+<ResponseField name="user" type="object" required>
+User information
+<Expandable title="user fields">
+<ResponseField name="user.username" type="string">
+Username
+</ResponseField>
+<ResponseField name="user.role" type="string">
+User role
+</ResponseField>
+<ResponseField name="user.permissions" type="array">
+User permissions list
+</ResponseField>
+</Expandable>
+</ResponseField>
+
+## Status Codes
+
+| Status Code | Description |
+|-------------|-------------|
+| 200 | Login successful |
+| 401 | Invalid username or password |
+| 429 | Too many login attempts |
+| 500 | Internal server error |
+
+## Best Practices
+
+1. **Password Security**: Use strong password policies, change passwords regularly
+2. **Token Management**: Implement automatic token refresh mechanism
+3. **Access Control**: Role-based and permission-based access control
+4. **Login Restrictions**: Implement login attempt limits
+5. **Session Management**: Set reasonable token expiration times
+6. **Secure Storage**: Don't store sensitive information in insecure places

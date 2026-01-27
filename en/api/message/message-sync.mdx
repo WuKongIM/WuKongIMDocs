@@ -1,0 +1,295 @@
+---
+title: "Sync Channel Messages"
+description: "Sync historical messages from a specified channel"
+api: "POST /channel/messagesync"
+---
+
+## Overview
+
+Sync messages from a specified channel, supporting message retrieval by sequence number range.
+
+## Request Body
+
+### Required Parameters
+
+<ParamField body="login_uid" type="string" required>
+Current logged-in user ID
+</ParamField>
+
+<ParamField body="channel_id" type="string" required>
+Channel ID
+</ParamField>
+
+<ParamField body="channel_type" type="integer" required>
+Channel type (1=personal channel, 2=group channel)
+</ParamField>
+
+### Optional Parameters
+
+<ParamField body="start_message_seq" type="integer">
+Starting message sequence number (inclusive)
+</ParamField>
+
+<ParamField body="end_message_seq" type="integer">
+Ending message sequence number (exclusive)
+</ParamField>
+
+<ParamField body="limit" type="integer" maximum={10000}>
+Maximum number of messages to return, maximum 10000
+</ParamField>
+
+<ParamField body="pull_mode" type="integer">
+Pull mode (0=pull down, 1=pull up)
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "http://localhost:5001/channel/messagesync" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "login_uid": "user123",
+    "channel_id": "group123",
+    "channel_type": 2,
+    "start_message_seq": 1000,
+    "end_message_seq": 1100,
+    "limit": 50,
+    "pull_mode": 0
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5001/channel/messagesync', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    login_uid: 'user123',
+    channel_id: 'group123',
+    channel_type: 2,
+    start_message_seq: 1000,
+    end_message_seq: 1100,
+    limit: 50,
+    pull_mode: 0
+  })
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+
+data = {
+    "login_uid": "user123",
+    "channel_id": "group123",
+    "channel_type": 2,
+    "start_message_seq": 1000,
+    "end_message_seq": 1100,
+    "limit": 50,
+    "pull_mode": 0
+}
+
+response = requests.post('http://localhost:5001/channel/messagesync', json=data)
+result = response.json()
+print(result)
+```
+
+```go Go
+package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    data := map[string]interface{}{
+        "login_uid":         "user123",
+        "channel_id":        "group123",
+        "channel_type":      2,
+        "start_message_seq": 1000,
+        "end_message_seq":   1100,
+        "limit":             50,
+        "pull_mode":         0,
+    }
+    
+    jsonData, _ := json.Marshal(data)
+    
+    resp, err := http.Post(
+        "http://localhost:5001/channel/messagesync",
+        "application/json",
+        bytes.NewBuffer(jsonData),
+    )
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    var result []map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Printf("%+v\n", result)
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json Success Response
+[
+  {
+    "message_id": 123456789,
+    "message_seq": 1001,
+    "client_msg_no": "client_msg_123",
+    "from_uid": "user123",
+    "channel_id": "group123",
+    "channel_type": 2,
+    "timestamp": 1640995200,
+    "payload": "SGVsbG8gV29ybGQ="
+  },
+  {
+    "message_id": 123456790,
+    "message_seq": 1002,
+    "client_msg_no": "client_msg_124",
+    "from_uid": "user456",
+    "channel_id": "group123",
+    "channel_type": 2,
+    "timestamp": 1640995260,
+    "payload": "SGkgdGhlcmU="
+  }
+]
+```
+</ResponseExample>
+
+## Response Fields
+
+The response is an array of message objects, each containing:
+
+<ResponseField name="message_id" type="integer" required>
+Message ID
+</ResponseField>
+
+<ResponseField name="message_seq" type="integer" required>
+Message sequence number
+</ResponseField>
+
+<ResponseField name="client_msg_no" type="string" required>
+Client message number
+</ResponseField>
+
+<ResponseField name="from_uid" type="string" required>
+Sender user ID
+</ResponseField>
+
+<ResponseField name="channel_id" type="string" required>
+Channel ID
+</ResponseField>
+
+<ResponseField name="channel_type" type="integer" required>
+Channel type
+</ResponseField>
+
+<ResponseField name="timestamp" type="integer" required>
+Message timestamp
+</ResponseField>
+
+<ResponseField name="payload" type="string" required>
+Base64 encoded message content
+</ResponseField>
+
+## Status Codes
+
+| Status Code | Description |
+|-------------|-------------|
+| 200 | Message sync successful |
+| 400 | Request parameter error |
+| 403 | No access permission |
+| 500 | Internal server error |
+
+## Use Cases
+
+### Chat History Loading
+
+**Load Recent Messages**:
+```javascript
+// Load last 50 messages
+const messages = await syncChannelMessages({
+    login_uid: "user123",
+    channel_id: "group123",
+    channel_type: 2,
+    limit: 50,
+    pull_mode: 0
+});
+```
+
+**Load Older Messages**:
+```javascript
+// Load messages before a specific sequence
+const olderMessages = await syncChannelMessages({
+    login_uid: "user123",
+    channel_id: "group123", 
+    channel_type: 2,
+    end_message_seq: 1000,
+    limit: 50,
+    pull_mode: 1
+});
+```
+
+### Message Search and Export
+
+**Export Chat History**:
+```javascript
+async function exportChatHistory(channelId, channelType, loginUid) {
+    let allMessages = [];
+    let startSeq = 0;
+    const batchSize = 1000;
+    
+    while (true) {
+        const messages = await syncChannelMessages({
+            login_uid: loginUid,
+            channel_id: channelId,
+            channel_type: channelType,
+            start_message_seq: startSeq,
+            limit: batchSize,
+            pull_mode: 0
+        });
+        
+        if (messages.length === 0) break;
+        
+        allMessages = allMessages.concat(messages);
+        startSeq = messages[messages.length - 1].message_seq + 1;
+    }
+    
+    return allMessages;
+}
+```
+
+### Offline Message Sync
+
+**Sync Missed Messages**:
+```javascript
+async function syncMissedMessages(channelId, channelType, loginUid, lastSeq) {
+    const missedMessages = await syncChannelMessages({
+        login_uid: loginUid,
+        channel_id: channelId,
+        channel_type: channelType,
+        start_message_seq: lastSeq + 1,
+        limit: 1000,
+        pull_mode: 0
+    });
+    
+    return missedMessages;
+}
+```
+
+## Best Practices
+
+1. **Reasonable Range**: Avoid syncing too many messages at once
+2. **Pagination**: Use limit parameter to control return quantity
+3. **Error Handling**: Handle network errors and permission errors
+4. **Caching Strategy**: Reasonably cache synced messages
+5. **Performance Optimization**: Adjust sync frequency based on actual needs
+6. **Permission Check**: Verify user has access to the channel before syncing
+7. **Rate Limiting**: Implement rate limiting to prevent excessive API calls

@@ -1,0 +1,124 @@
+---
+title: "移除连接"
+description: "移除指定用户的连接"
+api: "POST /conn/remove"
+---
+
+## 概述
+
+移除指定用户的特定连接，用于清理无效连接或管理用户连接状态。
+
+## 请求体
+
+<ParamField body="uid" type="string" required>
+用户 ID
+</ParamField>
+
+<ParamField body="conn_id" type="integer" required>
+连接 ID
+</ParamField>
+
+<ParamField body="node_id" type="integer">
+节点 ID，指定特定节点上的连接
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "http://localhost:5001/conn/remove" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "uid": "user123",
+    "conn_id": 12345,
+    "node_id": 1
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5001/conn/remove', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    uid: 'user123',
+    conn_id: 12345,
+    node_id: 1
+  })
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+
+data = {
+    "uid": "user123",
+    "conn_id": 12345,
+    "node_id": 1
+}
+
+response = requests.post('http://localhost:5001/conn/remove', json=data)
+result = response.json()
+print(result)
+```
+
+```go Go
+package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    data := map[string]interface{}{
+        "uid":     "user123",
+        "conn_id": 12345,
+        "node_id": 1,
+    }
+    
+    jsonData, _ := json.Marshal(data)
+    
+    resp, err := http.Post(
+        "http://localhost:5001/conn/remove",
+        "application/json",
+        bytes.NewBuffer(jsonData),
+    )
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    var result map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Printf("%+v\n", result)
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json 成功响应
+{
+  "status": "ok"
+}
+```
+</ResponseExample>
+
+## 响应字段
+
+<ResponseField name="status" type="string" required>
+操作状态，成功时返回 `"ok"`
+</ResponseField>
+
+## 状态码
+
+| 状态码 | 说明 |
+|--------|------|
+| 200 | 连接移除成功 |
+| 400 | 请求参数错误 |
+| 404 | 连接不存在 |
+| 500 | 服务器内部错误 |

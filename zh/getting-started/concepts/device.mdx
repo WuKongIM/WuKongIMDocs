@@ -1,0 +1,207 @@
+---
+title: "设备"
+description: "WuKongIM 设备的核心结构和管理方法"
+icon: "smartphone"
+---
+
+## 概念解释
+
+### 什么是设备？
+
+设备（Device）是用户接入 WuKongIM 系统的终端载体，代表用户用来收发消息的具体设备。每个设备都有唯一的标识符和类型，支持用户在多个设备上同时使用即时通讯服务。
+
+### 为什么设备很重要？
+
+- **多端同步**：用户可以在手机、电脑、平板等多个设备上同时登录，消息实时同步
+- **设备管理**：可以查看和管理用户的所有登录设备，支持远程踢出设备
+- **推送策略**：根据设备类型采用不同的消息推送策略
+
+### 与其他概念的关系
+
+- **用户（User）**：一个用户可以拥有多个设备，每个设备都关联到用户 ID
+- **消息（Message）**：消息会同步到用户的所有在线设备
+- **连接（Connection）**：每个设备都有独立的网络连接
+
+## 核心结构
+
+设备包含以下核心属性：
+
+| 属性 | 类型 | 说明 |
+|------|------|------|
+| `cid` | integer | 连接唯一标识符 |
+| `uid` | string | 设备所属用户ID |
+| `device_id` | string | 设备唯一标识符 |
+| `device_flag` | integer | 设备类型标识 |
+| `uptime` | string | 在线时长 |
+| `idle` | string | 空闲时间 |
+
+### 设备示例
+
+```json
+{
+  "cid": 12345,
+  "uid": "user123",
+  "device_id": "device_456",
+  "device_flag": 1,
+  "uptime": "1h30m",
+  "idle": "5m"
+}
+
+```
+
+## 相关 API 端点
+
+| 端点 | 方法 | 说明 |
+|------|------|------|
+| `/user/device_quit` | POST | 强制设备下线 |
+| `/connz` | GET | 查看连接信息 |
+
+## 设备标识类型
+
+| 标识值 | 设备类型 | 描述 |
+|--------|----------|------|
+| 0 | App | Android，iPhone、iPad 设备 |
+| 1 | Web | 浏览器、Web 应用 |
+| 2 | Desktop | 桌面应用程序 |
+
+## EasySDK 代码示例
+
+### 设备初始化和配置
+
+<CodeGroup>
+```javascript Web
+import { WKIM } from 'easyjssdk';
+
+// 初始化时会自动设置设备类型为 Web (1)
+const im = WKIM.init("ws://your-server.com:5200", {
+  uid: "user123",
+  token: "your_token",
+  deviceId: "web_device_001"  // 可选：自定义设备 ID
+});
+
+// EasySDK 会自动处理设备类型，Web 平台默认为设备类型 1
+console.log('当前平台: Web');
+console.log('设备类型: 1 (Web)');
+```
+
+```swift iOS
+import WuKongEasySDK
+
+// 初始化时会自动设置设备类型为 APP (0)
+let config = WuKongConfig(
+    serverUrl: "ws://your-server.com:5200",
+    uid: "user123",
+    token: "your_token",
+    deviceId: "ios_device_001"  // 可选：自定义设备 ID
+)
+
+let easySDK = WuKongEasySDK(config: config)
+
+// EasySDK 会自动处理设备类型，iOS 平台默认为设备类型 0 (APP)
+print("当前平台: APP")
+print("设备类型: 0 (APP)")
+```
+
+```kotlin Android
+import com.githubim.easysdk.WuKongEasySDK
+import com.githubim.easysdk.WuKongConfig
+
+// 初始化时会自动设置设备类型为 APP (0)
+val config = WuKongConfig.Builder()
+    .serverUrl("ws://your-server.com:5200")
+    .uid("user123")
+    .token("your_token")
+    .deviceId("android_device_001")  // 可选：自定义设备 ID
+    .build()
+
+val easySDK = WuKongEasySDK.getInstance()
+easySDK.init(this, config)
+
+// EasySDK 会自动处理设备类型，Android 平台默认为设备类型 0
+Log.d("WuKong", "当前平台: APP")
+Log.d("WuKong", "设备类型: 0 (APP)")
+```
+
+```dart Flutter
+import 'package:wukong_easy_sdk/wukong_easy_sdk.dart';
+
+// 初始化时会自动设置设备类型
+final config = WuKongConfig(
+  serverUrl: "ws://your-server.com:5200",
+  uid: "user123",
+  token: "your_token",
+  deviceId: "flutter_device_001",  // 可选：自定义设备 ID
+);
+
+final easySDK = WuKongEasySDK.getInstance();
+await easySDK.init(config);
+
+// EasySDK 会自动处理设备类型
+print('当前平台: Flutter');
+print('设备类型: 自动检测');
+```
+</CodeGroup>
+
+### 多设备同步
+
+<Note>
+  **重要说明**：EasySDK 会自动处理多设备间的消息同步。当用户在多个设备上登录时，消息会自动同步到所有在线设备。
+</Note>
+
+<CodeGroup>
+```javascript Web
+// EasySDK 自动处理多设备同步
+// 当收到消息时，所有在线设备都会收到相同的消息
+
+im.on(WKIMEvent.Message, (message) => {
+  console.log('收到消息（自动同步到所有设备）:', message);
+});
+
+// 检查连接状态
+console.log('当前设备连接状态:', im.isConnected());
+```
+
+```swift iOS
+// EasySDK 自动处理多设备同步
+// 当收到消息时，所有在线设备都会收到相同的消息
+
+easySDK.onMessage { message in
+    print("收到消息（自动同步到所有设备）:", message)
+}
+
+// 检查连接状态
+print("当前设备连接状态:", easySDK.isConnected())
+```
+
+```kotlin Android
+// EasySDK 自动处理多设备同步
+// 当收到消息时，所有在线设备都会收到相同的消息
+
+easySDK.addEventListener(WuKongEvent.MESSAGE, object : WuKongEventListener<Message> {
+    override fun onEvent(message: Message) {
+        Log.d("WuKong", "收到消息（自动同步到所有设备）: $message")
+    }
+})
+
+// 检查连接状态
+Log.d("WuKong", "当前设备连接状态: ${easySDK.isConnected()}")
+```
+
+```dart Flutter
+// EasySDK 自动处理多设备同步
+// 当收到消息时，所有在线设备都会收到相同的消息
+
+easySDK.addEventListener(WuKongEvent.message, (Message message) {
+  print('收到消息（自动同步到所有设备）: $message');
+});
+
+// 检查连接状态
+print('当前设备连接状态: ${easySDK.isConnected()}');
+```
+</CodeGroup>
+
+<Note>
+  一个用户可以同时在多个设备上在线，EasySDK 会自动处理多设备间的消息同步。每个设备都有独立的连接和设备标识。
+</Note>
+
+

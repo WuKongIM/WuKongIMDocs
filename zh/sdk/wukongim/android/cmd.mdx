@@ -1,0 +1,594 @@
+---
+title: "命令管理"
+description: "WuKongIM Android SDK 命令管理功能，处理服务器下发的命令消息"
+icon: "terminal"
+---
+
+CMD(命令)消息只能是服务器下发客户端进行解析的特殊消息类型，用于实现服务器向客户端推送控制指令和系统通知。
+
+## 监听 CMD 消息
+
+### 基础监听
+
+<CodeGroup>
+```java Java
+WKIM.getInstance().getCMDManager().addCmdListener("key", cmd -> {
+    // 处理cmd消息
+    handleCommand(cmd);
+});
+
+// 移出监听
+WKIM.getInstance().getCMDManager().removeCmdListener("key");
+```
+
+```kotlin Kotlin
+WKIM.getInstance().cmdManager.addCmdListener("key") { cmd ->
+    // 处理cmd消息
+    handleCommand(cmd)
+}
+
+// 移出监听
+WKIM.getInstance().cmdManager.removeCmdListener("key")
+```
+</CodeGroup>
+
+### 完整使用示例
+
+```java
+public class CommandManager {
+    
+    private static final String LISTENER_KEY = "CommandManager";
+    
+    public void initialize() {
+        // 添加命令监听器
+        WKIM.getInstance().getCMDManager().addCmdListener(LISTENER_KEY, this::handleCommand);
+    }
+    
+    private void handleCommand(WKCMD cmd) {
+        if (cmd == null || cmd.cmdKey == null) {
+            return;
+        }
+        
+        Log.d("CommandManager", "收到命令: " + cmd.cmdKey);
+        
+        switch (cmd.cmdKey) {
+            case "user_status_change":
+                handleUserStatusChange(cmd.paramJsonObject);
+                break;
+                
+            case "group_member_update":
+                handleGroupMemberUpdate(cmd.paramJsonObject);
+                break;
+                
+            case "system_notification":
+                handleSystemNotification(cmd.paramJsonObject);
+                break;
+                
+            case "force_logout":
+                handleForceLogout(cmd.paramJsonObject);
+                break;
+                
+            case "message_recall":
+                handleMessageRecall(cmd.paramJsonObject);
+                break;
+                
+            case "typing_status":
+                handleTypingStatus(cmd.paramJsonObject);
+                break;
+                
+            case "online_status":
+                handleOnlineStatus(cmd.paramJsonObject);
+                break;
+                
+            default:
+                Log.w("CommandManager", "未知命令类型: " + cmd.cmdKey);
+                handleUnknownCommand(cmd);
+                break;
+        }
+    }
+    
+    // 处理用户状态变化
+    private void handleUserStatusChange(JSONObject params) {
+        try {
+            String userId = params.getString("user_id");
+            int status = params.getInt("status");
+            
+            // 更新用户状态
+            UserStatusManager.updateUserStatus(userId, status);
+            
+            // 通知UI更新
+            EventBus.getDefault().post(new UserStatusChangedEvent(userId, status));
+            
+        } catch (JSONException e) {
+            Log.e("CommandManager", "解析用户状态变化命令失败", e);
+        }
+    }
+    
+    // 处理群成员更新
+    private void handleGroupMemberUpdate(JSONObject params) {
+        try {
+            String groupId = params.getString("group_id");
+            String action = params.getString("action"); // add, remove, update
+            JSONArray members = params.getJSONArray("members");
+            
+            switch (action) {
+                case "add":
+                    // 添加群成员
+                    handleGroupMemberAdd(groupId, members);
+                    break;
+                case "remove":
+                    // 移除群成员
+                    handleGroupMemberRemove(groupId, members);
+                    break;
+                case "update":
+                    // 更新群成员信息
+                    handleGroupMemberInfoUpdate(groupId, members);
+                    break;
+            }
+            
+        } catch (JSONException e) {
+            Log.e("CommandManager", "解析群成员更新命令失败", e);
+        }
+    }
+    
+    // 处理系统通知
+    private void handleSystemNotification(JSONObject params) {
+        try {
+            String title = params.getString("title");
+            String content = params.getString("content");
+            String type = params.optString("type", "info");
+            
+            // 显示系统通知
+            NotificationHelper.showSystemNotification(title, content, type);
+            
+        } catch (JSONException e) {
+            Log.e("CommandManager", "解析系统通知命令失败", e);
+        }
+    }
+    
+    // 处理强制登出
+    private void handleForceLogout(JSONObject params) {
+        try {
+            String reason = params.optString("reason", "账号在其他设备登录");
+            
+            // 清除本地数据
+            clearLocalData();
+            
+            // 断开连接
+            WKIM.getInstance().getConnectionManager().disconnect();
+            
+            // 跳转到登录页面
+            Intent intent = new Intent(context, LoginActivity.class);
+            intent.putExtra("logout_reason", reason);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            context.startActivity(intent);
+            
+        } catch (Exception e) {
+            Log.e("CommandManager", "处理强制登出命令失败", e);
+        }
+    }
+    
+    // 处理消息撤回
+    private void handleMessageRecall(JSONObject params) {
+        try {
+            String messageId = params.getString("message_id");
+            String channelId = params.getString("channel_id");
+            byte channelType = (byte) params.getInt("channel_type");
+            
+            // 更新本地消息状态
+            MessageManager.recallMessage(messageId, channelId, channelType);
+            
+            // 通知UI更新
+            EventBus.getDefault().post(new MessageRecalledEvent(messageId, channelId, channelType));
+            
+        } catch (JSONException e) {
+            Log.e("CommandManager", "解析消息撤回命令失败", e);
+        }
+    }
+    
+    // 处理输入状态
+    private void handleTypingStatus(JSONObject params) {
+        try {
+            String channelId = params.getString("channel_id");
+            byte channelType = (byte) params.getInt("channel_type");
+            String userId = params.getString("user_id");
+            boolean isTyping = params.getBoolean("is_typing");
+            
+            // 更新输入状态
+            TypingStatusManager.updateTypingStatus(channelId, channelType, userId, isTyping);
+            
+            // 通知UI更新
+            EventBus.getDefault().post(new TypingStatusEvent(channelId, channelType, userId, isTyping));
+            
+        } catch (JSONException e) {
+            Log.e("CommandManager", "解析输入状态命令失败", e);
+        }
+    }
+    
+    // 处理在线状态
+    private void handleOnlineStatus(JSONObject params) {
+        try {
+            JSONArray users = params.getJSONArray("users");
+            
+            for (int i = 0; i < users.length(); i++) {
+                JSONObject user = users.getJSONObject(i);
+                String userId = user.getString("user_id");
+                boolean isOnline = user.getBoolean("is_online");
+                long lastSeen = user.optLong("last_seen", 0);
+                
+                // 更新在线状态
+                OnlineStatusManager.updateOnlineStatus(userId, isOnline, lastSeen);
+            }
+            
+            // 通知UI更新
+            EventBus.getDefault().post(new OnlineStatusUpdatedEvent());
+            
+        } catch (JSONException e) {
+            Log.e("CommandManager", "解析在线状态命令失败", e);
+        }
+    }
+    
+    // 处理未知命令
+    private void handleUnknownCommand(WKCMD cmd) {
+        // 记录未知命令，用于调试和扩展
+        Log.w("CommandManager", "收到未知命令: " + cmd.cmdKey + ", 参数: " + cmd.paramJsonObject);
+        
+        // 可以发送到服务器进行统计
+        AnalyticsManager.trackUnknownCommand(cmd.cmdKey);
+    }
+    
+    // 清理资源
+    public void destroy() {
+        WKIM.getInstance().getCMDManager().removeCmdListener(LISTENER_KEY);
+    }
+    
+    // 清除本地数据
+    private void clearLocalData() {
+        // 清除用户信息
+        UserManager.clearUserData();
+        
+        // 清除会话列表
+        ConversationManager.clearConversations();
+        
+        // 清除消息缓存
+        MessageManager.clearMessageCache();
+        
+        // 清除其他本地数据
+        PreferenceManager.clearAllData();
+    }
+}
+```
+
+### Activity 中的使用
+
+```java
+public class ChatActivity extends AppCompatActivity {
+    
+    private CommandManager commandManager;
+    
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_chat);
+        
+        setupCommandListener();
+    }
+    
+    private void setupCommandListener() {
+        // 添加命令监听器
+        WKIM.getInstance().getCMDManager().addCmdListener("ChatActivity", cmd -> {
+            runOnUiThread(() -> {
+                handleChatCommand(cmd);
+            });
+        });
+    }
+    
+    private void handleChatCommand(WKCMD cmd) {
+        switch (cmd.cmdKey) {
+            case "typing_status":
+                handleTypingStatus(cmd.paramJsonObject);
+                break;
+                
+            case "message_recall":
+                handleMessageRecall(cmd.paramJsonObject);
+                break;
+                
+            case "user_status_change":
+                handleUserStatusChange(cmd.paramJsonObject);
+                break;
+        }
+    }
+    
+    private void handleTypingStatus(JSONObject params) {
+        try {
+            String userId = params.getString("user_id");
+            boolean isTyping = params.getBoolean("is_typing");
+            
+            if (isTyping) {
+                showTypingIndicator(userId);
+            } else {
+                hideTypingIndicator(userId);
+            }
+            
+        } catch (JSONException e) {
+            Log.e("ChatActivity", "处理输入状态失败", e);
+        }
+    }
+    
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        // 移除命令监听器
+        WKIM.getInstance().getCMDManager().removeCmdListener("ChatActivity");
+    }
+}
+```
+
+## WKCMD 数据结构
+
+### 命令对象属性
+
+```java
+public class WKCMD {
+    // 命令ID
+    public String cmdKey;
+    
+    // 命令参数
+    public JSONObject paramJsonObject;
+}
+```
+
+### 属性说明
+
+| 属性 | 类型 | 说明 |
+|------|------|------|
+| `cmdKey` | String | 命令唯一标识，用于区分不同类型的命令 |
+| `paramJsonObject` | JSONObject | 命令参数，包含命令执行所需的数据 |
+
+## 常见命令类型
+
+### 系统命令
+
+| 命令类型 | 说明 | 参数示例 |
+|----------|------|----------|
+| `force_logout` | 强制登出 | `{"reason": "账号在其他设备登录"}` |
+| `system_notification` | 系统通知 | `{"title": "系统维护", "content": "系统将于今晚维护"}` |
+| `server_config_update` | 服务器配置更新 | `{"config_key": "max_file_size", "value": "100MB"}` |
+
+### 用户相关命令
+
+| 命令类型 | 说明 | 参数示例 |
+|----------|------|----------|
+| `user_status_change` | 用户状态变化 | `{"user_id": "123", "status": 1}` |
+| `online_status` | 在线状态更新 | `{"users": [{"user_id": "123", "is_online": true}]}` |
+| `user_info_update` | 用户信息更新 | `{"user_id": "123", "nickname": "新昵称"}` |
+
+### 消息相关命令
+
+| 命令类型 | 说明 | 参数示例 |
+|----------|------|----------|
+| `message_recall` | 消息撤回 | `{"message_id": "msg123", "channel_id": "ch123"}` |
+| `typing_status` | 输入状态 | `{"channel_id": "ch123", "user_id": "123", "is_typing": true}` |
+| `message_read` | 消息已读 | `{"channel_id": "ch123", "message_id": "msg123"}` |
+
+### 群组相关命令
+
+| 命令类型 | 说明 | 参数示例 |
+|----------|------|----------|
+| `group_member_update` | 群成员更新 | `{"group_id": "g123", "action": "add", "members": [...]}` |
+| `group_info_update` | 群信息更新 | `{"group_id": "g123", "name": "新群名"}` |
+| `group_permission_change` | 群权限变更 | `{"group_id": "g123", "user_id": "123", "role": "admin"}` |
+
+## 最佳实践
+
+### 1. 命令处理器模式
+
+```java
+public abstract class CommandHandler {
+    protected String commandType;
+    
+    public CommandHandler(String commandType) {
+        this.commandType = commandType;
+    }
+    
+    public abstract void handle(JSONObject params);
+    
+    public boolean canHandle(String cmdKey) {
+        return commandType.equals(cmdKey);
+    }
+}
+
+public class CommandDispatcher {
+    private Map<String, CommandHandler> handlers = new HashMap<>();
+    
+    public void registerHandler(CommandHandler handler) {
+        handlers.put(handler.commandType, handler);
+    }
+    
+    public void dispatch(WKCMD cmd) {
+        CommandHandler handler = handlers.get(cmd.cmdKey);
+        if (handler != null) {
+            handler.handle(cmd.paramJsonObject);
+        } else {
+            Log.w("CommandDispatcher", "未找到命令处理器: " + cmd.cmdKey);
+        }
+    }
+}
+
+// 使用示例
+CommandDispatcher dispatcher = new CommandDispatcher();
+dispatcher.registerHandler(new UserStatusCommandHandler());
+dispatcher.registerHandler(new MessageRecallCommandHandler());
+dispatcher.registerHandler(new SystemNotificationCommandHandler());
+
+WKIM.getInstance().getCMDManager().addCmdListener("Dispatcher", dispatcher::dispatch);
+```
+
+### 2. 异步处理
+
+```java
+public class AsyncCommandManager {
+    private ExecutorService executorService = Executors.newCachedThreadPool();
+    
+    public void initialize() {
+        WKIM.getInstance().getCMDManager().addCmdListener("AsyncManager", this::handleCommandAsync);
+    }
+    
+    private void handleCommandAsync(WKCMD cmd) {
+        executorService.execute(() -> {
+            try {
+                processCommand(cmd);
+            } catch (Exception e) {
+                Log.e("AsyncCommandManager", "处理命令异常", e);
+            }
+        });
+    }
+    
+    private void processCommand(WKCMD cmd) {
+        // 耗时的命令处理逻辑
+        switch (cmd.cmdKey) {
+            case "sync_data":
+                syncDataFromServer(cmd.paramJsonObject);
+                break;
+            case "update_cache":
+                updateLocalCache(cmd.paramJsonObject);
+                break;
+        }
+    }
+    
+    public void destroy() {
+        WKIM.getInstance().getCMDManager().removeCmdListener("AsyncManager");
+        executorService.shutdown();
+    }
+}
+```
+
+### 3. 错误处理和重试
+
+```java
+public class RobustCommandManager {
+    private static final int MAX_RETRY_COUNT = 3;
+    private Map<String, Integer> retryCount = new ConcurrentHashMap<>();
+    
+    private void handleCommandWithRetry(WKCMD cmd) {
+        try {
+            processCommand(cmd);
+            // 处理成功，清除重试计数
+            retryCount.remove(cmd.cmdKey);
+        } catch (Exception e) {
+            Log.e("RobustCommandManager", "处理命令失败: " + cmd.cmdKey, e);
+            
+            int count = retryCount.getOrDefault(cmd.cmdKey, 0);
+            if (count < MAX_RETRY_COUNT) {
+                retryCount.put(cmd.cmdKey, count + 1);
+                
+                // 延迟重试
+                new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                    handleCommandWithRetry(cmd);
+                }, 1000 * (count + 1)); // 递增延迟
+            } else {
+                // 超过最大重试次数，记录错误
+                Log.e("RobustCommandManager", "命令处理失败，超过最大重试次数: " + cmd.cmdKey);
+                retryCount.remove(cmd.cmdKey);
+            }
+        }
+    }
+}
+```
+
+### 4. 内存管理
+
+```java
+@Override
+protected void onDestroy() {
+    super.onDestroy();
+    
+    // 移除所有命令监听器
+    WKIM.getInstance().getCMDManager().removeCmdListener("ActivityKey");
+    
+    // 清理命令处理器
+    if (commandDispatcher != null) {
+        commandDispatcher.clear();
+    }
+    
+    // 清理异步任务
+    if (executorService != null && !executorService.isShutdown()) {
+        executorService.shutdown();
+    }
+}
+```
+
+## 安全考虑
+
+### 1. 参数验证
+
+```java
+private boolean validateCommandParams(WKCMD cmd) {
+    if (cmd == null || cmd.cmdKey == null) {
+        return false;
+    }
+    
+    if (cmd.paramJsonObject == null) {
+        return false;
+    }
+    
+    // 根据命令类型验证必要参数
+    switch (cmd.cmdKey) {
+        case "user_status_change":
+            return cmd.paramJsonObject.has("user_id") && cmd.paramJsonObject.has("status");
+        case "message_recall":
+            return cmd.paramJsonObject.has("message_id") && cmd.paramJsonObject.has("channel_id");
+        default:
+            return true;
+    }
+}
+```
+
+### 2. 权限检查
+
+```java
+private boolean hasPermissionForCommand(WKCMD cmd) {
+    // 检查用户是否有执行该命令的权限
+    switch (cmd.cmdKey) {
+        case "force_logout":
+            return true; // 系统命令，总是允许
+        case "group_member_update":
+            return checkGroupPermission(cmd.paramJsonObject);
+        default:
+            return true;
+    }
+}
+```
+
+## 下一步
+
+<CardGroup cols={2}>
+  <Card
+    title="数据源配置"
+    icon="database"
+    href="/zh/sdk/wukongim/android/datasource"
+  >
+    学习如何配置数据源
+  </Card>
+  <Card
+    title="提醒管理"
+    icon="bell"
+    href="/zh/sdk/wukongim/android/reminder"
+  >
+    处理消息提醒功能
+  </Card>
+  <Card
+    title="高级功能"
+    icon="cog"
+    href="/zh/sdk/wukongim/android/advance"
+  >
+    探索高级功能和优化
+  </Card>
+  <Card
+    title="会话管理"
+    icon="users"
+    href="/zh/sdk/wukongim/android/conversation"
+  >
+    回到会话管理功能
+  </Card>
+</CardGroup>

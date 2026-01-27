@@ -1,0 +1,335 @@
+---
+title: "Data Source Configuration"
+description: "WuKongIM HarmonyOS SDK data source configuration, including file upload/download, conversation sync, channel information and message sync"
+icon: "database"
+---
+
+Data source management is one of the core functions of WuKongIM HarmonyOS SDK, responsible for handling key business logic such as file upload/download, conversation sync, channel information retrieval, and message sync.
+
+## File Management
+
+When sending custom attachment messages, the message sent to the recipient is a network address, not the actual file. In this case, we need to listen for attachment uploads.
+
+### File Upload
+
+```typescript
+// Define upload file data source
+let uploadAttachmentCallback = async (msg: WKMsg): Promise<[boolean, WKMsg]> => {
+  if (msg.contentType === WKMsgContentType.Image) {
+    // Upload image
+    let imageContent = msg.messageContent as WKImageContent;
+    imageContent.url = 'xxxx';
+    msg.messageContent = imageContent;
+    return [true, msg];
+  } else if (msg.contentType === WKMsgContentType.Voice) {
+    // Upload voice
+    let voiceContent = msg.messageContent as WKVoiceContent;
+    voiceContent.url = 'xxxx';
+    msg.messageContent = voiceContent;
+    return [true, msg];
+  } else if (msg.contentType === WKMsgContentType.Video) {
+    // Upload video
+    let videoContent = msg.messageContent as WKVideoContent;
+    videoContent.url = 'xxxx';
+    msg.messageContent = videoContent;
+    return [true, msg];
+  } else if (msg.contentType === 17) {
+    // Upload custom attachment message
+    let customerMsg = msg.messageContent as LocationMessageContent;
+    customerMsg.url = 'https://img1.baidu.com/it/u=3362698628,1928330748&fm=253&fmt=auto&app=138&f=JPEG?w=390&h=308';
+    msg.messageContent = customerMsg;
+    return [true, msg];
+  }
+  return [true, msg];
+};
+
+// Provide file upload data source
+WKIM.shared.config.provider.uploadAttachmentCallback = uploadAttachmentCallback;
+```
+
+### Complete File Upload Management Example
+
+```typescript
+import { WKIM, WKMsg, WKMsgContentType, WKImageContent, WKVoiceContent, WKVideoContent, WKFileContent } from '@wukong/wkim';
+import { http } from '@kit.NetworkKit';
+import { fileIo } from '@kit.CoreFileKit';
+
+class FileUploadManager {
+  
+  static setupUploadProvider(): void {
+    WKIM.shared.config.provider.uploadAttachmentCallback = async (msg: WKMsg): Promise<[boolean, WKMsg]> => {
+      try {
+        switch (msg.contentType) {
+          case WKMsgContentType.Image:
+            return await this.uploadImage(msg);
+          case WKMsgContentType.Voice:
+            return await this.uploadVoice(msg);
+          case WKMsgContentType.Video:
+            return await this.uploadVideo(msg);
+          case WKMsgContentType.File:
+            return await this.uploadFile(msg);
+          default:
+            return [true, msg];
+        }
+      } catch (error) {
+        console.error('File upload failed:', error);
+        return [false, msg];
+      }
+    };
+  }
+  
+  // Upload image
+  private static async uploadImage(msg: WKMsg): Promise<[boolean, WKMsg]> {
+    const imageContent = msg.messageContent as WKImageContent;
+    
+    if (!imageContent.localPath) {
+      return [true, msg];
+    }
+    
+    try {
+      // Compress image
+      const compressedPath = await this.compressImage(imageContent.localPath);
+      
+      // Upload to server
+      const uploadResult = await this.uploadToServer(compressedPath, 'image');
+      
+      // Update message content
+      imageContent.url = uploadResult.url;
+      imageContent.size = uploadResult.size;
+      msg.messageContent = imageContent;
+      
+      console.log('Image upload successful:', imageContent.url);
+      return [true, msg];
+      
+    } catch (error) {
+      console.error('Image upload failed:', error);
+      return [false, msg];
+    }
+  }
+  
+  // Upload voice
+  private static async uploadVoice(msg: WKMsg): Promise<[boolean, WKMsg]> {
+    const voiceContent = msg.messageContent as WKVoiceContent;
+    
+    if (!voiceContent.localPath) {
+      return [true, msg];
+    }
+    
+    try {
+      // Upload voice file
+      const uploadResult = await this.uploadToServer(voiceContent.localPath, 'voice');
+      
+      // Update message content
+      voiceContent.url = uploadResult.url;
+      voiceContent.size = uploadResult.size;
+      msg.messageContent = voiceContent;
+      
+      console.log('Voice upload successful:', voiceContent.url);
+      return [true, msg];
+      
+    } catch (error) {
+      console.error('Voice upload failed:', error);
+      return [false, msg];
+    }
+  }
+  
+  // Upload to server
+  private static async uploadToServer(filePath: string, type: string): Promise<{url: string, size: number}> {
+    try {
+      // Read file
+      const file = fileIo.openSync(filePath, fileIo.OpenMode.READ_ONLY);
+      const fileSize = fileIo.statSync(filePath).size;
+      
+      // Create HTTP request
+      const httpRequest = http.createHttp();
+      
+      // Build form data
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('type', type);
+      
+      const response = await httpRequest.request('https://your-upload-server.com/upload', {
+        method: http.RequestMethod.POST,
+        header: {
+          'Authorization': `Bearer ${this.getAuthToken()}`,
+        },
+        extraData: formData
+      });
+      
+      if (response.responseCode === 200) {
+        const data = JSON.parse(response.result as string);
+        return {
+          url: data.url,
+          size: fileSize
+        };
+      } else {
+        throw new Error(`Upload failed: ${response.responseCode}`);
+      }
+    } catch (error) {
+      throw new Error(`Network request failed: ${error}`);
+    }
+  }
+  
+  private static getAuthToken(): string {
+    // Get authentication token
+    return 'your-auth-token';
+  }
+}
+```
+
+### File Download
+
+The SDK will not actively download message attachments. When receiving messages with attachments, the app needs to download them as needed. After the app completes the download, it can change the local file address to avoid repeated downloads.
+
+```typescript
+WKIM.shared.messageManager().updateContent(clientMsgNo: string, messageContent: WKMessageContent);
+```
+
+## Recent Conversation Data Source
+
+### Sync Recent Conversation Data Source
+
+```typescript
+// Define provider
+let syncConversationCallback = async (lastMsgSeqs: string, msgCount: number, version: number): Promise<WKSyncConversation> => {
+  // do request interface and return to SDK
+};
+
+// Set sync recent conversation provider
+WKIM.shared.config.provider.syncConversationCallback = syncConversationCallback;
+```
+
+## Channel Information Data Source
+
+```typescript
+// Set channel information provider
+WKIM.shared.config.provider.channelInfoCallback =
+  async (channelId: string, channelType: number): Promise<WKChannel> => {
+    // Test data, can be returned through interface in practice
+    WKLogger.error('Get channel info', channelId, channelType + "");
+    let channel = new WKChannel(channelId, channelType);
+    if (channel.channelType === WKChannelType.personal) {
+      channel.channelName = `Personal${channelId}`;
+      channel.channelRemark = `Remark${channel.channelName}`;
+    } else if (channel.channelType === WKChannelType.group) {
+      channel.channelName = `Group${channelId}`;
+    }
+
+    channel.avatar = `https://api.multiavatar.com/${channel.channelId}.png`;
+    return channel;
+  };
+```
+
+## Channel Member Data Source
+
+### Channel Member Pagination Data Source
+
+```typescript
+// Define provider
+WKIM.shared.config.provider.channelMemberWithPageCallback = async (
+  channel: WKChannel,
+  option: SyncChannelMemberOptions
+): Promise<WKChannelMember[]> => {
+  // todo request interface and return to SDK
+  let list: WKChannelMember[] = [];
+  return list;
+};
+```
+
+## Channel Message Data Source
+
+```typescript
+// Define provider
+let syncMessageCallback = async (channel: WKChannel, options: SyncOptions): Promise<WKSyncChannelMsg> => {
+  /*
+   * Sync messages for a channel
+   *
+   * @param channel.channelId           Channel ID
+   * @param channel.channelType         Channel type
+   * @param options.startMessageSeq     Start message sequence (result includes start_message_seq message)
+   * @param options.endMessageSeq       End message sequence (result excludes end_message_seq message)
+   * @param options.limit               Message count limit
+   * @param options.pullMode            Pull mode 0: pull down 1: pull up
+   */
+  // todo request interface and return to SDK
+};
+
+// Sync channel messages
+WKIM.shared.config.provider.syncMessageCallback = syncMessageCallback;
+```
+
+## Complete Data Source Manager
+
+```typescript
+class WuKongIMDataSourceManager {
+  
+  static initialize(): void {
+    // Set file upload provider
+    FileUploadManager.setupUploadProvider();
+    
+    // Set conversation sync
+    ConversationDataSource.setupConversationSync();
+    
+    // Set channel data source
+    ChannelDataSource.setupChannelDataSource();
+    
+    // Set message sync
+    MessageDataSource.setupMessageSync();
+    
+    console.log('WuKongIM data source manager initialized');
+  }
+  
+  // Set authentication token
+  static setAuthToken(token: string): void {
+    // Save authentication token to local storage
+    // Can use HarmonyOS preferences API
+  }
+  
+  // Clear all cache
+  static clearAllCache(): void {
+    FileDownloadManager.clearDownloadCache();
+    console.log('All cache cleared');
+  }
+}
+
+// Initialize when app starts
+export default class EntryAbility extends UIAbility {
+  onCreate(want: Want, launchParam: AbilityConstant.LaunchParam): void {
+    // Initialize data source manager
+    WuKongIMDataSourceManager.initialize();
+  }
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Advanced Features"
+    icon="cog"
+    href="/en/sdk/wukongim/harmonyos/advance"
+  >
+    Explore custom messages and advanced features
+  </Card>
+  <Card
+    title="Conversation Management"
+    icon="users"
+    href="/en/sdk/wukongim/harmonyos/conversation"
+  >
+    Return to conversation management functionality
+  </Card>
+  <Card
+    title="Channel Management"
+    icon="hash"
+    href="/en/sdk/wukongim/harmonyos/channel"
+  >
+    Return to channel management functionality
+  </Card>
+  <Card
+    title="Message Management"
+    icon="message-circle"
+    href="/en/sdk/wukongim/harmonyos/message"
+  >
+    Return to message handling functionality
+  </Card>
+</CardGroup>

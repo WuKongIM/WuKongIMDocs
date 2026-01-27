@@ -1,0 +1,184 @@
+---
+title: "设置临时频道订阅者"
+description: "设置临时频道的订阅者（内部API）"
+api: "POST /tmpchannel/subscriber_set"
+---
+
+<Warning>
+此接口主要用于系统内部调用，用于集群节点间通信。不建议外部直接使用。
+</Warning>
+
+## 概述
+
+设置临时频道的订阅者。这是一个内部API，用于集群节点间通信来管理临时频道订阅。临时频道用于特殊场景，如临时群组或会话，会自动创建和管理频道标签（tag）。
+
+## 请求体
+
+### 必传参数
+
+<ParamField body="channel_id" type="string" required>
+临时频道ID，不能包含特殊字符
+</ParamField>
+
+<ParamField body="uids" type="array" required>
+要设置为临时频道订阅者的用户ID列表
+<ParamField body="uids[]" type="string">
+用户ID
+</ParamField>
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "http://localhost:5001/tmpchannel/subscriber_set" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "channel_id": "tmp_channel_123",
+    "uids": ["user1", "user2", "user3"]
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5001/tmpchannel/subscriber_set', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    channel_id: 'tmp_channel_123',
+    uids: ['user1', 'user2', 'user3']
+  })
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+
+data = {
+    "channel_id": "tmp_channel_123",
+    "uids": ["user1", "user2", "user3"]
+}
+
+response = requests.post('http://localhost:5001/tmpchannel/subscriber_set', json=data)
+result = response.json()
+print(result)
+```
+
+```go Go
+package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    data := map[string]interface{}{
+        "channel_id": "tmp_channel_123",
+        "uids":       []string{"user1", "user2", "user3"},
+    }
+    
+    jsonData, _ := json.Marshal(data)
+    
+    resp, err := http.Post(
+        "http://localhost:5001/tmpchannel/subscriber_set",
+        "application/json",
+        bytes.NewBuffer(jsonData),
+    )
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    var result map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Printf("%+v\n", result)
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json 成功响应
+{
+  "status": "ok"
+}
+```
+</ResponseExample>
+
+## 响应字段
+
+<ResponseField name="status" type="string" required>
+操作状态，成功时返回 `"ok"`
+</ResponseField>
+
+## 状态码
+
+| 状态码 | 说明 |
+|--------|------|
+| 200 | 临时频道订阅者设置成功 |
+| 400 | 请求参数错误 |
+| 500 | 服务器内部错误 |
+
+## 临时频道机制
+
+### 临时频道特点
+
+- **临时性**：用于特殊场景的临时群组或会话
+- **自动管理**：系统自动创建和管理频道标签
+- **集群通信**：主要用于集群节点间的内部通信
+- **订阅管理**：支持动态设置订阅者列表
+
+### 使用场景
+
+| 场景 | 说明 | 适用情况 |
+|------|------|----------|
+| 临时群组 | 创建临时的讨论群组 | 短期项目协作 |
+| 会话迁移 | 在集群节点间迁移会话 | 负载均衡 |
+| 系统维护 | 临时重组频道结构 | 系统升级 |
+
+## 注意事项
+
+<Warning>
+**内部API警告**
+
+此接口设计用于系统内部调用，直接使用可能导致：
+- 数据不一致
+- 集群状态异常
+- 意外的系统行为
+
+建议使用标准的频道管理接口进行常规操作。
+</Warning>
+
+### 参数限制
+
+- **频道ID**：不能为空，不能包含特殊字符
+- **用户列表**：至少包含一个用户ID
+- **字符长度**：频道ID最大64字符
+
+### 错误处理
+
+| 错误信息 | 原因 | 解决方案 |
+|----------|------|----------|
+| channel_id不能为空 | 未提供频道ID | 确保提供有效的频道ID |
+| uids不能为空 | 用户列表为空 | 提供至少一个用户ID |
+| 频道ID不能包含特殊字符 | 频道ID格式无效 | 使用字母数字和下划线 |
+| 获取频道所在节点失败 | 集群通信错误 | 检查集群状态 |
+| 创建标签失败 | 标签系统错误 | 检查标签服务状态 |
+
+## 最佳实践
+
+1. **仅内部使用**：避免在客户端应用中直接调用
+2. **参数验证**：确保所有参数格式正确
+3. **错误处理**：实现完整的错误处理机制
+4. **监控日志**：记录API调用以便问题排查
+5. **集群状态**：确保集群状态正常再调用
+
+## 相关接口
+
+- [创建频道](/zh/api/channel/create) - 创建标准频道
+- [添加频道订阅者](/zh/api/channel/add-subscribers) - 添加标准频道订阅者
+- [移除频道订阅者](/zh/api/channel/remove-subscribers) - 移除标准频道订阅者

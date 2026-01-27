@@ -1,0 +1,674 @@
+---
+title: "命令管理"
+description: "WuKongIM Flutter SDK 命令管理功能，包括CMD消息监听和处理"
+icon: "terminal"
+---
+
+命令管理负责处理服务器下发的 CMD（命令）消息。CMD 消息只能是服务器下发客户端进行解析，用于处理各种系统级别的指令和状态同步。
+
+<Note>
+CMD 消息只能由服务器下发，客户端不能主动发送 CMD 消息
+</Note>
+
+## 监听命令消息
+
+### 基础监听
+
+```dart
+// 监听命令消息
+WKIM.shared.cmdManager.addOnCmdListener('chat', (cmdMsg) {
+    // todo 按需处理cmd消息
+});
+
+// 移除监听
+WKIM.shared.cmdManager.removeCmdListener('chat');
+```
+
+### 完整命令监听管理
+
+```dart
+class CMDMessageManager {
+  static final Map<String, Function> _cmdListeners = {};
+  static StreamController<CMDMessageEvent>? _cmdController;
+  
+  // 获取命令消息流
+  static Stream<CMDMessageEvent> get cmdMessageStream {
+    _cmdController ??= StreamController<CMDMessageEvent>.broadcast();
+    return _cmdController!.stream;
+  }
+  
+  // 添加命令监听
+  static void addCmdListener(String key, Function(WKCMD) callback) {
+    _cmdListeners[key] = callback;
+    
+    WKIM.shared.cmdManager.addOnCmdListener(key, (WKCMD cmdMsg) {
+      // 调用回调
+      callback(cmdMsg);
+      
+      // 发送到流
+      _cmdController?.add(CMDMessageEvent(
+        cmd: cmdMsg,
+        timestamp: DateTime.now(),
+      ));
+      
+      // 处理常见命令
+      _handleCommonCommands(cmdMsg);
+      
+      print('收到命令消息: ${cmdMsg.cmd}');
+    });
+  }
+  
+  // 移除命令监听
+  static void removeCmdListener(String key) {
+    _cmdListeners.remove(key);
+    WKIM.shared.cmdManager.removeCmdListener(key);
+  }
+  
+  // 移除所有监听
+  static void removeAllListeners() {
+    for (final key in _cmdListeners.keys) {
+      WKIM.shared.cmdManager.removeCmdListener(key);
+    }
+    _cmdListeners.clear();
+  }
+  
+  // 处理常见命令
+  static void _handleCommonCommands(WKCMD cmdMsg) {
+    switch (cmdMsg.cmd) {
+      case 'syncConversation':
+        _handleSyncConversation(cmdMsg);
+        break;
+      case 'syncChannelInfo':
+        _handleSyncChannelInfo(cmdMsg);
+        break;
+      case 'syncChannelMember':
+        _handleSyncChannelMember(cmdMsg);
+        break;
+      case 'syncMessageExtra':
+        _handleSyncMessageExtra(cmdMsg);
+        break;
+      case 'syncMessageReaction':
+        _handleSyncMessageReaction(cmdMsg);
+        break;
+      case 'userStatusUpdate':
+        _handleUserStatusUpdate(cmdMsg);
+        break;
+      case 'channelUpdate':
+        _handleChannelUpdate(cmdMsg);
+        break;
+      case 'memberUpdate':
+        _handleMemberUpdate(cmdMsg);
+        break;
+      default:
+        print('未处理的命令: ${cmdMsg.cmd}');
+        break;
+    }
+  }
+  
+  // 处理同步会话命令
+  static void _handleSyncConversation(WKCMD cmdMsg) {
+    print('处理同步会话命令');
+    // 触发会话同步逻辑
+    // 这里可以调用会话管理器的同步方法
+  }
+  
+  // 处理同步频道信息命令
+  static void _handleSyncChannelInfo(WKCMD cmdMsg) {
+    print('处理同步频道信息命令');
+    if (cmdMsg.param is Map) {
+      final params = cmdMsg.param as Map;
+      final channelId = params['channel_id'] as String?;
+      final channelType = params['channel_type'] as int?;
+      
+      if (channelId != null && channelType != null) {
+        // 刷新频道信息
+        WKIM.shared.channelManager.fetchChannelInfo(channelId, channelType);
+      }
+    }
+  }
+  
+  // 处理同步频道成员命令
+  static void _handleSyncChannelMember(WKCMD cmdMsg) {
+    print('处理同步频道成员命令');
+    // 触发频道成员同步逻辑
+  }
+  
+  // 处理同步消息扩展命令
+  static void _handleSyncMessageExtra(WKCMD cmdMsg) {
+    print('处理同步消息扩展命令');
+    // 触发消息扩展同步逻辑
+  }
+  
+  // 处理同步消息回应命令
+  static void _handleSyncMessageReaction(WKCMD cmdMsg) {
+    print('处理同步消息回应命令');
+    // 触发消息回应同步逻辑
+  }
+  
+  // 处理用户状态更新命令
+  static void _handleUserStatusUpdate(WKCMD cmdMsg) {
+    print('处理用户状态更新命令');
+    if (cmdMsg.param is Map) {
+      final params = cmdMsg.param as Map;
+      final uid = params['uid'] as String?;
+      final online = params['online'] as int?;
+      
+      if (uid != null && online != null) {
+        // 更新用户在线状态
+        print('用户 $uid 状态更新: ${online == 1 ? '在线' : '离线'}');
+      }
+    }
+  }
+  
+  // 处理频道更新命令
+  static void _handleChannelUpdate(WKCMD cmdMsg) {
+    print('处理频道更新命令');
+    // 处理频道信息变更
+  }
+  
+  // 处理成员更新命令
+  static void _handleMemberUpdate(WKCMD cmdMsg) {
+    print('处理成员更新命令');
+    // 处理成员信息变更
+  }
+  
+  // 销毁
+  static void dispose() {
+    removeAllListeners();
+    _cmdController?.close();
+    _cmdController = null;
+  }
+}
+
+// 命令消息事件
+class CMDMessageEvent {
+  final WKCMD cmd;
+  final DateTime timestamp;
+  
+  CMDMessageEvent({
+    required this.cmd,
+    required this.timestamp,
+  });
+  
+  @override
+  String toString() {
+    return 'CMDMessageEvent{cmd: ${cmd.cmd}, timestamp: $timestamp}';
+  }
+}
+```
+
+## 常见命令类型
+
+### 系统同步命令
+
+这些命令用于同步各种数据状态：
+
+```dart
+class SystemSyncCommands {
+  
+  // 同步会话列表
+  static const String SYNC_CONVERSATION = 'syncConversation';
+  
+  // 同步频道信息
+  static const String SYNC_CHANNEL_INFO = 'syncChannelInfo';
+  
+  // 同步频道成员
+  static const String SYNC_CHANNEL_MEMBER = 'syncChannelMember';
+  
+  // 同步消息扩展
+  static const String SYNC_MESSAGE_EXTRA = 'syncMessageExtra';
+  
+  // 同步消息回应
+  static const String SYNC_MESSAGE_REACTION = 'syncMessageReaction';
+  
+  // 处理系统同步命令
+  static void handleSyncCommand(WKCMD cmdMsg) {
+    switch (cmdMsg.cmd) {
+      case SYNC_CONVERSATION:
+        _syncConversations(cmdMsg.param);
+        break;
+      case SYNC_CHANNEL_INFO:
+        _syncChannelInfo(cmdMsg.param);
+        break;
+      case SYNC_CHANNEL_MEMBER:
+        _syncChannelMember(cmdMsg.param);
+        break;
+      case SYNC_MESSAGE_EXTRA:
+        _syncMessageExtra(cmdMsg.param);
+        break;
+      case SYNC_MESSAGE_REACTION:
+        _syncMessageReaction(cmdMsg.param);
+        break;
+    }
+  }
+  
+  static void _syncConversations(dynamic param) {
+    // 实现会话同步逻辑
+    print('同步会话数据');
+  }
+  
+  static void _syncChannelInfo(dynamic param) {
+    // 实现频道信息同步逻辑
+    print('同步频道信息');
+  }
+  
+  static void _syncChannelMember(dynamic param) {
+    // 实现频道成员同步逻辑
+    print('同步频道成员');
+  }
+  
+  static void _syncMessageExtra(dynamic param) {
+    // 实现消息扩展同步逻辑
+    print('同步消息扩展');
+  }
+  
+  static void _syncMessageReaction(dynamic param) {
+    // 实现消息回应同步逻辑
+    print('同步消息回应');
+  }
+}
+```
+
+### 状态更新命令
+
+这些命令用于实时状态更新：
+
+```dart
+class StatusUpdateCommands {
+  
+  // 用户在线状态更新
+  static const String USER_STATUS_UPDATE = 'userStatusUpdate';
+  
+  // 频道状态更新
+  static const String CHANNEL_UPDATE = 'channelUpdate';
+  
+  // 成员状态更新
+  static const String MEMBER_UPDATE = 'memberUpdate';
+  
+  // 消息状态更新
+  static const String MESSAGE_UPDATE = 'messageUpdate';
+  
+  // 处理状态更新命令
+  static void handleStatusCommand(WKCMD cmdMsg) {
+    switch (cmdMsg.cmd) {
+      case USER_STATUS_UPDATE:
+        _handleUserStatusUpdate(cmdMsg.param);
+        break;
+      case CHANNEL_UPDATE:
+        _handleChannelUpdate(cmdMsg.param);
+        break;
+      case MEMBER_UPDATE:
+        _handleMemberUpdate(cmdMsg.param);
+        break;
+      case MESSAGE_UPDATE:
+        _handleMessageUpdate(cmdMsg.param);
+        break;
+    }
+  }
+  
+  static void _handleUserStatusUpdate(dynamic param) {
+    if (param is Map) {
+      final uid = param['uid'] as String?;
+      final online = param['online'] as int?;
+      final lastSeen = param['last_seen'] as int?;
+      
+      print('用户状态更新: $uid, 在线: $online, 最后在线: $lastSeen');
+      
+      // 更新本地用户状态
+      // 可以通过事件通知UI更新
+    }
+  }
+  
+  static void _handleChannelUpdate(dynamic param) {
+    if (param is Map) {
+      final channelId = param['channel_id'] as String?;
+      final channelType = param['channel_type'] as int?;
+      
+      print('频道更新: $channelId, 类型: $channelType');
+      
+      // 刷新频道信息
+      if (channelId != null && channelType != null) {
+        WKIM.shared.channelManager.fetchChannelInfo(channelId, channelType);
+      }
+    }
+  }
+  
+  static void _handleMemberUpdate(dynamic param) {
+    if (param is Map) {
+      final channelId = param['channel_id'] as String?;
+      final memberUid = param['member_uid'] as String?;
+      
+      print('成员更新: 频道 $channelId, 成员 $memberUid');
+      
+      // 刷新成员信息
+      // 触发成员列表更新
+    }
+  }
+  
+  static void _handleMessageUpdate(dynamic param) {
+    if (param is Map) {
+      final messageId = param['message_id'] as String?;
+      final action = param['action'] as String?;
+      
+      print('消息更新: $messageId, 操作: $action');
+      
+      // 处理消息更新（如撤回、编辑等）
+    }
+  }
+}
+```
+
+## 自定义命令处理
+
+### 业务命令处理器
+
+```dart
+class BusinessCommandHandler {
+  
+  // 注册业务命令处理器
+  static void registerBusinessCommands() {
+    CMDMessageManager.addCmdListener('business', (WKCMD cmdMsg) {
+      _handleBusinessCommand(cmdMsg);
+    });
+  }
+  
+  // 处理业务命令
+  static void _handleBusinessCommand(WKCMD cmdMsg) {
+    switch (cmdMsg.cmd) {
+      case 'groupInvite':
+        _handleGroupInvite(cmdMsg.param);
+        break;
+      case 'friendRequest':
+        _handleFriendRequest(cmdMsg.param);
+        break;
+      case 'systemNotice':
+        _handleSystemNotice(cmdMsg.param);
+        break;
+      case 'customAction':
+        _handleCustomAction(cmdMsg.param);
+        break;
+      default:
+        print('未知业务命令: ${cmdMsg.cmd}');
+        break;
+    }
+  }
+  
+  // 处理群组邀请
+  static void _handleGroupInvite(dynamic param) {
+    if (param is Map) {
+      final groupId = param['group_id'] as String?;
+      final inviterUid = param['inviter_uid'] as String?;
+      final inviterName = param['inviter_name'] as String?;
+      
+      print('收到群组邀请: 群组 $groupId, 邀请人 $inviterName');
+      
+      // 显示邀请通知
+      _showInviteNotification(groupId, inviterName);
+    }
+  }
+  
+  // 处理好友请求
+  static void _handleFriendRequest(dynamic param) {
+    if (param is Map) {
+      final fromUid = param['from_uid'] as String?;
+      final fromName = param['from_name'] as String?;
+      final message = param['message'] as String?;
+      
+      print('收到好友请求: 来自 $fromName, 消息: $message');
+      
+      // 显示好友请求通知
+      _showFriendRequestNotification(fromUid, fromName, message);
+    }
+  }
+  
+  // 处理系统通知
+  static void _handleSystemNotice(dynamic param) {
+    if (param is Map) {
+      final title = param['title'] as String?;
+      final content = param['content'] as String?;
+      final type = param['type'] as String?;
+      
+      print('收到系统通知: $title - $content');
+      
+      // 显示系统通知
+      _showSystemNotification(title, content, type);
+    }
+  }
+  
+  // 处理自定义操作
+  static void _handleCustomAction(dynamic param) {
+    if (param is Map) {
+      final action = param['action'] as String?;
+      final data = param['data'];
+      
+      print('收到自定义操作: $action');
+      
+      // 处理自定义业务逻辑
+      _processCustomAction(action, data);
+    }
+  }
+  
+  // 显示邀请通知
+  static void _showInviteNotification(String? groupId, String? inviterName) {
+    // 实现邀请通知UI
+  }
+  
+  // 显示好友请求通知
+  static void _showFriendRequestNotification(String? fromUid, String? fromName, String? message) {
+    // 实现好友请求通知UI
+  }
+  
+  // 显示系统通知
+  static void _showSystemNotification(String? title, String? content, String? type) {
+    // 实现系统通知UI
+  }
+  
+  // 处理自定义操作
+  static void _processCustomAction(String? action, dynamic data) {
+    // 实现自定义业务逻辑
+  }
+}
+```
+
+## 数据结构说明
+
+### WKCMD 命令对象
+
+```dart
+class WKCMD {
+  String cmd = '';     // 命令ID
+  dynamic param;       // 对应命令参数
+}
+```
+
+### 字段说明
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `cmd` | String | 命令标识符，用于区分不同类型的命令 |
+| `param` | dynamic | 命令参数，可以是任意类型的数据 |
+
+### 常见命令参数格式
+
+#### 同步命令参数
+
+```dart
+// 同步会话命令参数
+{
+  "version": 123456,
+  "last_msg_seqs": "1,2,3,4,5",
+  "msg_count": 20
+}
+
+// 同步频道信息命令参数
+{
+  "channel_id": "channel123",
+  "channel_type": 2,
+  "version": 123456
+}
+```
+
+#### 状态更新命令参数
+
+```dart
+// 用户状态更新参数
+{
+  "uid": "user123",
+  "online": 1,
+  "last_seen": 1640995200,
+  "device_flag": 1
+}
+
+// 频道更新参数
+{
+  "channel_id": "channel123",
+  "channel_type": 2,
+  "action": "update",
+  "fields": ["name", "avatar"]
+}
+```
+
+## Flutter Widget 集成示例
+
+### 命令消息处理组件
+
+```dart
+class CMDMessageHandler extends StatefulWidget {
+  final Widget child;
+  
+  const CMDMessageHandler({Key? key, required this.child}) : super(key: key);
+  
+  @override
+  _CMDMessageHandlerState createState() => _CMDMessageHandlerState();
+}
+
+class _CMDMessageHandlerState extends State<CMDMessageHandler> {
+  StreamSubscription<CMDMessageEvent>? _subscription;
+  
+  @override
+  void initState() {
+    super.initState();
+    _setupCMDListener();
+  }
+  
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    CMDMessageManager.removeCmdListener('app');
+    super.dispose();
+  }
+  
+  void _setupCMDListener() {
+    // 添加全局命令监听
+    CMDMessageManager.addCmdListener('app', (WKCMD cmdMsg) {
+      _handleAppLevelCommand(cmdMsg);
+    });
+    
+    // 监听命令消息流
+    _subscription = CMDMessageManager.cmdMessageStream.listen((event) {
+      _processCommandEvent(event);
+    });
+  }
+  
+  void _handleAppLevelCommand(WKCMD cmdMsg) {
+    // 处理应用级别的命令
+    switch (cmdMsg.cmd) {
+      case 'appUpdate':
+        _handleAppUpdate(cmdMsg.param);
+        break;
+      case 'maintenance':
+        _handleMaintenance(cmdMsg.param);
+        break;
+      case 'forceLogout':
+        _handleForceLogout(cmdMsg.param);
+        break;
+    }
+  }
+  
+  void _processCommandEvent(CMDMessageEvent event) {
+    // 处理命令事件
+    print('处理命令事件: ${event.cmd.cmd}');
+  }
+  
+  void _handleAppUpdate(dynamic param) {
+    // 处理应用更新命令
+    if (param is Map) {
+      final version = param['version'] as String?;
+      final url = param['url'] as String?;
+      final force = param['force'] as bool? ?? false;
+      
+      _showUpdateDialog(version, url, force);
+    }
+  }
+  
+  void _handleMaintenance(dynamic param) {
+    // 处理维护通知命令
+    if (param is Map) {
+      final message = param['message'] as String?;
+      final startTime = param['start_time'] as int?;
+      final endTime = param['end_time'] as int?;
+      
+      _showMaintenanceNotice(message, startTime, endTime);
+    }
+  }
+  
+  void _handleForceLogout(dynamic param) {
+    // 处理强制登出命令
+    if (param is Map) {
+      final reason = param['reason'] as String?;
+      
+      _performForceLogout(reason);
+    }
+  }
+  
+  void _showUpdateDialog(String? version, String? url, bool force) {
+    // 显示更新对话框
+  }
+  
+  void _showMaintenanceNotice(String? message, int? startTime, int? endTime) {
+    // 显示维护通知
+  }
+  
+  void _performForceLogout(String? reason) {
+    // 执行强制登出
+  }
+  
+  @override
+  Widget build(BuildContext context) {
+    return widget.child;
+  }
+}
+```
+
+## 下一步
+
+<CardGroup cols={2}>
+  <Card
+    title="提醒管理"
+    icon="bell"
+    href="/zh/sdk/wukongim/flutter/reminder"
+  >
+    了解@提醒和自定义提醒功能
+  </Card>
+  <Card
+    title="高级功能"
+    icon="cog"
+    href="/zh/sdk/wukongim/flutter/advance"
+  >
+    探索自定义消息和扩展特性
+  </Card>
+  <Card
+    title="频道成员管理"
+    icon="users"
+    href="/zh/sdk/wukongim/flutter/channel_member"
+  >
+    回到频道成员管理功能
+  </Card>
+  <Card
+    title="数据源配置"
+    icon="database"
+    href="/zh/sdk/wukongim/flutter/datasource"
+  >
+    配置数据源和同步逻辑
+  </Card>
+</CardGroup>

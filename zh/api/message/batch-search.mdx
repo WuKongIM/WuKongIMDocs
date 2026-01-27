@@ -1,0 +1,162 @@
+---
+title: "批量消息搜索"
+description: "根据消息 ID 列表批量搜索多条消息"
+api: "POST /messages"
+---
+
+## 概述
+
+根据消息 ID 列表批量搜索多条消息，适用于需要同时获取多条消息详情的场景。
+
+## 请求体
+
+<ParamField body="message_ids" type="array" required>
+消息 ID 列表
+<ParamField body="message_ids[]" type="integer">
+消息 ID
+</ParamField>
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "http://localhost:5001/messages" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "message_ids": [123456789, 123456790, 123456791]
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5001/messages', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    message_ids: [123456789, 123456790, 123456791]
+  })
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+
+data = {
+    "message_ids": [123456789, 123456790, 123456791]
+}
+
+response = requests.post('http://localhost:5001/messages', json=data)
+result = response.json()
+print(result)
+```
+
+```go Go
+package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    data := map[string]interface{}{
+        "message_ids": []int64{123456789, 123456790, 123456791},
+    }
+    
+    jsonData, _ := json.Marshal(data)
+    
+    resp, err := http.Post(
+        "http://localhost:5001/messages",
+        "application/json",
+        bytes.NewBuffer(jsonData),
+    )
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    var result []map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Printf("%+v\n", result)
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json 成功响应
+[
+  {
+    "message_id": 123456789,
+    "message_seq": 1001,
+    "client_msg_no": "msg_123",
+    "from_uid": "user123",
+    "channel_id": "group123",
+    "channel_type": 2,
+    "timestamp": 1640995200,
+    "payload": "SGVsbG8gV29ybGQ="
+  },
+  {
+    "message_id": 123456790,
+    "message_seq": 1002,
+    "client_msg_no": "msg_124",
+    "from_uid": "user456",
+    "channel_id": "group123",
+    "channel_type": 2,
+    "timestamp": 1640995260,
+    "payload": "SGkgdGhlcmU="
+  }
+]
+```
+</ResponseExample>
+
+## 响应字段
+
+响应是一个消息对象数组，每个消息对象包含以下字段：
+
+<ResponseField name="message_id" type="integer" required>
+服务器生成的消息 ID
+</ResponseField>
+
+<ResponseField name="message_seq" type="integer" required>
+消息序列号
+</ResponseField>
+
+<ResponseField name="client_msg_no" type="string" required>
+客户端消息编号
+</ResponseField>
+
+<ResponseField name="from_uid" type="string" required>
+发送者用户 ID
+</ResponseField>
+
+<ResponseField name="channel_id" type="string" required>
+频道 ID
+</ResponseField>
+
+<ResponseField name="channel_type" type="integer" required>
+频道类型
+- `1` - 个人频道
+- `2` - 群组频道
+</ResponseField>
+
+<ResponseField name="timestamp" type="integer" required>
+消息时间戳（Unix 时间戳）
+</ResponseField>
+
+<ResponseField name="payload" type="string" required>
+Base64 编码的消息内容
+</ResponseField>
+
+## 状态码
+
+| 状态码 | 说明 |
+|--------|------|
+| 200 | 消息搜索成功 |
+| 400 | 请求参数错误 |
+| 404 | 部分或全部消息不存在 |
+| 500 | 服务器内部错误 |

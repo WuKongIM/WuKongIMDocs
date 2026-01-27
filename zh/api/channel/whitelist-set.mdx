@@ -1,0 +1,371 @@
+---
+title: "设置频道白名单"
+description: "设置（替换）频道的完整白名单"
+api: "POST /channel/whitelist_set"
+---
+
+## 概述
+
+设置（替换）频道的完整白名单。此操作会先清除所有现有白名单条目，然后添加新的条目。如果UIDs为空，则清空整个白名单。
+
+## 请求体
+
+### 必传参数
+
+<ParamField body="channel_id" type="string" required>
+频道ID，不能为空或包含特殊字符
+</ParamField>
+
+<ParamField body="channel_type" type="integer" required>
+频道类型
+- `1` - 个人频道
+- `2` - 群组频道
+</ParamField>
+
+### 可选参数
+
+<ParamField body="uids" type="array">
+要设置为白名单的用户ID列表。如果为空，则清空整个白名单。
+<ParamField body="uids[]" type="string">
+用户ID
+</ParamField>
+</ParamField>
+
+<RequestExample>
+```bash 设置白名单
+curl -X POST "http://localhost:5001/channel/whitelist_set" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "channel_id": "group123",
+    "channel_type": 2,
+    "uids": ["user1", "user2", "user3"]
+  }'
+```
+
+```bash 清空白名单
+curl -X POST "http://localhost:5001/channel/whitelist_set" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "channel_id": "group123",
+    "channel_type": 2,
+    "uids": []
+  }'
+```
+
+```javascript JavaScript
+// 设置白名单
+const response = await fetch('http://localhost:5001/channel/whitelist_set', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    channel_id: 'group123',
+    channel_type: 2,
+    uids: ['user1', 'user2', 'user3']
+  })
+});
+
+const data = await response.json();
+console.log(data);
+
+// 清空白名单
+const clearResponse = await fetch('http://localhost:5001/channel/whitelist_set', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    channel_id: 'group123',
+    channel_type: 2,
+    uids: []
+  })
+});
+```
+
+```python Python
+import requests
+
+# 设置白名单
+data = {
+    "channel_id": "group123",
+    "channel_type": 2,
+    "uids": ["user1", "user2", "user3"]
+}
+
+response = requests.post('http://localhost:5001/channel/whitelist_set', json=data)
+result = response.json()
+print(result)
+
+# 清空白名单
+clear_data = {
+    "channel_id": "group123",
+    "channel_type": 2,
+    "uids": []
+}
+
+clear_response = requests.post('http://localhost:5001/channel/whitelist_set', json=clear_data)
+clear_result = clear_response.json()
+print(clear_result)
+```
+
+```go Go
+package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    // 设置白名单
+    data := map[string]interface{}{
+        "channel_id":   "group123",
+        "channel_type": 2,
+        "uids":         []string{"user1", "user2", "user3"},
+    }
+    
+    jsonData, _ := json.Marshal(data)
+    
+    resp, err := http.Post(
+        "http://localhost:5001/channel/whitelist_set",
+        "application/json",
+        bytes.NewBuffer(jsonData),
+    )
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    var result map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Printf("%+v\n", result)
+    
+    // 清空白名单
+    clearData := map[string]interface{}{
+        "channel_id":   "group123",
+        "channel_type": 2,
+        "uids":         []string{},
+    }
+    
+    clearJsonData, _ := json.Marshal(clearData)
+    
+    clearResp, err := http.Post(
+        "http://localhost:5001/channel/whitelist_set",
+        "application/json",
+        bytes.NewBuffer(clearJsonData),
+    )
+    if err != nil {
+        panic(err)
+    }
+    defer clearResp.Body.Close()
+    
+    var clearResult map[string]interface{}
+    json.NewDecoder(clearResp.Body).Decode(&clearResult)
+    fmt.Printf("%+v\n", clearResult)
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json 成功响应
+{
+  "status": "ok"
+}
+```
+</ResponseExample>
+
+## 响应字段
+
+<ResponseField name="status" type="string" required>
+操作状态，成功时返回 `"ok"`
+</ResponseField>
+
+## 状态码
+
+| 状态码 | 说明 |
+|--------|------|
+| 200 | 白名单设置成功 |
+| 400 | 请求参数错误 |
+| 403 | 没有管理权限 |
+| 404 | 频道不存在 |
+| 500 | 服务器内部错误 |
+
+## 功能说明
+
+### 设置操作
+
+设置操作会执行以下步骤：
+
+1. **清除现有白名单**：删除频道的所有现有白名单条目
+2. **添加新条目**：将提供的用户ID列表添加到白名单
+3. **权限更新**：立即生效，只有白名单用户可以发送消息（如果启用白名单模式）
+4. **会话管理**：为个人频道自动创建相关会话
+
+### 清空操作
+
+当 `uids` 为空数组时：
+
+- 清除频道的所有白名单条目
+- 恢复所有用户的正常权限
+- 禁用白名单模式
+
+## 白名单机制
+
+### 权限特性
+
+白名单用户享有以下特权：
+
+| 特权 | 说明 | 适用条件 |
+|------|------|----------|
+| 发送权限 | 可以向频道发送消息 | 启用白名单模式时 |
+| 绕过限制 | 绕过某些频道限制 | 根据频道配置 |
+| 优先处理 | 消息可能获得优先处理 | 系统配置相关 |
+| 会话保障 | 确保会话正常创建 | 个人频道 |
+
+### 白名单模式
+
+- **启用时**：只有白名单用户可以发送消息
+- **禁用时**：白名单不影响消息发送权限
+- **个人频道**：白名单用户会自动创建会话
+
+## 使用场景
+
+### 批量管理
+
+```bash
+# 设置新的白名单，替换所有现有条目
+curl -X POST "/channel/whitelist_set" -d '{
+  "channel_id": "group123",
+  "channel_type": 2,
+  "uids": ["admin1", "admin2", "moderator1"]
+}'
+```
+
+### 清空白名单
+
+```bash
+# 清空所有白名单，恢复所有用户权限
+curl -X POST "/channel/whitelist_set" -d '{
+  "channel_id": "group123",
+  "channel_type": 2,
+  "uids": []
+}'
+```
+
+### 重置白名单
+
+```bash
+# 完全重置白名单为新的用户列表
+curl -X POST "/channel/whitelist_set" -d '{
+  "channel_id": "group123",
+  "channel_type": 2,
+  "uids": ["new_privileged_user"]
+}'
+```
+
+## 与其他白名单操作的区别
+
+| 操作 | 功能 | 适用场景 |
+|------|------|----------|
+| `whitelist_add` | 添加用户到现有白名单 | 增量添加特权用户 |
+| `whitelist_set` | 替换整个白名单 | 批量管理、重置白名单 |
+| `whitelist_remove` | 从白名单移除特定用户 | 移除特定用户的特权 |
+
+## 权限层级
+
+白名单在权限体系中的位置：
+
+```
+系统用户 > 管理员 > 黑名单 > 白名单 > 普通用户
+```
+
+### 冲突处理
+
+| 情况 | 结果 | 说明 |
+|------|------|------|
+| 同时在黑白名单 | 按黑名单处理 | 黑名单优先级更高 |
+| 只在白名单 | 享受白名单权限 | 正常白名单用户 |
+| 只在黑名单 | 受黑名单限制 | 正常黑名单用户 |
+| 都不在名单 | 普通用户权限 | 按默认权限处理 |
+
+## 最佳实践
+
+1. **谨慎使用**：设置操作会清除所有现有白名单，确保这是预期行为
+2. **备份现有数据**：在设置前获取当前白名单列表作为备份
+3. **权限验证**：确保操作者有足够的管理权限
+4. **渐进式管理**：对于大型频道，考虑渐进式白名单管理
+5. **监控效果**：设置后监控频道活动和用户反馈
+6. **文档记录**：记录白名单变更原因和预期效果
+
+## 错误处理
+
+### 常见错误
+
+| 错误信息 | 原因 | 解决方案 |
+|----------|------|----------|
+| 频道ID不能为空 | 未提供频道ID | 确保提供有效的频道ID |
+| 频道类型不能为0 | 频道类型无效 | 使用有效的频道类型（1或2） |
+| 频道ID不能包含特殊字符 | 频道ID格式无效 | 使用字母数字和下划线 |
+| 移除所有白名单失败 | 清除操作失败 | 检查频道状态和权限 |
+| 添加白名单失败 | 添加操作失败 | 检查用户ID有效性 |
+
+### 错误恢复策略
+
+```javascript
+async function setWhitelistWithFallback(channelId, channelType, uids) {
+  try {
+    // 先备份当前白名单
+    const currentWhitelist = await getCurrentWhitelist(channelId, channelType);
+    
+    // 执行设置操作
+    const response = await fetch('/channel/whitelist_set', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        channel_id: channelId,
+        channel_type: channelType,
+        uids: uids
+      })
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('设置白名单失败，尝试恢复:', error);
+    // 如果设置失败，尝试恢复原白名单
+    if (currentWhitelist) {
+      await restoreWhitelist(channelId, channelType, currentWhitelist);
+    }
+    throw error;
+  }
+}
+```
+
+## 监控和分析
+
+### 性能指标
+
+- 白名单设置成功率
+- 操作响应时间
+- 用户活跃度变化
+- 消息发送量变化
+
+### 分析维度
+
+- 白名单用户行为分析
+- 频道活跃度对比
+- 权限变更影响评估
+- 用户满意度调查
+
+## 相关接口
+
+- [添加频道白名单](/zh/api/channel/whitelist) - 增量添加白名单用户
+- [移除频道白名单](/zh/api/channel/whitelist-remove) - 移除特定白名单用户
+- [获取频道白名单](/zh/api/channel/get-whitelist) - 获取当前白名单
+- [设置频道黑名单](/zh/api/channel/blacklist-set) - 管理黑名单用户

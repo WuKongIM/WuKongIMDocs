@@ -1,0 +1,333 @@
+---
+title: "Add System User IDs"
+description: "Add users to the system user ID list"
+api: "POST /user/systemuids_add"
+---
+
+## Overview
+
+Add specified users to the system user ID list, granting them special system user privileges and identification.
+
+## Request Body
+
+### Required Parameters
+
+<ParamField body="uids" type="array" required>
+Array of user IDs to add to the system user list
+<ParamField body="uids[]" type="string">
+User ID
+</ParamField>
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "http://localhost:5001/user/systemuids_add" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "uids": ["bot_assistant", "notification_service", "admin_helper"]
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5001/user/systemuids_add', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    uids: ['bot_assistant', 'notification_service', 'admin_helper']
+  })
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+
+data = {
+    "uids": ["bot_assistant", "notification_service", "admin_helper"]
+}
+
+response = requests.post('http://localhost:5001/user/systemuids_add', json=data)
+result = response.json()
+print(result)
+```
+
+```go Go
+package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    data := map[string]interface{}{
+        "uids": []string{"bot_assistant", "notification_service", "admin_helper"},
+    }
+    
+    jsonData, _ := json.Marshal(data)
+    
+    resp, err := http.Post(
+        "http://localhost:5001/user/systemuids_add",
+        "application/json",
+        bytes.NewBuffer(jsonData),
+    )
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    var result map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Printf("%+v\n", result)
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json Success Response
+{
+  "status": "ok"
+}
+```
+</ResponseExample>
+
+## Response Fields
+
+<ResponseField name="status" type="string" required>
+Operation status, returns `"ok"` on success
+</ResponseField>
+
+## Status Codes
+
+| Status Code | Description |
+|-------------|-------------|
+| 200 | System user IDs added successfully |
+| 400 | Request parameter error |
+| 403 | No administrative permission |
+| 500 | Internal server error |
+
+## System User Privileges
+
+### Special Permissions
+
+After becoming a system user, users will gain the following privileges:
+
+| Permission | Description | Scope |
+|------------|-------------|-------|
+| Bypass Validation | Skip certain validations when sending messages | Message sending |
+| System Channels | Access to system-only channels | Channel access |
+| Rate Limit Exemption | Exempt from standard rate limiting | API calls |
+| Priority Processing | Higher priority in message processing | Message delivery |
+
+### Permission Hierarchy
+
+```
+System Users > Administrators > Whitelist > Regular Users > Blacklist
+```
+
+## Use Cases
+
+### Bot Service Registration
+
+**Register AI Assistant**:
+```javascript
+// Register a new AI assistant as system user
+async function registerAIAssistant(botId) {
+    try {
+        await addSystemUIDs([botId]);
+        console.log(`AI Assistant ${botId} registered as system user`);
+        
+        // Grant additional bot permissions
+        await configureBotPermissions(botId);
+    } catch (error) {
+        console.error('Failed to register AI assistant:', error);
+    }
+}
+
+// Usage
+await registerAIAssistant('ai_assistant_v2');
+```
+
+### Notification Service Setup
+
+**Setup Notification Services**:
+```javascript
+// Setup multiple notification services
+async function setupNotificationServices() {
+    const notificationServices = [
+        'email_notifications',
+        'push_notifications', 
+        'sms_notifications',
+        'webhook_notifications'
+    ];
+    
+    try {
+        await addSystemUIDs(notificationServices);
+        console.log('Notification services registered as system users');
+        
+        // Configure each service
+        for (const service of notificationServices) {
+            await configureNotificationService(service);
+        }
+    } catch (error) {
+        console.error('Failed to setup notification services:', error);
+    }
+}
+```
+
+### Administrative Tools
+
+**Register Admin Tools**:
+```javascript
+// Register administrative and monitoring tools
+async function registerAdminTools() {
+    const adminTools = [
+        'system_monitor',
+        'log_analyzer',
+        'performance_tracker',
+        'security_scanner'
+    ];
+    
+    await addSystemUIDs(adminTools);
+    
+    // Grant system-level access
+    for (const tool of adminTools) {
+        await grantSystemAccess(tool);
+    }
+}
+```
+
+### Integration Services
+
+**Third-party Integration**:
+```javascript
+// Register external integration services
+async function registerIntegrations() {
+    const integrations = [
+        'slack_integration',
+        'teams_integration',
+        'discord_integration',
+        'telegram_bridge'
+    ];
+    
+    try {
+        await addSystemUIDs(integrations);
+        
+        // Configure integration permissions
+        for (const integration of integrations) {
+            await configureIntegrationPermissions(integration, {
+                canBridgeMessages: true,
+                canAccessAllChannels: true,
+                canBypassRateLimit: true
+            });
+        }
+    } catch (error) {
+        console.error('Failed to register integrations:', error);
+    }
+}
+```
+
+### Batch Operations
+
+**Bulk System User Registration**:
+```javascript
+// Register multiple system users in batches
+async function bulkRegisterSystemUsers(userGroups) {
+    const batchSize = 10; // Process in batches to avoid overwhelming the system
+    
+    for (const group of userGroups) {
+        const batches = chunkArray(group.users, batchSize);
+        
+        for (const batch of batches) {
+            try {
+                await addSystemUIDs(batch);
+                console.log(`Registered batch of ${batch.length} users for ${group.category}`);
+                
+                // Small delay between batches
+                await delay(100);
+            } catch (error) {
+                console.error(`Failed to register batch for ${group.category}:`, error);
+            }
+        }
+    }
+}
+
+// Usage
+await bulkRegisterSystemUsers([
+    {
+        category: 'bots',
+        users: ['bot1', 'bot2', 'bot3', 'bot4', 'bot5']
+    },
+    {
+        category: 'services',
+        users: ['service1', 'service2', 'service3']
+    }
+]);
+```
+
+## Security Considerations
+
+### Access Control
+
+- **Admin Only**: Only system administrators should have access to this API
+- **Audit Logging**: Log all system user additions for security auditing
+- **Validation**: Validate user IDs before adding them to prevent injection attacks
+
+### Best Practices
+
+1. **Principle of Least Privilege**: Only grant system user status when necessary
+2. **Regular Review**: Periodically review system user list and remove unused accounts
+3. **Documentation**: Document the purpose of each system user
+4. **Monitoring**: Monitor system user activities for suspicious behavior
+5. **Backup**: Maintain backups of system user configurations
+
+### Risk Management
+
+```javascript
+// Implement safety checks before adding system users
+async function safeAddSystemUIDs(uids) {
+    // Validate user IDs
+    const validUIDs = uids.filter(uid => isValidUID(uid));
+    
+    if (validUIDs.length !== uids.length) {
+        throw new Error('Invalid user IDs detected');
+    }
+    
+    // Check if users exist
+    const existingUsers = await checkUsersExist(validUIDs);
+    const nonExistentUsers = validUIDs.filter(uid => !existingUsers.includes(uid));
+    
+    if (nonExistentUsers.length > 0) {
+        console.warn('Adding non-existent users as system users:', nonExistentUsers);
+    }
+    
+    // Add with audit logging
+    await addSystemUIDs(validUIDs);
+    await logSystemUserAddition(validUIDs, getCurrentAdmin());
+}
+```
+
+## Error Handling
+
+```javascript
+async function handleSystemUserAddition(uids) {
+    try {
+        await addSystemUIDs(uids);
+        return { success: true, message: 'System users added successfully' };
+    } catch (error) {
+        if (error.status === 403) {
+            return { success: false, message: 'Insufficient permissions' };
+        } else if (error.status === 400) {
+            return { success: false, message: 'Invalid user IDs provided' };
+        } else {
+            return { success: false, message: 'Internal server error' };
+        }
+    }
+}
+```

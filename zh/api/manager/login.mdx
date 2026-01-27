@@ -1,0 +1,158 @@
+---
+title: "管理员登录"
+description: "管理员用户登录获取访问令牌"
+api: "POST /manager/login"
+---
+
+## 概述
+
+管理员用户登录接口，用于获取管理后台的访问令牌。
+
+## 请求体
+
+### 必传参数
+
+<ParamField body="username" type="string" required>
+管理员用户名
+</ParamField>
+
+<ParamField body="password" type="string" required>
+管理员密码
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "http://localhost:5001/manager/login" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "admin",
+    "password": "your_password"
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5001/manager/login', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    username: 'admin',
+    password: 'your_password'
+  })
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+
+data = {
+    "username": "admin",
+    "password": "your_password"
+}
+
+response = requests.post('http://localhost:5001/manager/login', json=data)
+result = response.json()
+print(result)
+```
+
+```go Go
+package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    data := map[string]string{
+        "username": "admin",
+        "password": "your_password",
+    }
+    
+    jsonData, _ := json.Marshal(data)
+    
+    resp, err := http.Post(
+        "http://localhost:5001/manager/login",
+        "application/json",
+        bytes.NewBuffer(jsonData),
+    )
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    var result map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Printf("%+v\n", result)
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json 成功响应
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "expire": 3600,
+  "user": {
+    "username": "admin",
+    "role": "administrator",
+    "permissions": ["read", "write", "admin"]
+  }
+}
+```
+
+```json 失败响应
+{
+  "error": "Invalid username or password"
+}
+```
+</ResponseExample>
+
+## 响应字段
+
+<ResponseField name="token" type="string" required>
+访问令牌，用于后续 API 调用的认证
+</ResponseField>
+
+<ResponseField name="expire" type="integer" required>
+令牌过期时间（秒）
+</ResponseField>
+
+<ResponseField name="user" type="object" required>
+用户信息
+<Expandable title="user 字段">
+<ResponseField name="user.username" type="string">
+用户名
+</ResponseField>
+<ResponseField name="user.role" type="string">
+用户角色
+</ResponseField>
+<ResponseField name="user.permissions" type="array">
+用户权限列表
+</ResponseField>
+</Expandable>
+</ResponseField>
+
+## 状态码
+
+| 状态码 | 说明 |
+|--------|------|
+| 200 | 登录成功 |
+| 401 | 用户名或密码错误 |
+| 429 | 登录尝试过于频繁 |
+| 500 | 服务器内部错误 |
+
+## 最佳实践
+
+1. **密码安全**：使用强密码策略，定期更换密码
+2. **令牌管理**：实施令牌自动刷新机制
+3. **权限控制**：基于角色和权限的访问控制
+4. **登录限制**：实施登录尝试次数限制
+5. **会话管理**：合理设置令牌过期时间
+6. **安全存储**：敏感信息不要存储在不安全的地方

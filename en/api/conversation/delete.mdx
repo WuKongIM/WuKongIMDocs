@@ -1,0 +1,408 @@
+---
+title: "Delete Conversation"
+description: "Delete a specified user's conversation record"
+api: "POST /conversations/delete"
+---
+
+## Overview
+
+Delete a specified user's conversation record, clearing conversation history and status.
+
+## Request Body
+
+### Required Parameters
+
+<ParamField body="uid" type="string" required>
+User ID
+</ParamField>
+
+<ParamField body="channel_id" type="string" required>
+Channel ID
+</ParamField>
+
+<ParamField body="channel_type" type="integer" required>
+Channel type (1=personal channel, 2=group channel)
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "http://localhost:5001/conversations/delete" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "uid": "user123",
+    "channel_id": "group123",
+    "channel_type": 2
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5001/conversations/delete', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    uid: 'user123',
+    channel_id: 'group123',
+    channel_type: 2
+  })
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+
+data = {
+    "uid": "user123",
+    "channel_id": "group123",
+    "channel_type": 2
+}
+
+response = requests.post('http://localhost:5001/conversations/delete', json=data)
+result = response.json()
+print(result)
+```
+
+```go Go
+package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    data := map[string]interface{}{
+        "uid":          "user123",
+        "channel_id":   "group123",
+        "channel_type": 2,
+    }
+    
+    jsonData, _ := json.Marshal(data)
+    
+    resp, err := http.Post(
+        "http://localhost:5001/conversations/delete",
+        "application/json",
+        bytes.NewBuffer(jsonData),
+    )
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    var result map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Printf("%+v\n", result)
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json Success Response
+{
+  "status": "success"
+}
+```
+</ResponseExample>
+
+## Response Fields
+
+<ResponseField name="status" type="string" required>
+Operation status, returns `"success"` on success
+</ResponseField>
+
+## Status Codes
+
+| Status Code | Description |
+|-------------|-------------|
+| 200 | Conversation deleted successfully |
+| 400 | Request parameter error |
+| 403 | No deletion permission |
+| 500 | Internal server error |
+
+## Deletion Impact
+
+### What Gets Deleted
+
+When a conversation is deleted, the following data is removed:
+
+| Data Type | Scope | Impact |
+|-----------|-------|--------|
+| Conversation Record | User's conversation list entry | Conversation disappears from chat list |
+| Unread Count | User's unread message count | Unread badge removed |
+| Last Message Info | Last message and timestamp | No preview in conversation list |
+| User Preferences | Conversation-specific settings | Notification settings reset |
+
+### What Remains Unchanged
+
+- **Channel Messages**: Actual messages in the channel remain intact
+- **Other Users**: Other users' conversations with the same channel are unaffected
+- **Channel Membership**: User remains a member of the channel
+- **Message History**: User can still access messages by rejoining the conversation
+
+## Use Cases
+
+### Chat List Management
+
+**Remove Conversation from Chat List**:
+```javascript
+// Remove conversation from user's chat list
+async function removeFromChatList(userId, channelId, channelType) {
+    try {
+        await deleteConversation({
+            uid: userId,
+            channel_id: channelId,
+            channel_type: channelType
+        });
+        
+        // Update UI to remove conversation
+        removeConversationFromUI(channelId);
+        
+        console.log('Conversation removed from chat list');
+    } catch (error) {
+        console.error('Failed to remove conversation:', error);
+    }
+}
+```
+
+**Clean Up Old Conversations**:
+```javascript
+// Clean up conversations older than specified days
+async function cleanupOldConversations(userId, daysOld = 30) {
+    try {
+        // Get user's conversations
+        const conversations = await getUserConversations(userId);
+        
+        const cutoffTime = Date.now() - (daysOld * 24 * 60 * 60 * 1000);
+        const oldConversations = conversations.filter(conv => 
+            conv.timestamp < cutoffTime && conv.unread === 0
+        );
+        
+        // Delete old conversations
+        for (const conv of oldConversations) {
+            await deleteConversation({
+                uid: userId,
+                channel_id: conv.channel_id,
+                channel_type: conv.channel_type
+            });
+        }
+        
+        console.log(`Cleaned up ${oldConversations.length} old conversations`);
+    } catch (error) {
+        console.error('Failed to cleanup old conversations:', error);
+    }
+}
+```
+
+### Privacy and Data Management
+
+**User Privacy Control**:
+```javascript
+// Allow users to remove conversations for privacy
+async function removeConversationForPrivacy(userId, channelId, channelType) {
+    try {
+        // Confirm with user
+        const confirmed = await confirmDeletion(
+            'Remove this conversation from your chat list? You can still access messages by searching.'
+        );
+        
+        if (confirmed) {
+            await deleteConversation({
+                uid: userId,
+                channel_id: channelId,
+                channel_type: channelType
+            });
+            
+            // Log privacy action
+            await logPrivacyAction(userId, 'conversation_removed', {
+                channel_id: channelId,
+                channel_type: channelType
+            });
+            
+            showNotification('Conversation removed from your chat list');
+        }
+    } catch (error) {
+        console.error('Failed to remove conversation for privacy:', error);
+    }
+}
+```
+
+### Batch Operations
+
+**Batch Delete Conversations**:
+```javascript
+// Delete multiple conversations
+async function batchDeleteConversations(userId, conversationsToDelete) {
+    const results = [];
+    
+    for (const conv of conversationsToDelete) {
+        try {
+            await deleteConversation({
+                uid: userId,
+                channel_id: conv.channel_id,
+                channel_type: conv.channel_type
+            });
+            
+            results.push({
+                channel_id: conv.channel_id,
+                success: true
+            });
+        } catch (error) {
+            results.push({
+                channel_id: conv.channel_id,
+                success: false,
+                error: error.message
+            });
+        }
+    }
+    
+    // Update UI for successful deletions
+    const successful = results.filter(r => r.success);
+    successful.forEach(result => {
+        removeConversationFromUI(result.channel_id);
+    });
+    
+    return results;
+}
+```
+
+### Archive and Restore
+
+**Archive Conversation (Soft Delete)**:
+```javascript
+// Implement archive functionality using conversation deletion
+class ConversationArchive {
+    constructor(userId) {
+        this.userId = userId;
+        this.archivedKey = `archived_conversations_${userId}`;
+    }
+    
+    async archiveConversation(channelId, channelType) {
+        try {
+            // Get conversation data before deletion
+            const conversationData = await getConversationData(
+                this.userId, channelId, channelType
+            );
+            
+            // Store in local archive
+            await this.storeInArchive(conversationData);
+            
+            // Delete from active conversations
+            await deleteConversation({
+                uid: this.userId,
+                channel_id: channelId,
+                channel_type: channelType
+            });
+            
+            console.log('Conversation archived successfully');
+        } catch (error) {
+            console.error('Failed to archive conversation:', error);
+        }
+    }
+    
+    async storeInArchive(conversationData) {
+        const archived = this.getArchivedConversations();
+        archived.push({
+            ...conversationData,
+            archived_at: Date.now()
+        });
+        
+        localStorage.setItem(this.archivedKey, JSON.stringify(archived));
+    }
+    
+    getArchivedConversations() {
+        const stored = localStorage.getItem(this.archivedKey);
+        return stored ? JSON.parse(stored) : [];
+    }
+    
+    async restoreConversation(channelId, channelType) {
+        // Note: Restoration requires rejoining the conversation
+        // The conversation will reappear when new messages arrive
+        const archived = this.getArchivedConversations();
+        const filtered = archived.filter(conv => 
+            !(conv.channel_id === channelId && conv.channel_type === channelType)
+        );
+        
+        localStorage.setItem(this.archivedKey, JSON.stringify(filtered));
+        console.log('Conversation restored from archive');
+    }
+}
+
+// Usage
+const archive = new ConversationArchive('user123');
+await archive.archiveConversation('group123', 2);
+```
+
+### Administrative Operations
+
+**Admin Conversation Management**:
+```javascript
+// Administrative function to clean up user conversations
+async function adminCleanupUserConversations(adminUserId, targetUserId, criteria) {
+    try {
+        // Verify admin permissions
+        const hasPermission = await verifyAdminPermission(adminUserId, 'conversation_management');
+        if (!hasPermission) {
+            throw new Error('Insufficient admin permissions');
+        }
+        
+        // Get target user's conversations
+        const conversations = await getUserConversations(targetUserId);
+        
+        // Filter based on criteria
+        const toDelete = conversations.filter(conv => {
+            if (criteria.inactive_days && conv.last_activity) {
+                const daysSinceActivity = (Date.now() - conv.last_activity) / (1000 * 60 * 60 * 24);
+                return daysSinceActivity > criteria.inactive_days;
+            }
+            if (criteria.channel_types) {
+                return criteria.channel_types.includes(conv.channel_type);
+            }
+            return false;
+        });
+        
+        // Delete conversations
+        const results = await batchDeleteConversations(targetUserId, toDelete);
+        
+        // Log admin action
+        await logAdminAction(adminUserId, 'conversation_cleanup', {
+            target_user: targetUserId,
+            deleted_count: results.filter(r => r.success).length,
+            criteria: criteria
+        });
+        
+        return results;
+    } catch (error) {
+        console.error('Admin conversation cleanup failed:', error);
+        throw error;
+    }
+}
+```
+
+## Important Notes
+
+<Warning>
+**Data Recovery**: Once a conversation is deleted, it cannot be automatically restored. The conversation will only reappear if:
+- New messages are sent to the channel
+- The user manually rejoins the conversation
+- The conversation is recreated through other means
+</Warning>
+
+<Note>
+**Message Preservation**: Deleting a conversation does not delete the actual messages in the channel. Other users can still see all messages, and the user can still access message history through other means.
+</Note>
+
+## Best Practices
+
+1. **User Confirmation**: Always confirm with users before deleting conversations
+2. **Soft Delete Option**: Consider implementing archive functionality instead of permanent deletion
+3. **Batch Operations**: Use batch operations for better performance when deleting multiple conversations
+4. **Error Handling**: Handle deletion errors gracefully without breaking the UI
+5. **Logging**: Log conversation deletions for audit and support purposes
+6. **UI Updates**: Immediately update the UI to reflect conversation removal
+7. **Data Backup**: Consider backing up conversation metadata before deletion

@@ -1,0 +1,556 @@
+---
+title: "Single Message Search"
+description: "Search for a single message by message ID"
+api: "POST /message"
+---
+
+## Overview
+
+Search for a single message by message ID, suitable for scenarios where you need to retrieve specific message details.
+
+## Request Body
+
+### Required Parameters
+
+<ParamField body="message_id" type="integer" required>
+Message ID
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "http://localhost:5001/message" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "message_id": 123456789
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5001/message', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    message_id: 123456789
+  })
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+
+data = {
+    "message_id": 123456789
+}
+
+response = requests.post('http://localhost:5001/message', json=data)
+result = response.json()
+print(result)
+```
+
+```go Go
+package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    data := map[string]interface{}{
+        "message_id": 123456789,
+    }
+    
+    jsonData, _ := json.Marshal(data)
+    
+    resp, err := http.Post(
+        "http://localhost:5001/message",
+        "application/json",
+        bytes.NewBuffer(jsonData),
+    )
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    var result map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Printf("%+v\n", result)
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json Success Response
+{
+  "message_id": 123456789,
+  "message_seq": 1001,
+  "client_msg_no": "msg_123",
+  "from_uid": "user123",
+  "channel_id": "group123",
+  "channel_type": 2,
+  "timestamp": 1640995200,
+  "payload": "SGVsbG8gV29ybGQ="
+}
+```
+
+```json Message Not Found
+{
+  "error": "Message not found"
+}
+```
+</ResponseExample>
+
+## Response Fields
+
+<ResponseField name="message_id" type="integer" required>
+Server-generated message ID
+</ResponseField>
+
+<ResponseField name="message_seq" type="integer" required>
+Message sequence number
+</ResponseField>
+
+<ResponseField name="client_msg_no" type="string" required>
+Client message number
+</ResponseField>
+
+<ResponseField name="from_uid" type="string" required>
+Sender user ID
+</ResponseField>
+
+<ResponseField name="channel_id" type="string" required>
+Channel ID
+</ResponseField>
+
+<ResponseField name="channel_type" type="integer" required>
+Channel type
+- `1` - Personal channel
+- `2` - Group channel
+</ResponseField>
+
+<ResponseField name="timestamp" type="integer" required>
+Message timestamp (Unix timestamp)
+</ResponseField>
+
+<ResponseField name="payload" type="string" required>
+Base64 encoded message content
+</ResponseField>
+
+## Status Codes
+
+| Status Code | Description |
+|-------------|-------------|
+| 200 | Message search successful |
+| 400 | Request parameter error |
+| 404 | Message not found |
+| 500 | Internal server error |
+
+## Use Cases
+
+### Message Detail Retrieval
+
+**Get Specific Message Details**:
+```javascript
+// Retrieve details for a specific message
+async function getMessageDetail(messageId) {
+    try {
+        const response = await fetch('/message', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message_id: messageId })
+        });
+        
+        if (response.status === 404) {
+            return { found: false, message: null };
+        }
+        
+        const message = await response.json();
+        
+        // Decode and format message
+        const formattedMessage = {
+            ...message,
+            content: atob(message.payload), // Decode base64 content
+            formatted_time: new Date(message.timestamp * 1000).toLocaleString(),
+            found: true
+        };
+        
+        return formattedMessage;
+    } catch (error) {
+        console.error('Failed to get message detail:', error);
+        return { found: false, message: null, error: error.message };
+    }
+}
+
+// Usage
+const messageDetail = await getMessageDetail(123456789);
+if (messageDetail.found) {
+    console.log('Message content:', messageDetail.content);
+    console.log('Sent by:', messageDetail.from_uid);
+    console.log('Sent at:', messageDetail.formatted_time);
+} else {
+    console.log('Message not found');
+}
+```
+
+### Message Verification
+
+**Verify Message Existence and Integrity**:
+```javascript
+// Verify that a message exists and check its properties
+async function verifyMessage(messageId, expectedProperties = {}) {
+    try {
+        const result = await getMessageDetail(messageId);
+        
+        if (!result.found) {
+            return {
+                exists: false,
+                verified: false,
+                message: 'Message not found'
+            };
+        }
+        
+        const message = result;
+        const verification = {
+            exists: true,
+            verified: true,
+            checks: {},
+            message: message
+        };
+        
+        // Verify expected properties
+        for (const [key, expectedValue] of Object.entries(expectedProperties)) {
+            const actualValue = message[key];
+            const matches = actualValue === expectedValue;
+            
+            verification.checks[key] = {
+                expected: expectedValue,
+                actual: actualValue,
+                matches: matches
+            };
+            
+            if (!matches) {
+                verification.verified = false;
+            }
+        }
+        
+        return verification;
+    } catch (error) {
+        return {
+            exists: false,
+            verified: false,
+            message: error.message
+        };
+    }
+}
+
+// Usage
+const verification = await verifyMessage(123456789, {
+    from_uid: 'user123',
+    channel_id: 'group123',
+    channel_type: 2
+});
+
+if (verification.verified) {
+    console.log('Message verified successfully');
+} else {
+    console.log('Verification failed:', verification.checks);
+}
+```
+
+### Message Reference Resolution
+
+**Resolve Message References**:
+```javascript
+// Resolve message references in replies or quotes
+async function resolveMessageReference(referenceId) {
+    try {
+        const message = await getMessageDetail(referenceId);
+        
+        if (!message.found) {
+            return {
+                resolved: false,
+                reference: null,
+                display: '[Message not found]'
+            };
+        }
+        
+        // Create a display-friendly reference
+        const reference = {
+            id: message.message_id,
+            sender: message.from_uid,
+            content: message.content.substring(0, 100), // Truncate for preview
+            timestamp: message.timestamp,
+            channel: message.channel_id,
+            display: `${message.from_uid}: ${message.content.substring(0, 50)}...`
+        };
+        
+        return {
+            resolved: true,
+            reference: reference,
+            display: reference.display
+        };
+    } catch (error) {
+        return {
+            resolved: false,
+            reference: null,
+            display: '[Error loading message]'
+        };
+    }
+}
+
+// Usage in message rendering
+async function renderMessageWithReferences(messageText) {
+    // Find message references in format @msg:123456789
+    const referencePattern = /@msg:(\d+)/g;
+    let match;
+    const references = [];
+    
+    while ((match = referencePattern.exec(messageText)) !== null) {
+        const messageId = parseInt(match[1]);
+        const reference = await resolveMessageReference(messageId);
+        references.push({
+            original: match[0],
+            messageId: messageId,
+            reference: reference
+        });
+    }
+    
+    // Replace references with display text
+    let renderedText = messageText;
+    for (const ref of references) {
+        renderedText = renderedText.replace(ref.original, ref.reference.display);
+    }
+    
+    return {
+        originalText: messageText,
+        renderedText: renderedText,
+        references: references
+    };
+}
+```
+
+### Message Audit and Logging
+
+**Audit Message Access**:
+```javascript
+// Audit message access for security and compliance
+class MessageAuditor {
+    constructor() {
+        this.accessLog = [];
+    }
+    
+    async getMessageWithAudit(messageId, accessorUserId, reason = 'general_access') {
+        const startTime = Date.now();
+        
+        try {
+            const message = await getMessageDetail(messageId);
+            const endTime = Date.now();
+            
+            // Log successful access
+            this.logAccess({
+                message_id: messageId,
+                accessor_user_id: accessorUserId,
+                reason: reason,
+                success: message.found,
+                timestamp: new Date().toISOString(),
+                response_time_ms: endTime - startTime,
+                message_found: message.found,
+                channel_id: message.found ? message.channel_id : null,
+                sender_uid: message.found ? message.from_uid : null
+            });
+            
+            return message;
+        } catch (error) {
+            const endTime = Date.now();
+            
+            // Log failed access
+            this.logAccess({
+                message_id: messageId,
+                accessor_user_id: accessorUserId,
+                reason: reason,
+                success: false,
+                timestamp: new Date().toISOString(),
+                response_time_ms: endTime - startTime,
+                error: error.message
+            });
+            
+            throw error;
+        }
+    }
+    
+    logAccess(logEntry) {
+        this.accessLog.push(logEntry);
+        
+        // Send to audit system
+        this.sendToAuditSystem(logEntry);
+        
+        // Clean up old logs (keep last 1000)
+        if (this.accessLog.length > 1000) {
+            this.accessLog = this.accessLog.slice(-1000);
+        }
+    }
+    
+    async sendToAuditSystem(logEntry) {
+        try {
+            // Send to external audit system
+            await fetch('/audit/message-access', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(logEntry)
+            });
+        } catch (error) {
+            console.error('Failed to send audit log:', error);
+        }
+    }
+    
+    getAccessStats() {
+        const stats = {
+            total_accesses: this.accessLog.length,
+            successful_accesses: this.accessLog.filter(log => log.success).length,
+            failed_accesses: this.accessLog.filter(log => !log.success).length,
+            unique_messages: new Set(this.accessLog.map(log => log.message_id)).size,
+            unique_accessors: new Set(this.accessLog.map(log => log.accessor_user_id)).size,
+            avg_response_time: this.accessLog.reduce((sum, log) => sum + log.response_time_ms, 0) / this.accessLog.length
+        };
+        
+        return stats;
+    }
+}
+
+// Usage
+const auditor = new MessageAuditor();
+
+// Access message with audit trail
+const message = await auditor.getMessageWithAudit(
+    123456789, 
+    'admin_user', 
+    'compliance_review'
+);
+
+// Get audit statistics
+const stats = auditor.getAccessStats();
+console.log('Audit stats:', stats);
+```
+
+### Message Cache with Single Lookup
+
+**Efficient Single Message Caching**:
+```javascript
+// Cache for single message lookups
+class SingleMessageCache {
+    constructor(maxSize = 500, ttlMinutes = 30) {
+        this.cache = new Map();
+        this.maxSize = maxSize;
+        this.ttl = ttlMinutes * 60 * 1000; // Convert to milliseconds
+    }
+    
+    async getMessage(messageId) {
+        // Check cache first
+        const cached = this.cache.get(messageId);
+        if (cached && this.isValid(cached)) {
+            cached.lastAccessed = Date.now();
+            return cached.message;
+        }
+        
+        // Fetch from server
+        try {
+            const message = await getMessageDetail(messageId);
+            
+            // Cache the result (even if not found)
+            this.addToCache(messageId, message);
+            
+            return message;
+        } catch (error) {
+            // Cache error result temporarily
+            this.addToCache(messageId, { 
+                found: false, 
+                error: error.message 
+            }, 5 * 60 * 1000); // 5 minute TTL for errors
+            
+            throw error;
+        }
+    }
+    
+    addToCache(messageId, message, customTtl = null) {
+        // Remove oldest if cache is full
+        if (this.cache.size >= this.maxSize) {
+            this.evictOldest();
+        }
+        
+        const cacheEntry = {
+            message: message,
+            timestamp: Date.now(),
+            lastAccessed: Date.now(),
+            ttl: customTtl || this.ttl
+        };
+        
+        this.cache.set(messageId, cacheEntry);
+    }
+    
+    isValid(cacheEntry) {
+        const age = Date.now() - cacheEntry.timestamp;
+        return age < cacheEntry.ttl;
+    }
+    
+    evictOldest() {
+        let oldestKey = null;
+        let oldestTime = Date.now();
+        
+        for (const [key, entry] of this.cache) {
+            if (entry.lastAccessed < oldestTime) {
+                oldestTime = entry.lastAccessed;
+                oldestKey = key;
+            }
+        }
+        
+        if (oldestKey) {
+            this.cache.delete(oldestKey);
+        }
+    }
+    
+    getCacheStats() {
+        const now = Date.now();
+        const validEntries = Array.from(this.cache.values()).filter(entry => 
+            this.isValid(entry)
+        );
+        
+        return {
+            total_entries: this.cache.size,
+            valid_entries: validEntries.length,
+            expired_entries: this.cache.size - validEntries.length,
+            hit_rate: this.hitRate || 0,
+            memory_usage: this.cache.size / this.maxSize * 100
+        };
+    }
+}
+
+// Usage
+const messageCache = new SingleMessageCache(1000, 60); // 1000 messages, 60 minute TTL
+
+// Get message (will cache result)
+const message1 = await messageCache.getMessage(123456789);
+console.log('First access:', message1.found);
+
+// Get same message (will use cache)
+const message2 = await messageCache.getMessage(123456789);
+console.log('Second access (cached):', message2.found);
+
+console.log('Cache stats:', messageCache.getCacheStats());
+```
+
+## Best Practices
+
+1. **Error Handling**: Always handle 404 responses when message might not exist
+2. **Caching**: Cache frequently accessed messages to reduce API calls
+3. **Validation**: Validate message ID format before making requests
+4. **Security**: Implement proper access controls for message retrieval
+5. **Audit Trail**: Log message access for security and compliance
+6. **Performance**: Use batch search for multiple messages instead of individual calls
+7. **Content Decoding**: Remember to decode base64 payload content for display

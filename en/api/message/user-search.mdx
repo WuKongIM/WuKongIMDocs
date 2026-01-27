@@ -1,0 +1,410 @@
+---
+title: "User Message Search"
+description: "Search all messages belonging to the current user, supporting multi-dimensional search and Chinese word segmentation"
+api: "POST /plugins/wk.plugin.search/usersearch"
+---
+
+## Overview
+
+Search all messages belonging to the current user, supporting multi-dimensional search and Chinese word segmentation functionality.
+
+<Note>
+- Requires WuKongIM v2.1.3-20250210 or above
+- Requires installation of `wk.plugin.search` plugin
+- Plugin usage documentation: [Plugin Development Guide](/en/getting-started/learning/plugin-development)
+</Note>
+
+## Request Body
+
+### Required Parameters
+
+<ParamField body="uid" type="string" required>
+Current user UID (restricts search to specified user's messages)
+</ParamField>
+
+### Optional Parameters
+
+<ParamField body="payload" type="object">
+Message payload, supports searching custom fields
+<Expandable title="payload fields">
+<ParamField body="payload.content" type="string">
+Message content search keywords
+</ParamField>
+</Expandable>
+</ParamField>
+
+<ParamField body="payload_types" type="array">
+Message type search
+<ParamField body="payload_types[]" type="integer">
+Message type value
+</ParamField>
+</ParamField>
+
+<ParamField body="from_uid" type="string">
+Sender UID
+</ParamField>
+
+<ParamField body="channel_id" type="string">
+Channel ID, when specified, only search messages within this channel
+</ParamField>
+
+<ParamField body="channel_type" type="integer">
+Channel type
+- `1` - Personal channel
+- `2` - Group channel
+</ParamField>
+
+<ParamField body="topic" type="string">
+Search by topic
+</ParamField>
+
+<ParamField body="limit" type="integer">
+Query limit, default 10
+</ParamField>
+
+<ParamField body="page" type="integer">
+Page number for pagination, default 1
+</ParamField>
+
+<ParamField body="start_time" type="integer">
+Message time (start), Unix timestamp
+</ParamField>
+
+<ParamField body="end_time" type="integer">
+Message time (end, result includes end_time), Unix timestamp
+</ParamField>
+
+<ParamField body="highlights" type="array">
+Keyword fields that need highlighting
+<ParamField body="highlights[]" type="string">
+Field name, e.g., "payload.content"
+</ParamField>
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "http://localhost:5001/plugins/wk.plugin.search/usersearch" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "uid": "user123",
+    "payload": {
+      "content": "Beijing"
+    },
+    "payload_types": [1, 2],
+    "channel_type": 2,
+    "limit": 10,
+    "page": 1,
+    "highlights": ["payload.content"]
+  }'
+```
+
+```javascript JavaScript
+const searchParams = {
+  uid: "user123",
+  payload: {
+    content: "Beijing"
+  },
+  payload_types: [1, 2],
+  channel_type: 2,
+  limit: 10,
+  page: 1,
+  highlights: ["payload.content"]
+};
+
+const response = await fetch('http://localhost:5001/plugins/wk.plugin.search/usersearch', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify(searchParams)
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+
+search_params = {
+    "uid": "user123",
+    "payload": {
+        "content": "Beijing"
+    },
+    "payload_types": [1, 2],
+    "channel_type": 2,
+    "limit": 10,
+    "page": 1,
+    "highlights": ["payload.content"]
+}
+
+response = requests.post(
+    'http://localhost:5001/plugins/wk.plugin.search/usersearch',
+    json=search_params
+)
+result = response.json()
+print(result)
+```
+
+```go Go
+package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    searchParams := map[string]interface{}{
+        "uid": "user123",
+        "payload": map[string]interface{}{
+            "content": "Beijing",
+        },
+        "payload_types": []int{1, 2},
+        "channel_type":  2,
+        "limit":         10,
+        "page":          1,
+        "highlights":    []string{"payload.content"},
+    }
+    
+    jsonData, _ := json.Marshal(searchParams)
+    
+    resp, err := http.Post(
+        "http://localhost:5001/plugins/wk.plugin.search/usersearch",
+        "application/json",
+        bytes.NewBuffer(jsonData),
+    )
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    var result map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Printf("%+v\n", result)
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json Success Response
+{
+  "total": 25,
+  "limit": 10,
+  "page": 1,
+  "messages": [
+    {
+      "message_id": 1234,
+      "message_idstr": "1234",
+      "message_seq": 1,
+      "client_msg_no": "djzdfdfdf",
+      "from_uid": "u1",
+      "channel_id": "g1",
+      "channel_type": 2,
+      "payload": {
+        "type": 1,
+        "content": "Are you from <mark>Beijing</mark> University?"
+      },
+      "topic": "",
+      "timestamp": 762834
+    },
+    {
+      "message_id": 1235,
+      "message_idstr": "1235",
+      "message_seq": 2,
+      "client_msg_no": "djzdfdfde",
+      "from_uid": "u2",
+      "channel_id": "g1",
+      "channel_type": 2,
+      "payload": {
+        "type": 1,
+        "content": "I work in <mark>Beijing</mark>"
+      },
+      "topic": "",
+      "timestamp": 762835
+    }
+  ]
+}
+```
+</ResponseExample>
+
+## Response Fields
+
+<ResponseField name="total" type="integer" required>
+Total number of messages
+</ResponseField>
+
+<ResponseField name="limit" type="integer" required>
+Query limit
+</ResponseField>
+
+<ResponseField name="page" type="integer" required>
+Current page number
+</ResponseField>
+
+<ResponseField name="messages" type="array" required>
+Message list
+<Expandable title="Message object fields">
+<ResponseField name="messages[].message_id" type="integer" required>
+Message unique ID
+</ResponseField>
+
+<ResponseField name="messages[].message_idstr" type="string" required>
+Message unique ID (string format)
+</ResponseField>
+
+<ResponseField name="messages[].message_seq" type="integer" required>
+Message sequence number
+</ResponseField>
+
+<ResponseField name="messages[].client_msg_no" type="string" required>
+Client message unique number
+</ResponseField>
+
+<ResponseField name="messages[].from_uid" type="string" required>
+Sender UID
+</ResponseField>
+
+<ResponseField name="messages[].channel_id" type="string" required>
+Channel ID
+</ResponseField>
+
+<ResponseField name="messages[].channel_type" type="integer" required>
+Channel type
+</ResponseField>
+
+<ResponseField name="messages[].payload" type="object" required>
+Message content object
+<Expandable title="payload fields">
+<ResponseField name="messages[].payload.type" type="integer">
+Message type
+</ResponseField>
+<ResponseField name="messages[].payload.content" type="string">
+Message content (may contain highlight tags)
+</ResponseField>
+</Expandable>
+</ResponseField>
+
+<ResponseField name="messages[].topic" type="string">
+Message topic
+</ResponseField>
+
+<ResponseField name="messages[].timestamp" type="integer" required>
+Message timestamp (10-digit seconds)
+</ResponseField>
+</Expandable>
+</ResponseField>
+
+## Status Codes
+
+| Status Code | Description |
+|-------------|-------------|
+| 200 | Search successful |
+| 400 | Request parameter error |
+| 403 | No search permission |
+| 500 | Internal server error |
+
+## Search Features
+
+### Chinese Word Segmentation
+
+Supports Chinese word segmentation, intelligently recognizing Chinese vocabulary for search.
+
+**Examples**:
+- Searching "Beijing University" can match messages containing "Beijing" or "University"
+- Supports both fuzzy matching and exact matching
+
+### Multi-dimensional Search
+
+Supports combined search across multiple dimensions:
+
+1. **Content Search**: Search message content through `payload.content`
+2. **Type Search**: Limit message types through `payload_types`
+3. **User Search**: Search specific user's messages through `from_uid`
+4. **Channel Search**: Search specific channel's messages through `channel_id`
+5. **Time Search**: Limit time range through `start_time` and `end_time`
+6. **Topic Search**: Search specific topic messages through `topic`
+
+### Highlighting
+
+Through the `highlights` parameter, you can specify fields that need highlighting. Matching keywords in search results will be surrounded by `<mark>` tags.
+
+**Example**:
+```json
+{
+  "payload": {
+    "content": "Beijing"
+  },
+  "highlights": ["payload.content"]
+}
+```
+
+Return result:
+```json
+{
+  "payload": {
+    "content": "Are you from <mark>Beijing</mark> University?"
+  }
+}
+```
+
+## Use Cases
+
+### Chat History Search
+
+- **Keyword Search**: Users search for keywords in chat history
+- **User Messages**: Search messages sent by specific users
+- **Group Messages**: Search messages within specific groups
+
+### Content Management
+
+- **Message Moderation**: Search messages containing specific content
+- **Data Analysis**: Analyze user message content and behavior
+- **Compliance Check**: Check for sensitive content
+
+### Advanced Search Examples
+
+**Search by Time Range**:
+```javascript
+const timeRangeSearch = {
+  uid: "user123",
+  payload: { content: "project" },
+  start_time: 1640995200, // 2022-01-01
+  end_time: 1672531200,   // 2023-01-01
+  limit: 20
+};
+```
+
+**Search by Message Type**:
+```javascript
+const typeSearch = {
+  uid: "user123",
+  payload_types: [1, 2], // Text and image messages only
+  channel_id: "group123",
+  limit: 50
+};
+```
+
+**Search with Multiple Criteria**:
+```javascript
+const complexSearch = {
+  uid: "user123",
+  payload: { content: "meeting" },
+  from_uid: "manager123",
+  channel_type: 2,
+  topic: "work",
+  highlights: ["payload.content"],
+  limit: 10
+};
+```
+
+## Best Practices
+
+1. **Pagination**: Use appropriate page size to avoid performance issues
+2. **Time Limits**: Set reasonable time ranges for better performance
+3. **Keyword Optimization**: Use specific keywords for more accurate results
+4. **Result Caching**: Cache search results for frequently used queries
+5. **Permission Check**: Ensure users can only search their own messages
+6. **Rate Limiting**: Implement rate limiting to prevent search abuse

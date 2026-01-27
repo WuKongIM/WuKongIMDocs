@@ -1,0 +1,374 @@
+---
+title: "Reminder Management"
+description: "WuKongIM Flutter SDK reminder management functionality, including @mentions, system reminders and custom reminders"
+icon: "bell"
+---
+
+Reminder management is responsible for handling various types of reminder messages, such as @mentions, group join requests, system notifications, etc. Conversation reminders currently only support server-issued commands, and clients only need to listen for sync conversation reminders and refresh conversation messages.
+
+<Note>
+Reminder items can only be sent from the server, clients are mainly responsible for receiving, displaying and managing reminder status
+</Note>
+
+## Get Reminders
+
+### Get Reminders for Specific Channel
+
+```dart
+// Get reminder list for specific channel
+List<WKReminder> reminders = WKIM.shared.reminderManager.getWithChannel(channelId, channelType);
+```
+
+### Complete Reminder Retrieval Example
+
+```dart
+class ReminderManager {
+  
+  // Get reminders for specific channel
+  static List<WKReminder> getChannelReminders(String channelId, int channelType) {
+    try {
+      final reminders = WKIM.shared.reminderManager.getWithChannel(channelId, channelType);
+      print('Retrieved ${reminders.length} reminders');
+      return reminders;
+    } catch (error) {
+      print('Failed to get reminders: $error');
+      return [];
+    }
+  }
+  
+  // Get all pending reminders
+  static List<WKReminder> getAllPendingReminders() {
+    // Here we need to iterate through all channels to get reminders
+    // Actual implementation may need SDK to provide corresponding API
+    final List<WKReminder> allReminders = [];
+    
+    // Example: Get reminders for all conversations
+    final conversations = WKIM.shared.conversationManager.getAll();
+    for (final conv in conversations) {
+      final reminders = getChannelReminders(conv.channelID, conv.channelType);
+      final pendingReminders = reminders.where((r) => r.done == 0).toList();
+      allReminders.addAll(pendingReminders);
+    }
+    
+    return allReminders;
+  }
+  
+  // Get reminders by type
+  static List<WKReminder> getRemindersByType(String channelId, int channelType, int type) {
+    final allReminders = getChannelReminders(channelId, channelType);
+    return allReminders.where((reminder) => reminder.type == type).toList();
+  }
+  
+  // Get @mention reminders
+  static List<WKReminder> getMentionReminders(String channelId, int channelType) {
+    return getRemindersByType(channelId, channelType, ReminderType.mention);
+  }
+  
+  // Get join request reminders
+  static List<WKReminder> getJoinRequestReminders(String channelId, int channelType) {
+    return getRemindersByType(channelId, channelType, ReminderType.joinRequest);
+  }
+  
+  // Get system notice reminders
+  static List<WKReminder> getSystemNoticeReminders(String channelId, int channelType) {
+    return getRemindersByType(channelId, channelType, ReminderType.systemNotice);
+  }
+  
+  // Get unread voice reminders
+  static List<WKReminder> getUnreadVoiceReminders(String channelId, int channelType) {
+    return getRemindersByType(channelId, channelType, ReminderType.unreadVoice);
+  }
+  
+  // Count total reminders
+  static int getTotalReminderCount() {
+    final allReminders = getAllPendingReminders();
+    return allReminders.length;
+  }
+  
+  // Count reminders by type
+  static Map<int, int> getReminderCountByType() {
+    final allReminders = getAllPendingReminders();
+    final Map<int, int> countMap = {};
+    
+    for (final reminder in allReminders) {
+      countMap[reminder.type] = (countMap[reminder.type] ?? 0) + 1;
+    }
+    
+    return countMap;
+  }
+  
+  // Check if has unread reminders
+  static bool hasUnreadReminders(String channelId, int channelType) {
+    final reminders = getChannelReminders(channelId, channelType);
+    return reminders.any((reminder) => reminder.done == 0);
+  }
+  
+  // Get reminder display text
+  static String getReminderDisplayText(WKReminder reminder) {
+    if (reminder.text.isNotEmpty) {
+      return reminder.text;
+    }
+    
+    // Return default text based on type
+    switch (reminder.type) {
+      case ReminderType.mention:
+        return 'Someone mentioned me';
+      case ReminderType.joinRequest:
+        return 'Join request';
+      case ReminderType.systemNotice:
+        return 'System notice';
+      case ReminderType.unreadVoice:
+        return 'Unread voice';
+      default:
+        return 'New reminder';
+    }
+  }
+}
+
+// Reminder type constants
+class ReminderType {
+  static const int mention = 1;        // @mention
+  static const int joinRequest = 2;    // Join request
+  static const int systemNotice = 3;   // System notice
+  static const int unreadVoice = 4;    // Unread voice
+  static const int custom = 99;        // Custom reminder
+}
+```
+
+## Save Reminders
+
+### Save or Update Reminders
+
+```dart
+// Save reminders
+WKIM.shared.reminderManager.saveOrUpdateReminders(list);
+```
+
+### Complete Reminder Save Example
+
+```dart
+class ReminderOperations {
+  
+  // Save single reminder
+  static void saveReminder(WKReminder reminder) {
+    try {
+      WKIM.shared.reminderManager.saveOrUpdateReminders([reminder]);
+      print('Reminder saved successfully: ${reminder.reminderID}');
+    } catch (error) {
+      print('Failed to save reminder: $error');
+    }
+  }
+  
+  // Batch save reminders
+  static void batchSaveReminders(List<WKReminder> reminders) {
+    try {
+      WKIM.shared.reminderManager.saveOrUpdateReminders(reminders);
+      print('Batch saved ${reminders.length} reminders successfully');
+    } catch (error) {
+      print('Failed to batch save reminders: $error');
+    }
+  }
+  
+  // Mark reminder as done
+  static void markReminderAsDone(WKReminder reminder) {
+    reminder.done = 1;
+    reminder.needUpload = 1; // Mark as needing upload to business server
+    saveReminder(reminder);
+  }
+  
+  // Batch mark reminders as done
+  static void batchMarkRemindersAsDone(List<WKReminder> reminders) {
+    for (final reminder in reminders) {
+      reminder.done = 1;
+      reminder.needUpload = 1;
+    }
+    batchSaveReminders(reminders);
+  }
+  
+  // Create @mention reminder
+  static WKReminder createMentionReminder({
+    required String messageId,
+    required String channelId,
+    required int channelType,
+    required int messageSeq,
+    required String mentionText,
+    String publisher = '',
+  }) {
+    final reminder = WKReminder();
+    reminder.messageID = messageId;
+    reminder.channelID = channelId;
+    reminder.channelType = channelType;
+    reminder.messageSeq = messageSeq;
+    reminder.type = ReminderType.mention;
+    reminder.text = mentionText;
+    reminder.publisher = publisher;
+    reminder.done = 0;
+    reminder.needUpload = 0;
+    reminder.version = DateTime.now().millisecondsSinceEpoch;
+    
+    return reminder;
+  }
+  
+  // Create join request reminder
+  static WKReminder createJoinRequestReminder({
+    required String channelId,
+    required int channelType,
+    required String applicantName,
+    required Map<String, dynamic> requestData,
+  }) {
+    final reminder = WKReminder();
+    reminder.channelID = channelId;
+    reminder.channelType = channelType;
+    reminder.type = ReminderType.joinRequest;
+    reminder.text = '$applicantName requests to join group';
+    reminder.data = requestData;
+    reminder.done = 0;
+    reminder.needUpload = 0;
+    reminder.version = DateTime.now().millisecondsSinceEpoch;
+    
+    return reminder;
+  }
+  
+  // Create system notice reminder
+  static WKReminder createSystemNoticeReminder({
+    required String channelId,
+    required int channelType,
+    required String noticeText,
+    Map<String, dynamic>? noticeData,
+  }) {
+    final reminder = WKReminder();
+    reminder.channelID = channelId;
+    reminder.channelType = channelType;
+    reminder.type = ReminderType.systemNotice;
+    reminder.text = noticeText;
+    reminder.data = noticeData;
+    reminder.done = 0;
+    reminder.needUpload = 0;
+    reminder.version = DateTime.now().millisecondsSinceEpoch;
+    
+    return reminder;
+  }
+  
+  // Create unread voice reminder
+  static WKReminder createUnreadVoiceReminder({
+    required String messageId,
+    required String channelId,
+    required int channelType,
+    required int messageSeq,
+    required int voiceDuration,
+  }) {
+    final reminder = WKReminder();
+    reminder.messageID = messageId;
+    reminder.channelID = channelId;
+    reminder.channelType = channelType;
+    reminder.messageSeq = messageSeq;
+    reminder.type = ReminderType.unreadVoice;
+    reminder.text = 'Unread voice message';
+    reminder.data = {'duration': voiceDuration};
+    reminder.done = 0;
+    reminder.needUpload = 0;
+    reminder.version = DateTime.now().millisecondsSinceEpoch;
+    
+    return reminder;
+  }
+}
+```
+
+## Event Listening
+
+### New Reminder Listening
+
+```dart
+// Listen for new reminders
+WKIM.shared.reminderManager.addOnNewReminderListener('key', (reminder) {
+    // Handle new reminders
+});
+
+// Remove listener
+WKIM.shared.reminderManager.removeOnNewReminderListener('key');
+```
+
+<Note>
+The key is a unique identifier for the listener, can be any string. The same key must be used when adding and removing listeners.
+</Note>
+
+## Data Structure Description
+
+### WKReminder Reminder Object
+
+```dart
+class WKReminder {
+  int reminderID = 0;               // Reminder ID
+  String messageID = '';            // Message ID
+  String channelID = '';            // Channel ID
+  int channelType = 0;              // Channel type
+  int messageSeq = 0;               // Message sequence number
+  int type = 0;                     // Reminder type
+  String text = '';                 // Reminder content
+  dynamic data;                     // Additional data
+  int version = 0;                  // Version number
+  int done = 0;                     // Completion status
+  int needUpload = 0;               // Whether needs upload (to business server)
+  String publisher = '';            // Publisher
+}
+```
+
+### Field Description
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `reminderID` | int | Reminder unique identifier |
+| `messageID` | String | Associated message ID |
+| `channelID` | String | Channel ID |
+| `channelType` | int | Channel type |
+| `messageSeq` | int | Message sequence number |
+| `type` | int | Reminder type (1=@mention, 2=join request, 3=system notice, 4=unread voice) |
+| `text` | String | Reminder display text |
+| `data` | dynamic | Additional data, can be any type |
+| `version` | int | Version number for sync |
+| `done` | int | Completion status (0=pending, 1=done) |
+| `needUpload` | int | Whether needs upload to business server (0=no, 1=yes) |
+| `publisher` | String | Publisher ID |
+
+### Reminder Type Description
+
+| Type Value | Description |
+|------------|-------------|
+| `1` | @mention |
+| `2` | Join request |
+| `3` | System notice |
+| `4` | Unread voice |
+| `99` | Custom reminder |
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Advanced Features"
+    icon="cog"
+    href="/en/sdk/wukongim/flutter/advance"
+  >
+    Explore custom messages and extension features
+  </Card>
+  <Card
+    title="Command Management"
+    icon="terminal"
+    href="/en/sdk/wukongim/flutter/cmd"
+  >
+    Return to command message processing functionality
+  </Card>
+  <Card
+    title="Channel Member Management"
+    icon="users"
+    href="/en/sdk/wukongim/flutter/channel_member"
+  >
+    Return to channel member management functionality
+  </Card>
+  <Card
+    title="Data Source Configuration"
+    icon="database"
+    href="/en/sdk/wukongim/flutter/datasource"
+  >
+    Configure data sources and sync logic
+  </Card>
+</CardGroup>

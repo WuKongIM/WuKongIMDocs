@@ -1,0 +1,47 @@
+---
+title: "集成指南"
+description: "WuKongIM JavaScript SDK 集成和初始化配置指南"
+icon: "rocket"
+---
+
+## 安装
+
+<CodeGroup>
+```bash npm
+npm i wukongimjssdk
+```
+
+```bash yarn
+yarn add wukongimjssdk
+```
+
+```bash pnpm
+pnpm add wukongimjssdk
+```
+
+```bash bun
+bun add wukongimjssdk
+```
+</CodeGroup>
+
+## 引入
+
+<CodeGroup>
+```javascript ES6
+import WKSDK from "wukongimjssdk"
+```
+
+```javascript AMD
+const WKSDK = require("wukongimjssdk").default
+```
+
+```html 浏览器
+<script src="https://cdn.jsdelivr.net/npm/wukongimjssdk@latest/lib/wukongimjssdk.umd.js"></script>
+```
+</CodeGroup>
+
+<Note>
+通过 `<script>` 标签引入使用必须都加前缀 `wk`，例如 `wk.WKSDK.shared()`
+</Note>
+
+

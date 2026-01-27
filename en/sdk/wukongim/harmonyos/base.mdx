@@ -1,0 +1,544 @@
+---
+title: "Basic Features"
+description: "WuKongIM HarmonyOS SDK basic functionality, including initialization, connection management and status monitoring"
+icon: "building"
+---
+
+## Initialization
+
+```typescript
+// uid Login user ID (uid registered with IM communication end by business server)
+// token Login user token (token registered with IM communication end by business server)
+await WKIM.shared.init(uid, token)
+```
+
+## Connection Address
+
+```typescript
+WKIM.shared.config.provider.connectAddrCallback = (): Promise<string> => {
+    // Get connection address through network and return
+    let add = HttpUtil.getIP()
+    return add
+}
+```
+
+<Note>
+Return the IP of the IM communication end and the TCP port of the IM communication end. **For distributed systems, call the interface to get IP and Port before returning**
+</Note>
+
+## Connect
+
+```typescript
+// Connect
+WKIM.shared.connectionManager().connection()
+```
+
+## Disconnect
+
+```typescript
+// Disconnect isLogout true: logout and clear user info false: logout but keep user info
+WKIM.shared.connectionManager().disConnection(isLogout)
+```
+
+## Listen for Connection Status
+
+```typescript
+// Listen for connection status
+WKIM.shared.connectionManager()
+  .addConnectStatusListener((status: number, reasonCode?: number, connInfo?: ConnectionInfo) => {
+    switch (status) {
+      case WKConnectStatus.success: {
+       // `WuKongIM(Connected-Node:${connInfo?.nodeId})`
+        break
+      }
+      case WKConnectStatus.fail:
+        // 'Connection failed'
+        break
+      case WKConnectStatus.connecting:
+       // 'Connecting...'
+        break
+      case WKConnectStatus.syncing:
+       // 'Syncing...'
+        break
+      case WKConnectStatus.syncCompleted:
+       // `WuKongIM(Connected-Node:${this.nodeId})`
+        break
+      case WKConnectStatus.noNetwork:
+       // 'Network error'
+        break
+      case WKConnectStatus.kicked:
+       // 'Logged in from another device'
+        break
+    }
+  })
+```
+
+## Complete Connection Management Example
+
+```typescript
+import { WKIM, WKConnectStatus, ConnectionInfo } from '@wukong/wkim';
+
+@Component
+export struct ConnectionManager {
+  @State private connectionStatus: string = 'Disconnected';
+  @State private isConnected: boolean = false;
+  @State private nodeId: string = '';
+  
+  aboutToAppear(): void {
+    this.initializeConnection();
+  }
+  
+  aboutToDisappear(): void {
+    this.cleanup();
+  }
+  
+  private async initializeConnection(): Promise<void> {
+    try {
+      // Initialize SDK
+      await WKIM.shared.init('user123', 'auth_token');
+      
+      // Configure connection address provider
+      WKIM.shared.config.provider.connectAddrCallback = (): Promise<string> => {
+        return this.getServerAddress();
+      };
+      
+      // Setup connection listener
+      this.setupConnectionListener();
+      
+      console.log('Connection manager initialized');
+    } catch (error) {
+      console.error('Failed to initialize connection:', error);
+    }
+  }
+  
+  private setupConnectionListener(): void {
+    WKIM.shared.connectionManager().addConnectStatusListener(
+      (status: number, reasonCode?: number, connInfo?: ConnectionInfo) => {
+        this.handleConnectionStatus(status, reasonCode, connInfo);
+      }
+    );
+  }
+  
+  private handleConnectionStatus(status: number, reasonCode?: number, connInfo?: ConnectionInfo): void {
+    switch (status) {
+      case WKConnectStatus.success:
+        this.connectionStatus = 'Connected';
+        this.isConnected = true;
+        this.nodeId = connInfo?.nodeId || '';
+        console.log(`✅ Connected successfully to node: ${this.nodeId}`);
+        this.onConnected();
+        break;
+        
+      case WKConnectStatus.connecting:
+        this.connectionStatus = 'Connecting...';
+        this.isConnected = false;
+        console.log('🔄 Connecting to server...');
+        break;
+        
+      case WKConnectStatus.syncing:
+        this.connectionStatus = 'Syncing...';
+        console.log('🔄 Syncing messages...');
+        break;
+        
+      case WKConnectStatus.syncCompleted:
+        this.connectionStatus = 'Connected';
+        this.isConnected = true;
+        console.log('✅ Sync completed');
+        break;
+        
+      case WKConnectStatus.fail:
+        this.connectionStatus = 'Connection Failed';
+        this.isConnected = false;
+        console.error('❌ Connection failed:', reasonCode);
+        this.handleConnectionFailure(reasonCode);
+        break;
+        
+      case WKConnectStatus.noNetwork:
+        this.connectionStatus = 'No Network';
+        this.isConnected = false;
+        console.log('❌ Network error');
+        break;
+        
+      case WKConnectStatus.kicked:
+        this.connectionStatus = 'Kicked Offline';
+        this.isConnected = false;
+        console.log('❌ Logged in from another device');
+        this.handleKickedOffline();
+        break;
+        
+      default:
+        console.log('Unknown connection status:', status);
+        break;
+    }
+  }
+  
+  private onConnected(): void {
+    // Perform actions after successful connection
+    this.syncOfflineData();
+    this.updateOnlineStatus();
+  }
+  
+  private handleConnectionFailure(reasonCode?: number): void {
+    // Handle connection failure based on reason code
+    switch (reasonCode) {
+      case 1:
+        console.error('Authentication failed');
+        this.handleAuthFailure();
+        break;
+      case 2:
+        console.error('Server error');
+        break;
+      case 3:
+        console.error('Network timeout');
+        this.scheduleReconnect();
+        break;
+      default:
+        console.error('Unknown connection error');
+        this.scheduleReconnect();
+        break;
+    }
+  }
+  
+  private handleKickedOffline(): void {
+    // Handle being kicked offline
+    this.clearUserSession();
+    this.showKickedOfflineDialog();
+  }
+  
+  private handleAuthFailure(): void {
+    // Handle authentication failure
+    this.clearUserSession();
+    this.redirectToLogin();
+  }
+  
+  private syncOfflineData(): void {
+    // Sync offline conversations and messages
+    console.log('Syncing offline data...');
+  }
+  
+  private updateOnlineStatus(): void {
+    // Update user online status
+    console.log('Updating online status...');
+  }
+  
+  private scheduleReconnect(): void {
+    // Schedule automatic reconnection
+    setTimeout(() => {
+      if (!this.isConnected) {
+        console.log('Attempting to reconnect...');
+        this.connect();
+      }
+    }, 5000);
+  }
+  
+  private clearUserSession(): void {
+    // Clear user session data
+    console.log('Clearing user session...');
+  }
+  
+  private showKickedOfflineDialog(): void {
+    // Show dialog to user about being kicked offline
+    AlertDialog.show({
+      title: 'Account Login',
+      message: 'Your account has been logged in from another device.',
+      primaryButton: {
+        value: 'OK',
+        action: () => {
+          this.redirectToLogin();
+        }
+      }
+    });
+  }
+  
+  private redirectToLogin(): void {
+    // Redirect to login page
+    console.log('Redirecting to login page...');
+  }
+  
+  // Public methods
+  public connect(): void {
+    WKIM.shared.connectionManager().connection();
+  }
+  
+  public disconnect(logout: boolean = false): void {
+    WKIM.shared.connectionManager().disConnection(logout);
+    this.isConnected = false;
+    this.connectionStatus = 'Disconnected';
+  }
+  
+  private async getServerAddress(): Promise<string> {
+    try {
+      // In production, get from your server discovery service
+      const response = await fetch('/api/im/server-address');
+      const data = await response.json();
+      return `${data.ip}:${data.port}`;
+    } catch (error) {
+      console.error('Failed to get server address:', error);
+      // Fallback to default server
+      return 'your-server.com:5100';
+    }
+  }
+  
+  private cleanup(): void {
+    // Remove listeners when component is destroyed
+    WKIM.shared.connectionManager().removeConnectStatusListener();
+  }
+  
+  build() {
+    Column() {
+      Text('Connection Manager')
+        .fontSize(20)
+        .fontWeight(FontWeight.Bold)
+        .margin({ bottom: 20 })
+      
+      Row() {
+        Text('Status:')
+          .fontSize(16)
+          .margin({ right: 10 })
+        
+        Text(this.connectionStatus)
+          .fontSize(16)
+          .fontColor(this.getStatusColor())
+      }
+      .margin({ bottom: 20 })
+      
+      if (this.nodeId) {
+        Text(`Node: ${this.nodeId}`)
+          .fontSize(14)
+          .fontColor(Color.Gray)
+          .margin({ bottom: 20 })
+      }
+      
+      Row() {
+        Button('Connect')
+          .enabled(!this.isConnected)
+          .onClick(() => {
+            this.connect();
+          })
+          .margin({ right: 10 })
+        
+        Button('Disconnect')
+          .enabled(this.isConnected)
+          .onClick(() => {
+            this.disconnect(false);
+          })
+      }
+    }
+    .width('100%')
+    .padding(20)
+  }
+  
+  private getStatusColor(): ResourceColor {
+    switch (this.connectionStatus) {
+      case 'Connected':
+        return Color.Green;
+      case 'Connecting...':
+      case 'Syncing...':
+        return Color.Orange;
+      case 'Connection Failed':
+      case 'No Network':
+      case 'Kicked Offline':
+        return Color.Red;
+      default:
+        return Color.Gray;
+    }
+  }
+}
+```
+
+## Connection Status Types
+
+| Status | Description |
+|--------|-------------|
+| `WKConnectStatus.success` | Connection successful |
+| `WKConnectStatus.connecting` | Connecting to server |
+| `WKConnectStatus.syncing` | Syncing messages |
+| `WKConnectStatus.syncCompleted` | Message sync completed |
+| `WKConnectStatus.fail` | Connection failed |
+| `WKConnectStatus.noNetwork` | No network available |
+| `WKConnectStatus.kicked` | Kicked offline by another device |
+
+## Best Practices
+
+### 1. Application Lifecycle Management
+
+```typescript
+import { AbilityStage, Want } from '@kit.AbilityKit';
+
+export default class MyAbilityStage extends AbilityStage {
+  onCreate(): void {
+    // Initialize WuKongIM when app starts
+    this.initializeWuKongIM();
+  }
+  
+  onDestroy(): void {
+    // Clean up when app is destroyed
+    WKIM.shared.connectionManager().disConnection(true);
+  }
+  
+  private async initializeWuKongIM(): Promise<void> {
+    try {
+      await WKIM.shared.init('user123', 'auth_token');
+      console.log('WuKongIM initialized in AbilityStage');
+    } catch (error) {
+      console.error('Failed to initialize WuKongIM:', error);
+    }
+  }
+}
+```
+
+### 2. Network State Monitoring
+
+```typescript
+import { connection } from '@kit.NetworkKit';
+
+class NetworkMonitor {
+  private connectionType: connection.NetBearType = connection.NetBearType.BEARER_CELLULAR;
+  
+  startMonitoring(): void {
+    // Monitor network changes
+    connection.on('netAvailable', (data) => {
+      console.log('Network available:', data);
+      this.handleNetworkAvailable();
+    });
+    
+    connection.on('netUnavailable', (data) => {
+      console.log('Network unavailable:', data);
+      this.handleNetworkUnavailable();
+    });
+    
+    connection.on('netCapabilitiesChange', (data) => {
+      console.log('Network capabilities changed:', data);
+      this.handleNetworkChange(data);
+    });
+  }
+  
+  private handleNetworkAvailable(): void {
+    // Network is available, try to connect
+    if (!WKIM.shared.connectionManager().isConnected()) {
+      WKIM.shared.connectionManager().connection();
+    }
+  }
+  
+  private handleNetworkUnavailable(): void {
+    // Network is unavailable
+    console.log('Network unavailable, connection will be handled automatically');
+  }
+  
+  private handleNetworkChange(data: any): void {
+    // Handle network type changes (WiFi to cellular, etc.)
+    console.log('Network type changed, reconnecting if needed');
+  }
+  
+  stopMonitoring(): void {
+    connection.off('netAvailable');
+    connection.off('netUnavailable');
+    connection.off('netCapabilitiesChange');
+  }
+}
+```
+
+### 3. Error Handling and Retry Logic
+
+```typescript
+class ConnectionRetryManager {
+  private retryCount: number = 0;
+  private maxRetries: number = 5;
+  private retryTimer?: number;
+  
+  handleConnectionFailure(reasonCode?: number): void {
+    // Don't retry on authentication failures
+    if (reasonCode === 1) {
+      console.log('Authentication failed, not retrying');
+      return;
+    }
+    
+    if (this.retryCount < this.maxRetries) {
+      this.retryCount++;
+      const delay = this.getRetryDelay();
+      
+      console.log(`Connection failed, retrying in ${delay}ms (attempt ${this.retryCount}/${this.maxRetries})`);
+      
+      this.retryTimer = setTimeout(() => {
+        WKIM.shared.connectionManager().connection();
+      }, delay);
+    } else {
+      console.log('Max retry attempts reached');
+      this.handleMaxRetriesReached();
+    }
+  }
+  
+  onConnectionSuccess(): void {
+    this.retryCount = 0;
+    if (this.retryTimer) {
+      clearTimeout(this.retryTimer);
+      this.retryTimer = undefined;
+    }
+  }
+  
+  private getRetryDelay(): number {
+    // Exponential backoff: 1s, 2s, 4s, 8s, 16s
+    return Math.min(Math.pow(2, this.retryCount) * 1000, 16000);
+  }
+  
+  private handleMaxRetriesReached(): void {
+    // Show error message to user
+    AlertDialog.show({
+      title: 'Connection Error',
+      message: 'Unable to connect to server. Please check your network and try again.',
+      primaryButton: {
+        value: 'Retry',
+        action: () => {
+          this.retryCount = 0;
+          WKIM.shared.connectionManager().connection();
+        }
+      },
+      secondaryButton: {
+        value: 'Cancel',
+        action: () => {
+          // Handle cancel
+        }
+      }
+    });
+  }
+  
+  dispose(): void {
+    if (this.retryTimer) {
+      clearTimeout(this.retryTimer);
+    }
+  }
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Message Management"
+    icon="message-circle"
+    href="/en/sdk/wukongim/harmonyos/message"
+  >
+    Learn how to handle message sending and receiving
+  </Card>
+  <Card
+    title="Channel Management"
+    icon="hash"
+    href="/en/sdk/wukongim/harmonyos/channel"
+  >
+    Manage channels and groups
+  </Card>
+  <Card
+    title="Conversation Management"
+    icon="users"
+    href="/en/sdk/wukongim/harmonyos/conversation"
+  >
+    Handle conversation lists
+  </Card>
+  <Card
+    title="Advanced Features"
+    icon="cog"
+    href="/en/sdk/wukongim/harmonyos/advance"
+  >
+    Explore advanced features and configuration
+  </Card>
+</CardGroup>

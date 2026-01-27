@@ -1,0 +1,686 @@
+---
+title: "命令管理"
+description: "WuKongIM HarmonyOS SDK 命令管理功能，包括CMD消息监听和处理"
+icon: "terminal"
+---
+
+命令管理负责处理服务器下发的 CMD（命令）消息。CMD 消息只能是服务器下发客户端进行解析，用于处理各种系统级别的指令和状态同步。
+
+<Note>
+CMD 消息只能由服务器下发，客户端不能主动发送 CMD 消息
+</Note>
+
+## 监听命令消息
+
+### 基础监听
+
+```typescript
+cmdListener = (cmd: WKCMD) => {
+  // 处理CMD消息
+};
+
+// 添加CMD消息监听
+WKIM.shared.cmdManager().addCmdListener(this.cmdListener);
+
+// 在退出页面时移除监听
+WKIM.shared.cmdManager().removeCmdListener(this.cmdListener);
+```
+
+### 完整命令监听管理
+
+```typescript
+interface CMDMessageEvent {
+  cmd: WKCMD;
+  timestamp: number;
+  processed: boolean;
+}
+
+class CMDMessageManager {
+  private static cmdListeners: Set<(cmd: WKCMD) => void> = new Set();
+  private static cmdEventCallbacks: Array<(event: CMDMessageEvent) => void> = [];
+  
+  // 添加命令监听
+  static addCmdListener(callback: (cmd: WKCMD) => void): void {
+    this.cmdListeners.add(callback);
+    
+    WKIM.shared.cmdManager().addCmdListener((cmd: WKCMD) => {
+      // 调用回调
+      callback(cmd);
+      
+      // 发送到事件回调
+      const event: CMDMessageEvent = {
+        cmd,
+        timestamp: Date.now(),
+        processed: false
+      };
+      
+      this.cmdEventCallbacks.forEach(cb => cb(event));
+      
+      // 处理常见命令
+      this.handleCommonCommands(cmd);
+      
+      console.log('收到命令消息:', cmd.cmd);
+    });
+  }
+  
+  // 移除命令监听
+  static removeCmdListener(callback: (cmd: WKCMD) => void): void {
+    this.cmdListeners.delete(callback);
+    WKIM.shared.cmdManager().removeCmdListener(callback);
+  }
+  
+  // 添加命令事件回调
+  static addCmdEventCallback(callback: (event: CMDMessageEvent) => void): void {
+    this.cmdEventCallbacks.push(callback);
+  }
+  
+  // 移除命令事件回调
+  static removeCmdEventCallback(callback: (event: CMDMessageEvent) => void): void {
+    const index = this.cmdEventCallbacks.indexOf(callback);
+    if (index > -1) {
+      this.cmdEventCallbacks.splice(index, 1);
+    }
+  }
+  
+  // 移除所有监听
+  static removeAllListeners(): void {
+    this.cmdListeners.forEach(callback => {
+      WKIM.shared.cmdManager().removeCmdListener(callback);
+    });
+    this.cmdListeners.clear();
+    this.cmdEventCallbacks = [];
+  }
+  
+  // 处理常见命令
+  private static handleCommonCommands(cmd: WKCMD): void {
+    switch (cmd.cmd) {
+      case 'syncConversation':
+        this.handleSyncConversation(cmd);
+        break;
+      case 'syncChannelInfo':
+        this.handleSyncChannelInfo(cmd);
+        break;
+      case 'syncChannelMember':
+        this.handleSyncChannelMember(cmd);
+        break;
+      case 'syncMessageExtra':
+        this.handleSyncMessageExtra(cmd);
+        break;
+      case 'syncMessageReaction':
+        this.handleSyncMessageReaction(cmd);
+        break;
+      case 'userStatusUpdate':
+        this.handleUserStatusUpdate(cmd);
+        break;
+      case 'channelUpdate':
+        this.handleChannelUpdate(cmd);
+        break;
+      case 'memberUpdate':
+        this.handleMemberUpdate(cmd);
+        break;
+      default:
+        console.log('未处理的命令:', cmd.cmd);
+        break;
+    }
+  }
+  
+  // 处理同步会话命令
+  private static handleSyncConversation(cmd: WKCMD): void {
+    console.log('处理同步会话命令');
+    // 触发会话同步逻辑
+    // 这里可以调用会话管理器的同步方法
+  }
+  
+  // 处理同步频道信息命令
+  private static handleSyncChannelInfo(cmd: WKCMD): void {
+    console.log('处理同步频道信息命令');
+    if (cmd.paramJsonObject) {
+      const channelId = cmd.paramJsonObject['channel_id'] as string;
+      const channelType = cmd.paramJsonObject['channel_type'] as number;
+      
+      if (channelId && channelType !== undefined) {
+        // 刷新频道信息
+        WKIM.shared.channelManager().fetchChannelInfo(channelId, channelType);
+      }
+    }
+  }
+  
+  // 处理同步频道成员命令
+  private static handleSyncChannelMember(cmd: WKCMD): void {
+    console.log('处理同步频道成员命令');
+    // 触发频道成员同步逻辑
+  }
+  
+  // 处理同步消息扩展命令
+  private static handleSyncMessageExtra(cmd: WKCMD): void {
+    console.log('处理同步消息扩展命令');
+    // 触发消息扩展同步逻辑
+  }
+  
+  // 处理同步消息回应命令
+  private static handleSyncMessageReaction(cmd: WKCMD): void {
+    console.log('处理同步消息回应命令');
+    // 触发消息回应同步逻辑
+  }
+  
+  // 处理用户状态更新命令
+  private static handleUserStatusUpdate(cmd: WKCMD): void {
+    console.log('处理用户状态更新命令');
+    if (cmd.paramJsonObject) {
+      const uid = cmd.paramJsonObject['uid'] as string;
+      const online = cmd.paramJsonObject['online'] as number;
+      
+      if (uid && online !== undefined) {
+        // 更新用户在线状态
+        console.log(`用户 ${uid} 状态更新: ${online === 1 ? '在线' : '离线'}`);
+      }
+    }
+  }
+  
+  // 处理频道更新命令
+  private static handleChannelUpdate(cmd: WKCMD): void {
+    console.log('处理频道更新命令');
+    // 处理频道信息变更
+  }
+  
+  // 处理成员更新命令
+  private static handleMemberUpdate(cmd: WKCMD): void {
+    console.log('处理成员更新命令');
+    // 处理成员信息变更
+  }
+  
+  // 销毁
+  static dispose(): void {
+    this.removeAllListeners();
+  }
+}
+```
+
+## 常见命令类型
+
+### 系统同步命令
+
+这些命令用于同步各种数据状态：
+
+```typescript
+class SystemSyncCommands {
+  
+  // 同步会话列表
+  static readonly SYNC_CONVERSATION = 'syncConversation';
+  
+  // 同步频道信息
+  static readonly SYNC_CHANNEL_INFO = 'syncChannelInfo';
+  
+  // 同步频道成员
+  static readonly SYNC_CHANNEL_MEMBER = 'syncChannelMember';
+  
+  // 同步消息扩展
+  static readonly SYNC_MESSAGE_EXTRA = 'syncMessageExtra';
+  
+  // 同步消息回应
+  static readonly SYNC_MESSAGE_REACTION = 'syncMessageReaction';
+  
+  // 处理系统同步命令
+  static handleSyncCommand(cmd: WKCMD): void {
+    switch (cmd.cmd) {
+      case this.SYNC_CONVERSATION:
+        this.syncConversations(cmd.paramJsonObject);
+        break;
+      case this.SYNC_CHANNEL_INFO:
+        this.syncChannelInfo(cmd.paramJsonObject);
+        break;
+      case this.SYNC_CHANNEL_MEMBER:
+        this.syncChannelMember(cmd.paramJsonObject);
+        break;
+      case this.SYNC_MESSAGE_EXTRA:
+        this.syncMessageExtra(cmd.paramJsonObject);
+        break;
+      case this.SYNC_MESSAGE_REACTION:
+        this.syncMessageReaction(cmd.paramJsonObject);
+        break;
+    }
+  }
+  
+  private static syncConversations(param?: Record<string, Object>): void {
+    // 实现会话同步逻辑
+    console.log('同步会话数据');
+  }
+  
+  private static syncChannelInfo(param?: Record<string, Object>): void {
+    // 实现频道信息同步逻辑
+    console.log('同步频道信息');
+  }
+  
+  private static syncChannelMember(param?: Record<string, Object>): void {
+    // 实现频道成员同步逻辑
+    console.log('同步频道成员');
+  }
+  
+  private static syncMessageExtra(param?: Record<string, Object>): void {
+    // 实现消息扩展同步逻辑
+    console.log('同步消息扩展');
+  }
+  
+  private static syncMessageReaction(param?: Record<string, Object>): void {
+    // 实现消息回应同步逻辑
+    console.log('同步消息回应');
+  }
+}
+```
+
+### 状态更新命令
+
+这些命令用于实时状态更新：
+
+```typescript
+class StatusUpdateCommands {
+  
+  // 用户在线状态更新
+  static readonly USER_STATUS_UPDATE = 'userStatusUpdate';
+  
+  // 频道状态更新
+  static readonly CHANNEL_UPDATE = 'channelUpdate';
+  
+  // 成员状态更新
+  static readonly MEMBER_UPDATE = 'memberUpdate';
+  
+  // 消息状态更新
+  static readonly MESSAGE_UPDATE = 'messageUpdate';
+  
+  // 处理状态更新命令
+  static handleStatusCommand(cmd: WKCMD): void {
+    switch (cmd.cmd) {
+      case this.USER_STATUS_UPDATE:
+        this.handleUserStatusUpdate(cmd.paramJsonObject);
+        break;
+      case this.CHANNEL_UPDATE:
+        this.handleChannelUpdate(cmd.paramJsonObject);
+        break;
+      case this.MEMBER_UPDATE:
+        this.handleMemberUpdate(cmd.paramJsonObject);
+        break;
+      case this.MESSAGE_UPDATE:
+        this.handleMessageUpdate(cmd.paramJsonObject);
+        break;
+    }
+  }
+  
+  private static handleUserStatusUpdate(param?: Record<string, Object>): void {
+    if (param) {
+      const uid = param['uid'] as string;
+      const online = param['online'] as number;
+      const lastSeen = param['last_seen'] as number;
+      
+      console.log('用户状态更新:', uid, '在线:', online, '最后在线:', lastSeen);
+      
+      // 更新本地用户状态
+      // 可以通过事件通知UI更新
+    }
+  }
+  
+  private static handleChannelUpdate(param?: Record<string, Object>): void {
+    if (param) {
+      const channelId = param['channel_id'] as string;
+      const channelType = param['channel_type'] as number;
+      
+      console.log('频道更新:', channelId, '类型:', channelType);
+      
+      // 刷新频道信息
+      if (channelId && channelType !== undefined) {
+        WKIM.shared.channelManager().fetchChannelInfo(channelId, channelType);
+      }
+    }
+  }
+  
+  private static handleMemberUpdate(param?: Record<string, Object>): void {
+    if (param) {
+      const channelId = param['channel_id'] as string;
+      const memberUid = param['member_uid'] as string;
+      
+      console.log('成员更新: 频道', channelId, '成员', memberUid);
+      
+      // 刷新成员信息
+      // 触发成员列表更新
+    }
+  }
+  
+  private static handleMessageUpdate(param?: Record<string, Object>): void {
+    if (param) {
+      const messageId = param['message_id'] as string;
+      const action = param['action'] as string;
+      
+      console.log('消息更新:', messageId, '操作:', action);
+      
+      // 处理消息更新（如撤回、编辑等）
+    }
+  }
+}
+```
+
+## 自定义命令处理
+
+### 业务命令处理器
+
+```typescript
+class BusinessCommandHandler {
+  
+  // 注册业务命令处理器
+  static registerBusinessCommands(): void {
+    CMDMessageManager.addCmdListener((cmd: WKCMD) => {
+      this.handleBusinessCommand(cmd);
+    });
+  }
+  
+  // 处理业务命令
+  private static handleBusinessCommand(cmd: WKCMD): void {
+    switch (cmd.cmd) {
+      case 'groupInvite':
+        this.handleGroupInvite(cmd.paramJsonObject);
+        break;
+      case 'friendRequest':
+        this.handleFriendRequest(cmd.paramJsonObject);
+        break;
+      case 'systemNotice':
+        this.handleSystemNotice(cmd.paramJsonObject);
+        break;
+      case 'customAction':
+        this.handleCustomAction(cmd.paramJsonObject);
+        break;
+      default:
+        console.log('未知业务命令:', cmd.cmd);
+        break;
+    }
+  }
+  
+  // 处理群组邀请
+  private static handleGroupInvite(param?: Record<string, Object>): void {
+    if (param) {
+      const groupId = param['group_id'] as string;
+      const inviterUid = param['inviter_uid'] as string;
+      const inviterName = param['inviter_name'] as string;
+      
+      console.log('收到群组邀请: 群组', groupId, '邀请人', inviterName);
+      
+      // 显示邀请通知
+      this.showInviteNotification(groupId, inviterName);
+    }
+  }
+  
+  // 处理好友请求
+  private static handleFriendRequest(param?: Record<string, Object>): void {
+    if (param) {
+      const fromUid = param['from_uid'] as string;
+      const fromName = param['from_name'] as string;
+      const message = param['message'] as string;
+      
+      console.log('收到好友请求: 来自', fromName, '消息:', message);
+      
+      // 显示好友请求通知
+      this.showFriendRequestNotification(fromUid, fromName, message);
+    }
+  }
+  
+  // 处理系统通知
+  private static handleSystemNotice(param?: Record<string, Object>): void {
+    if (param) {
+      const title = param['title'] as string;
+      const content = param['content'] as string;
+      const type = param['type'] as string;
+      
+      console.log('收到系统通知:', title, '-', content);
+      
+      // 显示系统通知
+      this.showSystemNotification(title, content, type);
+    }
+  }
+  
+  // 处理自定义操作
+  private static handleCustomAction(param?: Record<string, Object>): void {
+    if (param) {
+      const action = param['action'] as string;
+      const data = param['data'];
+      
+      console.log('收到自定义操作:', action);
+      
+      // 处理自定义业务逻辑
+      this.processCustomAction(action, data);
+    }
+  }
+  
+  // 显示邀请通知
+  private static showInviteNotification(groupId?: string, inviterName?: string): void {
+    // 实现邀请通知UI
+  }
+  
+  // 显示好友请求通知
+  private static showFriendRequestNotification(fromUid?: string, fromName?: string, message?: string): void {
+    // 实现好友请求通知UI
+  }
+  
+  // 显示系统通知
+  private static showSystemNotification(title?: string, content?: string, type?: string): void {
+    // 实现系统通知UI
+  }
+  
+  // 处理自定义操作
+  private static processCustomAction(action?: string, data?: any): void {
+    // 实现自定义业务逻辑
+  }
+}
+```
+
+## 数据结构说明
+
+### WKCMD 命令对象
+
+```typescript
+export class WKCMD {
+  cmd: string = '';                                    // 命令Id
+  paramJsonObject?: Record<string, Object>;           // 命令参数
+}
+```
+
+### 字段说明
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `cmd` | string | 命令标识符，用于区分不同类型的命令 |
+| `paramJsonObject` | Record&lt;string, Object&gt; | 命令参数，可以包含任意类型的数据 |
+
+### 常见命令参数格式
+
+#### 同步命令参数
+
+```typescript
+// 同步会话命令参数
+{
+  "version": 123456,
+  "last_msg_seqs": "1,2,3,4,5",
+  "msg_count": 20
+}
+
+// 同步频道信息命令参数
+{
+  "channel_id": "channel123",
+  "channel_type": 2,
+  "version": 123456
+}
+```
+
+#### 状态更新命令参数
+
+```typescript
+// 用户状态更新参数
+{
+  "uid": "user123",
+  "online": 1,
+  "last_seen": 1640995200,
+  "device_flag": 1
+}
+
+// 频道更新参数
+{
+  "channel_id": "channel123",
+  "channel_type": 2,
+  "action": "update",
+  "fields": ["name", "avatar"]
+}
+```
+
+## HarmonyOS 组件集成示例
+
+### 命令消息处理组件
+
+```typescript
+@Component
+export struct CMDMessageHandler {
+  private cmdListener?: (cmd: WKCMD) => void;
+  
+  aboutToAppear(): void {
+    this.setupCMDListener();
+  }
+  
+  aboutToDisappear(): void {
+    if (this.cmdListener) {
+      CMDMessageManager.removeCmdListener(this.cmdListener);
+    }
+  }
+  
+  private setupCMDListener(): void {
+    // 添加全局命令监听
+    this.cmdListener = (cmd: WKCMD) => {
+      this.handleAppLevelCommand(cmd);
+    };
+    
+    CMDMessageManager.addCmdListener(this.cmdListener);
+  }
+  
+  private handleAppLevelCommand(cmd: WKCMD): void {
+    // 处理应用级别的命令
+    switch (cmd.cmd) {
+      case 'appUpdate':
+        this.handleAppUpdate(cmd.paramJsonObject);
+        break;
+      case 'maintenance':
+        this.handleMaintenance(cmd.paramJsonObject);
+        break;
+      case 'forceLogout':
+        this.handleForceLogout(cmd.paramJsonObject);
+        break;
+    }
+  }
+  
+  private handleAppUpdate(param?: Record<string, Object>): void {
+    // 处理应用更新命令
+    if (param) {
+      const version = param['version'] as string;
+      const url = param['url'] as string;
+      const force = param['force'] as boolean;
+      
+      this.showUpdateDialog(version, url, force);
+    }
+  }
+  
+  private handleMaintenance(param?: Record<string, Object>): void {
+    // 处理维护通知命令
+    if (param) {
+      const message = param['message'] as string;
+      const startTime = param['start_time'] as number;
+      const endTime = param['end_time'] as number;
+      
+      this.showMaintenanceNotice(message, startTime, endTime);
+    }
+  }
+  
+  private handleForceLogout(param?: Record<string, Object>): void {
+    // 处理强制登出命令
+    if (param) {
+      const reason = param['reason'] as string;
+      
+      this.performForceLogout(reason);
+    }
+  }
+  
+  private showUpdateDialog(version?: string, url?: string, force?: boolean): void {
+    // 显示更新对话框
+  }
+  
+  private showMaintenanceNotice(message?: string, startTime?: number, endTime?: number): void {
+    // 显示维护通知
+  }
+  
+  private performForceLogout(reason?: string): void {
+    // 执行强制登出
+  }
+  
+  build() {
+    // 这个组件通常不需要UI，只是处理命令
+    Column() {}
+  }
+}
+```
+
+### 在应用中使用命令处理器
+
+```typescript
+@Entry
+@Component
+struct MainPage {
+  aboutToAppear(): void {
+    // 注册业务命令处理器
+    BusinessCommandHandler.registerBusinessCommands();
+  }
+  
+  aboutToDisappear(): void {
+    // 清理命令监听器
+    CMDMessageManager.dispose();
+  }
+  
+  build() {
+    Stack() {
+      // 主要内容
+      Column() {
+        // 应用主界面
+      }
+      
+      // 命令消息处理器
+      CMDMessageHandler()
+    }
+    .width('100%')
+    .height('100%')
+  }
+}
+```
+
+## 下一步
+
+<CardGroup cols={2}>
+  <Card
+    title="提醒管理"
+    icon="bell"
+    href="/zh/sdk/wukongim/harmonyos/reminder"
+  >
+    了解@提醒和自定义提醒功能
+  </Card>
+  <Card
+    title="高级功能"
+    icon="cog"
+    href="/zh/sdk/wukongim/harmonyos/advance"
+  >
+    探索自定义消息和扩展特性
+  </Card>
+  <Card
+    title="频道成员管理"
+    icon="users"
+    href="/zh/sdk/wukongim/harmonyos/channel_member"
+  >
+    回到频道成员管理功能
+  </Card>
+  <Card
+    title="数据源配置"
+    icon="database"
+    href="/zh/sdk/wukongim/harmonyos/datasource"
+  >
+    配置数据源和同步逻辑
+  </Card>
+</CardGroup>

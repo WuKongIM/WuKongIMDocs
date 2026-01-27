@@ -1,0 +1,320 @@
+---
+title: "高级功能"
+description: "WuKongIM iOS SDK 高级功能，包括自定义消息、消息回应等"
+icon: "cog"
+---
+
+本指南涵盖了 WuKongIM iOS SDK 的高级功能，包括自定义消息、消息回应、消息编辑和其他高级功能。
+
+## 自定义消息
+
+### 创建自定义消息类型
+
+您可以通过继承 `WKMessageContent` 来创建自定义消息类型。以下是创建 GIF 消息的示例：
+
+```objc
+@interface WKGIFContent : WKMessageContent
+
+// GIF 地址
+@property(nonatomic,copy) NSString *url;
+// 宽度
+@property(nonatomic,assign) NSInteger width;
+// 高度
+@property(nonatomic,assign) NSInteger height;
+
+@end
+```
+
+### 实现编码/解码
+
+```objc
+@implementation WKGIFContent
+
+- (NSDictionary *)encodeMsg {
+    NSMutableDictionary *dataDict = [NSMutableDictionary dictionary];
+    if(self.url) {
+        dataDict[@"url"] = self.url;
+    }
+    dataDict[@"width"] = @(self.width);
+    dataDict[@"height"] = @(self.height);
+    return dataDict;
+}
+
+- (void)decodeMsg:(NSDictionary *)contentDict {
+    self.url = contentDict[@"url"];
+    self.width = [contentDict[@"width"] integerValue];
+    self.height = [contentDict[@"height"] integerValue];
+}
+
+- (WKContentType)contentType {
+    return 3; // 自定义类型编号
+}
+
+@end
+```
+
+### 注册自定义消息
+
+```objc
+// 注册自定义消息类型
+[[WKIM shared].messageManager registerContentClass:[WKGIFContent class]];
+```
+
+### 发送自定义消息
+
+```objc
+WKGIFContent *gifContent = [[WKGIFContent alloc] init];
+gifContent.url = @"https://example.com/animation.gif";
+gifContent.width = 300;
+gifContent.height = 200;
+
+[[WKIM shared].messageManager sendMessage:gifContent 
+                                channelId:@"channel123" 
+                              channelType:WKChannelTypePerson];
+```
+
+## 消息回应
+
+### 添加回应
+
+```objc
+// 为消息添加回应
+[[WKIM shared].messageManager addReaction:@"👍" 
+                                messageId:@"msg123" 
+                                channelId:@"channel123" 
+                              channelType:WKChannelTypePerson];
+```
+
+### 移除回应
+
+```objc
+// 从消息中移除回应
+[[WKIM shared].messageManager removeReaction:@"👍" 
+                                   messageId:@"msg123" 
+                                   channelId:@"channel123" 
+                                 channelType:WKChannelTypePerson];
+```
+
+### 监听回应更新
+
+```objc
+// 监听回应更新
+[[WKIM shared].messageManager addOnRefreshMsgListener:^(WKMessage *message) {
+    // 处理包括回应在内的消息更新
+    if (message.reactions.count > 0) {
+        // 使用新回应更新 UI
+    }
+}];
+```
+
+## 消息编辑
+
+### 编辑文本消息
+
+```objc
+// 编辑文本消息
+WKTextContent *editedContent = [[WKTextContent alloc] init];
+editedContent.content = @"编辑后的消息内容";
+
+[[WKIM shared].messageManager editMessage:editedContent 
+                                messageId:@"msg123" 
+                                channelId:@"channel123" 
+                              channelType:WKChannelTypePerson];
+```
+
+### 处理编辑事件
+
+```objc
+// 监听消息编辑事件
+[[WKIM shared].messageManager addOnRefreshMsgListener:^(WKMessage *message) {
+    if (message.edited) {
+        // 消息已被编辑，更新 UI
+        NSLog(@"消息已编辑: %@", message.content);
+    }
+}];
+```
+
+## 消息已读回执
+
+### 标记消息为已读
+
+```objc
+// 标记消息为已读
+NSArray<WKMessage *> *messages = @[message1, message2, message3];
+[[WKIM shared].messageManager markMessagesAsRead:messages];
+```
+
+### 上传已读状态
+
+```objc
+// 上传已读状态到服务器
+[[WKIM shared].messageManager uploadReadStatus:@"channel123" 
+                                   channelType:WKChannelTypePerson 
+                                    messageSeq:lastReadMessageSeq];
+```
+
+## 消息提醒
+
+### 创建提醒
+
+```objc
+// 为消息创建提醒
+WKReminder *reminder = [[WKReminder alloc] init];
+reminder.messageId = @"msg123";
+reminder.channelId = @"channel123";
+reminder.channelType = WKChannelTypePerson;
+reminder.type = WKReminderTypeMention;
+reminder.text = @"您被提及了";
+
+[[WKIM shared].reminderManager saveReminders:@[reminder]];
+```
+
+### 监听提醒
+
+```objc
+// 监听提醒更新
+[[WKIM shared].reminderManager addRefreshListener:^(NSArray<WKReminder *> *reminders) {
+    // 处理新提醒
+    for (WKReminder *reminder in reminders) {
+        NSLog(@"新提醒: %@", reminder.text);
+    }
+}];
+```
+
+## 文件上传集成
+
+### 自定义文件上传
+
+```objc
+// 实现自定义文件上传
+[[WKIM shared].messageManager setOnUploadAttachmentListener:^(WKMessage *message, void (^result)(WKMessageAttachment *attachment)) {
+    // 您的自定义上传逻辑
+    [self uploadFile:message.content completion:^(NSString *url) {
+        WKMessageAttachment *attachment = [[WKMessageAttachment alloc] init];
+        attachment.url = url;
+        result(attachment);
+    }];
+}];
+```
+
+### 下载进度
+
+```objc
+// 监控下载进度
+[[WKIM shared].messageManager setOnDownloadAttachmentListener:^(WKMessage *message, void (^result)(WKMessageAttachment *attachment)) {
+    // 带进度的自定义下载逻辑
+    [self downloadFile:message.content.url progress:^(float progress) {
+        // 更新进度 UI
+    } completion:^(NSString *localPath) {
+        WKMessageAttachment *attachment = [[WKMessageAttachment alloc] init];
+        attachment.localPath = localPath;
+        result(attachment);
+    }];
+}];
+```
+
+## 高级配置
+
+### 自定义消息处理器
+
+```objc
+// 注册自定义消息处理器
+[[WKIM shared].messageManager addMessageProcessor:^WKMessage *(WKMessage *message) {
+    // 在保存/显示之前处理消息
+    if (message.content.contentType == 3) { // GIF 消息
+        // GIF 消息的自定义处理
+    }
+    return message;
+}];
+```
+
+### 消息加密
+
+```objc
+// 实现消息加密
+[[WKIM shared].messageManager setOnEncryptMessageListener:^NSData *(NSData *data) {
+    // 加密消息数据
+    return [self encryptData:data];
+}];
+
+[[WKIM shared].messageManager setOnDecryptMessageListener:^NSData *(NSData *encryptedData) {
+    // 解密消息数据
+    return [self decryptData:encryptedData];
+}];
+```
+
+## 性能优化
+
+### 消息缓存
+
+```objc
+// 配置消息缓存设置
+WKOptions *options = [WKIM shared].options;
+options.messageMaxCacheCount = 1000; // 每个频道最大缓存消息数
+options.messageCacheExpireTime = 7 * 24 * 60 * 60; // 7天（秒）
+```
+
+### 数据库优化
+
+```objc
+// 优化数据库性能
+[[WKIM shared].messageManager optimizeDatabase];
+
+// 清理旧消息
+[[WKIM shared].messageManager clearMessagesOlderThan:30]; // 30天
+```
+
+## 错误处理
+
+### 高级错误处理
+
+```objc
+// 设置全面的错误处理
+[[WKIM shared] setOnConnectionStatusListener:^(WKConnectionStatus status, WKConnectionReason reason) {
+    switch (status) {
+        case WKConnectionStatusConnected:
+            NSLog(@"连接成功");
+            break;
+        case WKConnectionStatusDisconnected:
+            NSLog(@"连接断开: %@", @(reason));
+            // 处理重连逻辑
+            break;
+        case WKConnectionStatusConnecting:
+            NSLog(@"连接中...");
+            break;
+    }
+}];
+```
+
+## 下一步
+
+<CardGroup cols={2}>
+  <Card
+    title="媒体消息"
+    icon="image"
+    href="/zh/sdk/wukongim/ios/media"
+  >
+    了解图片、视频和音频消息
+  </Card>
+  <Card
+    title="频道管理"
+    icon="hash"
+    href="/zh/sdk/wukongim/ios/channel"
+  >
+    管理频道和成员
+  </Card>
+  <Card
+    title="会话管理"
+    icon="comments"
+    href="/zh/sdk/wukongim/ios/conversation"
+  >
+    处理会话列表和更新
+  </Card>
+  <Card
+    title="连接管理"
+    icon="wifi"
+    href="/zh/sdk/wukongim/ios/connection"
+  >
+    高级连接和网络处理
+  </Card>
+</CardGroup>

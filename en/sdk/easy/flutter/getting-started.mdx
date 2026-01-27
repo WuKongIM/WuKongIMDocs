@@ -1,0 +1,360 @@
+---
+title: "5-Minute Flutter Integration"
+description: "Quickly integrate WuKongIM Flutter EasySDK and implement chat functionality in 5 minutes"
+icon: "clock"
+---
+
+## Overview
+
+WuKongIM Flutter EasySDK is a lightweight Flutter SDK that enables you to add real-time chat functionality to your Flutter application in just 5 minutes. This guide will take you through the complete process from installation to sending your first message.
+
+<Note>
+  **System Requirements**: Flutter 3.0.0 or higher, Dart 2.17.0 or higher
+</Note>
+
+## Step 1: Install SDK
+
+Add dependency to your `pubspec.yaml`:
+
+```yaml
+dependencies:
+  flutter:
+    sdk: flutter
+  wukong_easy_sdk: ^1.0.0
+```
+
+Then run:
+
+```bash
+flutter pub get
+```
+
+## Step 2: Basic Integration
+
+### 2.1 Import SDK
+
+```dart
+import 'package:wukong_easy_sdk/wukong_easy_sdk.dart';
+```
+
+### 2.2 Initialize SDK
+
+```dart
+// 1. Initialize SDK
+final config = WuKongConfig(
+  serverUrl: "ws://your-wukongim-server.com:5200",
+  uid: "your_user_id",        // Your user ID
+  token: "your_auth_token",   // Your authentication token
+  // deviceId: "optional_device_id", // Optional: Device ID
+  // deviceFlag: WuKongDeviceFlag.app, // Optional: Device flag, default is app
+);
+
+final easySDK = WuKongEasySDK.getInstance();
+await easySDK.init(config);
+```
+
+### 2.3 Listen for Events
+
+```dart
+// 2. Listen for various events
+easySDK.addEventListener(WuKongEvent.connect, (ConnectResult result) {
+  print("Event: Connected! $result");
+  // Connection successful, can start sending messages
+  updateUI(true);
+});
+
+easySDK.addEventListener(WuKongEvent.disconnect, (DisconnectInfo disconnectInfo) {
+  print("Event: Disconnected. $disconnectInfo");
+  print("Disconnect code: ${disconnectInfo.code}, reason: ${disconnectInfo.reason}");
+  // Connection lost, update UI status
+  updateUI(false);
+});
+
+easySDK.addEventListener(WuKongEvent.message, (Message message) {
+  print("Event: Message Received $message");
+  // Handle received messages
+  displayMessage(message);
+});
+
+easySDK.addEventListener(WuKongEvent.error, (WuKongError error) {
+  print("Event: Error Occurred ${error.message}");
+  // Handle errors, may need to update UI or reconnect
+  handleError(error);
+});
+
+// You can add multiple listeners for the same event
+easySDK.addEventListener(WuKongEvent.message, (Message message) {
+  print("Second listener also received message: ${message.messageId}");
+  // Add different processing logic here
+});
+```
+
+### 2.4 Remove Event Listeners
+
+In some cases, you may need to remove event listeners to avoid memory leaks or duplicate processing. Flutter EasySDK provides methods to remove listeners.
+
+<Note>
+  **Important Reminder**: In Flutter, removing event listeners requires maintaining references to the listeners. It's recommended to use class properties to store listener references for later removal.
+</Note>
+
+#### Correct Usage
+
+```dart
+class ChatPage extends StatefulWidget {
+  @override
+  _ChatPageState createState() => _ChatPageState();
+}
+
+class _ChatPageState extends State<ChatPage> {
+  late WuKongEasySDK easySDK;
+  
+  // Save listener references
+  WuKongEventListener<Message>? messageListener;
+  WuKongEventListener<ConnectResult>? connectListener;
+  WuKongEventListener<DisconnectInfo>? disconnectListener;
+  WuKongEventListener<WuKongError>? errorListener;
+  
+  @override
+  void initState() {
+    super.initState();
+    easySDK = WuKongEasySDK.getInstance();
+    setupEventListeners();
+    connectToServer();
+  }
+  
+  void setupEventListeners() {
+    // ✅ Correct: Save listener references
+    messageListener = (Message message) {
+      print("Handle message: $message");
+      if (mounted) {
+        setState(() {
+          handleMessage(message);
+        });
+      }
+    };
+    
+    connectListener = (ConnectResult result) {
+      print("Connection successful: $result");
+      if (mounted) {
+        setState(() {
+          handleConnect(result);
+        });
+      }
+    };
+    
+    disconnectListener = (DisconnectInfo disconnectInfo) {
+      print("Connection lost: $disconnectInfo");
+      print("Disconnect code: ${disconnectInfo.code}, reason: ${disconnectInfo.reason}");
+      if (mounted) {
+        setState(() {
+          handleDisconnect(disconnectInfo);
+        });
+      }
+    };
+    
+    errorListener = (WuKongError error) {
+      print("Error occurred: $error");
+      if (mounted) {
+        setState(() {
+          handleError(error);
+        });
+      }
+    };
+    
+    // Add event listeners
+    easySDK.addEventListener(WuKongEvent.message, messageListener!);
+    easySDK.addEventListener(WuKongEvent.connect, connectListener!);
+    easySDK.addEventListener(WuKongEvent.disconnect, disconnectListener!);
+    easySDK.addEventListener(WuKongEvent.error, errorListener!);
+  }
+  
+  void removeEventListeners() {
+    // Remove specific event listeners - use saved references
+    if (messageListener != null) {
+      easySDK.removeEventListener(WuKongEvent.message, messageListener!);
+      messageListener = null;
+    }
+    
+    if (connectListener != null) {
+      easySDK.removeEventListener(WuKongEvent.connect, connectListener!);
+      connectListener = null;
+    }
+    
+    if (disconnectListener != null) {
+      easySDK.removeEventListener(WuKongEvent.disconnect, disconnectListener!);
+      disconnectListener = null;
+    }
+    
+    if (errorListener != null) {
+      easySDK.removeEventListener(WuKongEvent.error, errorListener!);
+      errorListener = null;
+    }
+  }
+  
+  @override
+  void dispose() {
+    // Clean up listeners when Widget is destroyed
+    removeEventListeners();
+    super.dispose();
+  }
+  
+  void handleMessage(Message message) {
+    // Message handling logic
+  }
+  
+  void handleConnect(ConnectResult result) {
+    // Connection success handling logic
+  }
+  
+  void handleDisconnect(DisconnectInfo disconnectInfo) {
+    // Connection lost handling logic
+    print("Handle disconnect event - code: ${disconnectInfo.code}, reason: ${disconnectInfo.reason}");
+  }
+  
+  void handleError(WuKongError error) {
+    // Error handling logic
+  }
+  
+  Future<void> connectToServer() async {
+    try {
+      await easySDK.connect();
+      print("Connection successful!");
+    } catch (e) {
+      print("Connection failed: $e");
+    }
+  }
+  
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text("Chat")),
+      body: Container(
+        // Chat interface
+      ),
+    );
+  }
+}
+```
+
+### 2.5 Connect to Server
+
+```dart
+// 4. Connect to server
+try {
+  await easySDK.connect();
+  print("Connection successful!");
+} catch (e) {
+  print("Connection failed: $e");
+}
+```
+
+### 2.6 Send Messages
+
+```dart
+// 5. Send message example
+Future<void> sendMessage() async {
+  final targetChannelID = "friend_user_id"; // Target user ID
+  final messagePayload = MessagePayload(
+    type: 1,
+    content: "Hello from Flutter EasySDK!",
+  ); // Your custom message payload
+
+  try {
+    final result = await easySDK.send(
+      channelId: targetChannelID,
+      channelType: WuKongChannelType.person,
+      payload: messagePayload,
+    );
+    print("Message sent successfully: $result");
+  } catch (e) {
+    print("Message sending failed: $e");
+  }
+}
+```
+
+## Step 3: Error Handling and Best Practices
+
+### 3.1 Error Handling
+
+<Note>
+  **Built-in Auto Reconnection**: Flutter EasySDK has built-in intelligent reconnection mechanism, no need to manually implement reconnection logic. The SDK will automatically attempt to reconnect when the connection is lost.
+</Note>
+
+```dart
+// Proper connection status listening
+easySDK.addEventListener(WuKongEvent.connect, (ConnectResult result) {
+  print("Connection successful: $result");
+  // Update UI status, enable sending functionality
+  if (mounted) {
+    setState(() {
+      updateConnectionUI(true);
+    });
+  }
+});
+
+easySDK.addEventListener(WuKongEvent.disconnect, (DisconnectInfo disconnectInfo) {
+  print("Connection lost: $disconnectInfo");
+  print("Disconnect code: ${disconnectInfo.code}, reason: ${disconnectInfo.reason}");
+  // Update UI status, disable sending functionality
+  if (mounted) {
+    setState(() {
+      updateConnectionUI(false);
+    });
+  }
+  // SDK will automatically attempt to reconnect, no manual handling needed
+});
+
+easySDK.addEventListener(WuKongEvent.error, (WuKongError error) {
+  print("Error occurred: $error");
+
+  // Handle based on error type
+  if (mounted) {
+    setState(() {
+      switch (error.code) {
+        case WuKongErrorCode.authFailed:
+          // Authentication failed, need to get new token
+          handleAuthError();
+          break;
+        case WuKongErrorCode.networkError:
+          // Network error, show network prompt
+          showNetworkError();
+          break;
+        default:
+          // Other errors
+          showGeneralError(error.message);
+          break;
+      }
+    });
+  }
+});
+```
+
+## Related Resources
+
+<CardGroup cols={2}>
+  <Card title="Complete Example Code" icon="code" href="https://github.com/WuKongIM/EasyJSSDK/blob/main/example/app.js">
+    View complete example code and more feature demonstrations
+  </Card>
+  <Card title="Complete Protocol Documentation" icon="file-text" href="https://github.com/WuKongIM/WuKongIM/blob/main/pkg/jsonrpc/wukongim_rpc_schema.json">
+    View WuKongIM's complete protocol documentation
+  </Card>
+  <Card title="GitHub Repository" icon="github" href="https://github.com/WuKongIM/EasyJSSDK">
+    Visit EasyJSSDK's GitHub repository
+  </Card>
+  <Card title="Issue Feedback" icon="bug" href="https://github.com/WuKongIM/EasyJSSDK/issues">
+    Report issues or provide suggestions
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+Congratulations! You have successfully integrated WuKongIM Flutter EasySDK. Now you can:
+
+1. **Extend Functionality**: Add group chat, file transfer and other features
+2. **Customize UI**: Customize chat interface according to your app design
+3. **Integrate into Project**: Integrate chat functionality into your existing project
+4. **Performance Optimization**: Optimize performance based on actual usage
+
+<Tip>
+  If you need more complex functionality or higher performance requirements, consider using the full version of WuKongIMSDK.
+</Tip>

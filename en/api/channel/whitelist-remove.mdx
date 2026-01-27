@@ -1,0 +1,246 @@
+---
+title: "Remove Channel Whitelist"
+description: "Remove specific users from channel whitelist"
+api: "POST /channel/whitelist_remove"
+---
+
+## Overview
+
+Remove specific users from channel whitelist. After removal, users will lose whitelist privileges and will not be able to send messages to the channel if whitelist mode is enabled.
+
+## Request Body
+
+### Required Parameters
+
+<ParamField body="channel_id" type="string" required>
+Channel ID, cannot be empty or contain special characters
+</ParamField>
+
+<ParamField body="channel_type" type="integer" required>
+Channel type
+- `1` - Person channel
+- `2` - Group channel
+</ParamField>
+
+<ParamField body="uids" type="array" required>
+List of user IDs to remove from whitelist
+<ParamField body="uids[]" type="string">
+User ID
+</ParamField>
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "http://localhost:5001/channel/whitelist_remove" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "channel_id": "group123",
+    "channel_type": 2,
+    "uids": ["user1", "user2"]
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5001/channel/whitelist_remove', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    channel_id: 'group123',
+    channel_type: 2,
+    uids: ['user1', 'user2']
+  })
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+
+data = {
+    "channel_id": "group123",
+    "channel_type": 2,
+    "uids": ["user1", "user2"]
+}
+
+response = requests.post('http://localhost:5001/channel/whitelist_remove', json=data)
+result = response.json()
+print(result)
+```
+
+```go Go
+package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    data := map[string]interface{}{
+        "channel_id":   "group123",
+        "channel_type": 2,
+        "uids":         []string{"user1", "user2"},
+    }
+    
+    jsonData, _ := json.Marshal(data)
+    
+    resp, err := http.Post(
+        "http://localhost:5001/channel/whitelist_remove",
+        "application/json",
+        bytes.NewBuffer(jsonData),
+    )
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    var result map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Printf("%+v\n", result)
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json Success Response
+{
+  "status": "ok"
+}
+```
+</ResponseExample>
+
+## Response Fields
+
+<ResponseField name="status" type="string" required>
+Operation status, returns `"ok"` on success
+</ResponseField>
+
+## Status Codes
+
+| Status Code | Description |
+|-------------|-------------|
+| 200 | Users removed from whitelist successfully |
+| 400 | Request parameter error |
+| 403 | No management permission |
+| 404 | Channel does not exist |
+| 500 | Internal server error |
+
+## Functionality
+
+### Remove Operation
+
+The remove operation performs the following steps:
+
+1. **Verify Users**: Check if specified users are in the whitelist
+2. **Remove Entries**: Delete specified users from channel whitelist
+3. **Permission Changes**: Users lose whitelist privileges
+4. **Take Effect Immediately**: Permission changes take effect immediately
+
+### Permission Impact
+
+Removed users will lose:
+
+| Privilege | Impact | Effective Time |
+|-----------|--------|----------------|
+| Send Permission | Cannot send messages in whitelist mode | Immediately |
+| Special Permissions | Lose ability to bypass certain restrictions | Immediately |
+| Priority Processing | Messages no longer receive priority processing | Immediately |
+| Privilege Identity | Lose whitelist user status | Immediately |
+
+## Whitelist Mode Impact
+
+### When Whitelist Mode is Enabled
+
+- **Removed Users**: Cannot send messages to the channel
+- **Other Whitelisted Users**: Unaffected, continue to enjoy privileges
+- **Regular Users**: Still cannot send messages
+
+### When Whitelist Mode is Disabled
+
+- **Removed Users**: Can still send messages normally
+- **Permission Changes**: Mainly affects special permissions and priority
+
+## Use Cases
+
+### Permission Downgrade
+
+```bash
+# Remove users who no longer need privileges
+curl -X POST "/channel/whitelist_remove" -d '{
+  "channel_id": "group123",
+  "channel_type": 2,
+  "uids": ["former_admin"]
+}'
+```
+
+### Batch Cleanup
+
+```bash
+# Batch remove multiple users
+curl -X POST "/channel/whitelist_remove" -d '{
+  "channel_id": "group123",
+  "channel_type": 2,
+  "uids": ["user1", "user2", "user3"]
+}'
+```
+
+### Temporary Restriction
+
+```bash
+# Temporarily remove user privileges
+curl -X POST "/channel/whitelist_remove" -d '{
+  "channel_id": "group123",
+  "channel_type": 2,
+  "uids": ["temp_restricted_user"]
+}'
+```
+
+## Whitelist Management Strategy
+
+### Operation Comparison
+
+| Operation | Function | Impact Scope | Use Case |
+|-----------|----------|--------------|----------|
+| `whitelist_add` | Add to whitelist | Grant privileges | Grant user privileges |
+| `whitelist_remove` | Remove from whitelist | Remove privileges | Revoke user privileges |
+| `whitelist_set` | Replace entire whitelist | Complete reset | Batch management |
+
+### Management Principles
+
+1. **Principle of Least Privilege**: Only give necessary users whitelist permissions
+2. **Regular Review**: Regularly check the necessity of whitelist users
+3. **Permission Grading**: Assign different levels of permissions based on user roles
+4. **Transparent Management**: Record all permission change operations
+
+## Best Practices
+
+1. **Permission Audit**: Regularly review whitelist user activity and necessity
+2. **Progressive Removal**: For important users, consider progressive permission downgrade
+3. **Notification Mechanism**: Notify relevant users and administrators before removal
+4. **Backup Strategy**: Backup current whitelist state before batch operations
+5. **Monitor Impact**: Monitor channel activity changes after removal
+6. **Document Records**: Record removal reasons and expected impact
+
+## Error Handling
+
+### Common Errors
+
+| Error Message | Cause | Solution |
+|---------------|-------|----------|
+| Channel ID cannot be empty | No channel ID provided | Ensure valid channel ID is provided |
+| Channel type cannot be 0 | Invalid channel type | Use valid channel type (1 or 2) |
+| uids cannot be empty | No user list provided | Provide list of user IDs to remove |
+| Remove whitelist failed | Remove operation failed | Check if users are in whitelist |
+
+## Related APIs
+
+- [Add Channel Whitelist](/en/api/channel/whitelist) - Add users to whitelist
+- [Set Channel Whitelist](/en/api/channel/whitelist-set) - Set complete whitelist
+- [Get Channel Whitelist](/en/api/channel/get-whitelist) - Get current whitelist
+- [Remove Channel Blacklist](/en/api/channel/blacklist-remove) - Remove blacklist users

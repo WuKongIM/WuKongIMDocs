@@ -1,0 +1,143 @@
+---
+title: "更新用户 Token"
+description: "更新用户的认证令牌"
+api: "POST /user/token"
+---
+
+## 概述
+
+更新用户的认证令牌，用于用户重新登录或令牌刷新场景。
+
+## 请求体
+
+### 必传参数
+
+<ParamField body="uid" type="string" required>
+通信的用户唯一ID，可以随机uuid （建议自己服务端的用户唯一uid） （WuKongIMSDK需要）
+</ParamField>
+
+<ParamField body="token" type="string" required>
+校验的token，随机uuid（建议使用自己服务端的用户的token）（WuKongIMSDK需要）
+</ParamField>
+
+<ParamField body="device_flag" type="integer" required>
+设备标识  0.app 1.web 2. desktop （相同用户相同设备标记的主设备登录会互相踢，从设备将共存）
+</ParamField>
+
+### 可选参数
+
+<ParamField body="device_level" type="integer">
+设备等级 0.为从设备 1.为主设备
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "http://localhost:5001/user/token" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "uid": "user123",
+    "token": "new_auth_token_here",
+    "device_flag": 1,
+    "device_level": 1
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5001/user/token', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    uid: 'user123',
+    token: 'new_auth_token_here',
+    device_flag: 1,
+    device_level: 1
+  })
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+
+data = {
+    "uid": "user123",
+    "token": "new_auth_token_here",
+    "device_flag": 1,
+    "device_level": 1
+}
+
+response = requests.post('http://localhost:5001/user/token', json=data)
+result = response.json()
+print(result)
+```
+
+```go Go
+package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    data := map[string]interface{}{
+        "uid":          "user123",
+        "token":        "new_auth_token_here",
+        "device_flag":  1,
+        "device_level": 1,
+    }
+    
+    jsonData, _ := json.Marshal(data)
+    
+    resp, err := http.Post(
+        "http://localhost:5001/user/token",
+        "application/json",
+        bytes.NewBuffer(jsonData),
+    )
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    var result map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Printf("%+v\n", result)
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json 成功响应
+{
+  "status": "ok"
+}
+```
+</ResponseExample>
+
+## 响应字段
+
+<ResponseField name="status" type="string" required>
+操作状态，成功时返回 `"ok"`
+</ResponseField>
+
+## 状态码
+
+| 状态码 | 说明 |
+|--------|------|
+| 200 | Token 更新成功 |
+| 400 | 请求参数错误 |
+| 500 | 服务器内部错误 |
+
+## 最佳实践
+
+1. **Token 安全**：确保 Token 具有足够的复杂度和唯一性
+2. **设备标识**：合理设置 device_flag 以区分不同设备类型
+3. **权限控制**：通过 device_level 实现不同设备的权限控制
+4. **定期刷新**：实施 Token 定期刷新机制
+5. **多设备管理**：为不同设备生成不同的 Token，便于管理和撤销

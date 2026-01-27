@@ -1,0 +1,62 @@
+---
+title: "集成指南"
+description: "WuKongIM iOS SDK 集成和初始化配置指南"
+icon: "rocket"
+---
+
+## 通过 CocoaPods 集成
+
+在项目的 `Podfile` 中添加依赖：
+
+```objc
+pod 'WuKongIMSDK'
+```
+
+然后执行安装命令：
+
+```bash
+pod install
+```
+
+## 通过源码集成
+
+如果需要使用最新的开发版本，可以直接从 GitHub 仓库集成：
+
+```objc
+pod 'WuKongIMSDK', :git => 'https://github.com/WuKongIM/WuKongIMiOSSDK.git'
+```
+
+
+
+## 下一步
+
+<CardGroup cols={2}>
+  <Card
+    title="连接管理"
+    icon="link"
+    href="/zh/sdk/wukongim/ios/connection"
+  >
+    学习如何管理连接状态
+  </Card>
+  <Card
+    title="消息收发"
+    icon="message-circle"
+    href="/zh/sdk/wukongim/ios/chat"
+  >
+    实现消息收发功能
+  </Card>
+  <Card
+    title="频道管理"
+    icon="hash"
+    href="/zh/sdk/wukongim/ios/channel"
+  >
+    管理频道和群组
+  </Card>
+  <Card
+    title="会话管理"
+    icon="users"
+    href="/zh/sdk/wukongim/ios/conversation"
+  >
+    处理会话列表
+  </Card>
+</CardGroup>
